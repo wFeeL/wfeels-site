@@ -22,7 +22,7 @@ test.describe('темы', () => {
       await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
       const bg = await page.evaluate(() =>
         getComputedStyle(document.body).backgroundColor);
-      expect(bg).toBe('rgb(251, 252, 253)'); // --bg светлой темы #FBFCFD
+      expect(bg).toBe('rgb(244, 246, 249)'); // --bg светлой темы #F4F6F9
       await ctx.close();
     });
 
@@ -47,4 +47,18 @@ test.describe('темы', () => {
       // Если стилей в разметке нет вовсе (всё заинлайнено) — проверка неприменима.
       if (style > -1) expect(script).toBeLessThan(style);
     });
+});
+
+test('у страницы есть знак бренда', async ({ page }) => {
+  const res = await page.goto('/');
+  expect(res?.status()).toBe(200);
+
+  const href = await page
+    .locator('link[rel="icon"]')
+    .getAttribute('href');
+  expect(href).toBe('/favicon.svg');
+
+  const icon = await page.request.get('/favicon.svg');
+  expect(icon.status()).toBe(200);
+  expect(icon.headers()['content-type']).toContain('svg');
 });

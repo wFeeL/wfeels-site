@@ -5,10 +5,10 @@
     1100px  — появляется правый рельс (спека 02) */
 
 :root {
-  --bg: #FBFCFD;
+  --bg: #F4F6F9;
   --surface: #FFFFFF;
-  --grid: #EEF2F7;
-  --border: #D9DEE7;
+  --grid: #E6EBF2;
+  --border: #CBD3DE;
   --text: #0F1620;
   --text-muted: #5B6675;
   --text-faint: #8B97A8;
