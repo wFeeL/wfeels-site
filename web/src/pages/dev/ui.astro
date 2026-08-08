@@ -1,0 +1,83 @@
+---
+import Base from '../../layouts/Base.astro';
+import Container from '../../components/Container.astro';
+import Section from '../../components/Section.astro';
+import Button from '../../components/Button.astro';
+import Card from '../../components/Card.astro';
+import Metric from '../../components/Metric.astro';
+import Prose from '../../components/Prose.astro';
+
+const TOKENS = [
+  '--bg', '--surface', '--grid', '--border',
+  '--text', '--text-muted', '--text-faint', '--accent',
+];
+---
+<Base title="Витрина компонентов" description="Служебная страница" noindex={true}>
+  <Container>
+    <Section id="type" label="Типографика">
+      <p class="t-display">Display 4rem</p>
+      <p class="t-h1">Заголовок первого уровня</p>
+      <p class="t-h2">Заголовок второго уровня</p>
+      <p class="t-h3">Заголовок третьего уровня</p>
+      <p class="t-body-lg">Крупный текст абзаца для вводных блоков.</p>
+      <p class="t-body">Обычный текст абзаца. Съешь ещё этих мягких булок.</p>
+      <p class="t-small">Мелкий текст сноски.</p>
+      <p class="t-label">Моноширинная метка</p>
+    </Section>
+
+    <Section id="colors" label="Токены">
+      <div class="swatches">
+        {TOKENS.map((t) => (
+          <div class="sw">
+            <span style={`background: var(${t})`}></span>
+            <code>{t}</code>
+          </div>
+        ))}
+      </div>
+    </Section>
+
+    <Section id="buttons" label="Кнопки">
+      <Button variant="primary">Основная</Button>
+      <Button variant="secondary">Вторичная</Button>
+      <Button href="/" variant="secondary">Ссылка-кнопка</Button>
+    </Section>
+
+    <Section id="cards" label="Карточки">
+      <Card><h3 class="t-h3">Заголовок карточки</h3><p class="t-body">Текст.</p></Card>
+    </Section>
+
+    <Section id="metrics" label="Метрики">
+      <div class="row">
+        <Metric value="23 ч" caption="этот сайт" />
+        <Metric value="310 КБ" caption="вес страницы" />
+      </div>
+    </Section>
+
+    <Section id="prose" label="Длинный текст">
+      <Prose>
+        <h2>Заголовок раздела</h2>
+        <p>Абзац длинного текста. Такой типографикой набираются юридические
+        страницы, кейсы и весь markdown-контент.</p>
+        <h3>Подзаголовок</h3>
+        <ul><li>Пункт списка</li><li>Ещё пункт</li></ul>
+        <p>Инлайновый <code>код</code> и <a href="/">ссылка</a>.</p>
+        <hr />
+      </Prose>
+    </Section>
+
+    <Section id="fields" label="Поля формы">
+      <p class="t-body">Заполняется в задаче 10 вместе с формой заявки.</p>
+    </Section>
+  </Container>
+</Base>
+
+<style>
+  .swatches { display: flex; flex-wrap: wrap; gap: 12px; }
+  .sw { width: 120px; }
+  .sw span {
+    display: block; height: 48px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+  }
+  .sw code { font: 400 0.6875rem/1.6 var(--font-mono); color: var(--text-muted); }
+  .row { display: flex; gap: 32px; }
+</style>
