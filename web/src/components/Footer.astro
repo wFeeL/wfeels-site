@@ -1,0 +1,34 @@
+---
+import Container from './Container.astro';
+interface Props { lang: 'ru' | 'en' }
+const { lang } = Astro.props;
+const year = 2026;
+---
+<footer>
+  <Container>
+    <p class="ai">
+      {lang === 'ru'
+        ? 'Код и часть дизайна пишу вместе с ИИ. Архитектуру, безопасность, дизайн-решения и палитру определяю сам и проверяю всё, что получается.'
+        : 'I write code and part of the design together with AI. Architecture, security, design decisions and the palette are mine, and I review everything that comes out.'}
+    </p>
+    <nav aria-label={lang === 'ru' ? 'Юридические документы' : 'Legal'}>
+      <a href="/politika">Политика конфиденциальности</a>
+      <a href="/oferta">Пользовательское соглашение</a>
+      <a href="/soglasie">Согласие на обработку данных</a>
+    </nav>
+    <p class="year">© {year} wfeels</p>
+  </Container>
+</footer>
+
+<style>
+  footer {
+    border-top: 1px solid var(--border);
+    padding-block: 48px;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+  .ai { max-width: 62ch; margin: 0 0 24px; }
+  nav { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 16px; }
+  nav a { color: var(--text-muted); }
+  .year { margin: 0; font-family: var(--font-mono); font-size: 0.75rem; }
+</style>

@@ -3,7 +3,8 @@ import '@fontsource-variable/manrope';
 import '@fontsource-variable/golos-text';
 import '@fontsource-variable/jetbrains-mono';
 import '../styles/base.css';
-import ThemeToggle from '../components/ThemeToggle.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
 
 interface Props {
   title: string;
@@ -31,11 +32,28 @@ const { title, description, lang = 'ru' } = Astro.props;
     <meta name="description" content={description} />
   </head>
   <body>
-    <header>
-      <ThemeToggle />
-    </header>
-    <main id="main">
+    <a class="skip" href="#main">Перейти к содержимому</a>
+    <Header lang={lang}>
+      <slot name="lang" slot="lang" />
+    </Header>
+    <main id="main" tabindex="-1">
       <slot />
     </main>
+    <Footer lang={lang} />
+
+    <style>
+      .skip {
+        position: absolute;
+        left: -9999px;
+        top: 8px;
+        background: var(--accent);
+        color: #fff;
+        padding: 8px 16px;
+        border-radius: var(--radius-sm);
+        z-index: 200;
+      }
+      .skip:focus { left: 8px; }
+      main:focus { outline: none; }
+    </style>
   </body>
 </html>

@@ -1,0 +1,14 @@
+---
+interface Props { id?: string; label?: string }
+const { id, label } = Astro.props;
+---
+<section id={id}>
+  {label && <p class="t-label">{label}</p>}
+  <slot />
+</section>
+
+<style>
+  section { padding-block: 64px; }
+  @media (min-width: 900px) { section { padding-block: 96px; } }
+  .t-label { margin: 0 0 16px; }
+</style>

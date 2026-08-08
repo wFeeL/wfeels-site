@@ -1,0 +1,59 @@
+---
+import Container from './Container.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import Button from './Button.astro';
+
+interface Props { lang: 'ru' | 'en' }
+const { lang } = Astro.props;
+
+const NAV = {
+  ru: [
+    { href: '/uslugi', text: 'Услуги' },
+    { href: '/keysy', text: 'Кейсы' },
+    { href: '/tseny', text: 'Цены' },
+    { href: '/kontakt', text: 'Контакты' },
+    { href: '/o-mne', text: 'Обо мне' },
+  ],
+  en: [
+    { href: '/en/#services', text: 'Services' },
+    { href: '/en/#cases', text: 'Cases' },
+    { href: '/en/#pricing', text: 'Pricing' },
+    { href: '/en/#contact', text: 'Contact' },
+    { href: '/en/#about', text: 'About' },
+  ],
+}[lang];
+---
+<header>
+  <Container>
+    <div class="bar">
+      <a class="brand" href={lang === 'ru' ? '/' : '/en'}>wfeels</a>
+      <nav aria-label="Основная навигация">
+        {NAV.map((i) => <a href={i.href}>{i.text}</a>)}
+      </nav>
+      <div class="tools">
+        <slot name="lang" />
+        <ThemeToggle />
+        <Button href="/kontakt" variant="primary">
+          {lang === 'ru' ? 'Написать' : 'Get in touch'}
+        </Button>
+      </div>
+    </div>
+  </Container>
+</header>
+
+<style>
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .bar { display: flex; align-items: center; gap: 24px; height: 64px; }
+  .brand { font: 800 1.0625rem/1 var(--font-head); color: var(--text); text-decoration: none; }
+  nav { display: flex; gap: 20px; }
+  nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9375rem; }
+  nav a:hover { color: var(--text); }
+  .tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  @media (max-width: 899px) { nav { display: none; } }
+</style>
