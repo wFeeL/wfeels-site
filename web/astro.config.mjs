@@ -2,12 +2,9 @@ import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
+import { isIndexable } from './src/lib/sitemap.ts';
 
 const SITE = process.env.SITE_URL ?? 'http://localhost:4321';
-
-// Юридические и служебные страницы: пока в них плейсхолдеры вместо реквизитов
-// (см. Задачи 8, 11), они не должны попадать в sitemap.
-const EXCLUDED = ['/dev/', '/politika', '/oferta', '/soglasie', '/spasibo'];
 
 export default defineConfig({
   site: SITE,
@@ -21,7 +18,7 @@ export default defineConfig({
   integrations: [
     mdx(),
     sitemap({
-      filter: (page) => !EXCLUDED.some((p) => new URL(page).pathname.startsWith(p)),
+      filter: (page) => isIndexable(new URL(page).pathname),
     }),
   ],
   vite: { plugins: [tailwindcss()] },
