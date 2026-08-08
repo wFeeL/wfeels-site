@@ -1,3 +1,6 @@
+import ru from './ru';
+import en from './en';
+
 export const LOCALES = ['ru', 'en'] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'ru';
@@ -26,11 +29,16 @@ export function altLocaleUrl(pathname: string, target: Locale): string {
   return base === '/' ? '/en' : `/en${base}`;
 }
 
-import ru from './ru';
-import en from './en';
+/** Ключи задаёт русский словарь. Значения — обычные строки, а не литералы,
+ *  иначе английский словарь не пройдёт по типу из-за других текстов. */
+export type Dict = Record<keyof typeof ru, string>;
 
-export type Dict = typeof ru;
+/** Аннотация типа здесь не украшение: если в `en` не хватит ключа, который
+ *  есть в `ru`, сборка упадёт с TS2741. Без неё пропущенный ключ молча
+ *  доехал бы до продакшена и отрисовался как `undefined` — например,
+ *  в `aria-label`, где этого никто не заметит. */
+const DICTS: Record<Locale, Dict> = { ru, en };
 
 export function dict(locale: Locale): Dict {
-  return locale === 'en' ? (en as unknown as Dict) : ru;
+  return DICTS[locale];
 }
