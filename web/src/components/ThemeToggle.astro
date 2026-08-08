@@ -18,28 +18,43 @@
     const icon = btn.querySelector('[data-icon]')!;
 
     const read = (): State => {
-      const v = localStorage.getItem('theme');
-      return v === 'light' || v === 'dark' ? v : 'system';
+      try {
+        const v = localStorage.getItem('theme');
+        return v === 'light' || v === 'dark' ? v : 'system';
+      } catch {
+        return 'system';
+      }
     };
 
     const apply = (state: State) => {
       if (state === 'system') {
         delete document.documentElement.dataset.theme;
-        localStorage.removeItem('theme');
       } else {
         document.documentElement.dataset.theme = state;
-        localStorage.setItem('theme', state);
       }
+      // Видимое состояние обновляется всегда, даже если хранилище недоступно.
       btn.dataset.state = state;
       btn.setAttribute('aria-label', `Тема оформления: ${NAME[state]}`);
       icon.textContent = ICON[state];
+
+      try {
+        if (state === 'system') localStorage.removeItem('theme');
+        else localStorage.setItem('theme', state);
+      } catch {
+        // Приватный режим или заблокированное хранилище: тема работает
+        // до перезагрузки, выбор просто не запоминается.
+      }
     };
 
-    apply(read());
+    // Текущее состояние держим в памяти, а не перечитываем из хранилища на
+    // каждый клик: при заблокированном хранилище read() всегда вернул бы
+    // 'system', и кнопка ходила бы по кругу 'system' → 'light' → 'system'.
+    let current: State = read();
+    apply(current);
 
     btn.addEventListener('click', () => {
-      const next = ORDER[(ORDER.indexOf(read()) + 1) % ORDER.length];
-      apply(next);
+      current = ORDER[(ORDER.indexOf(current) + 1) % ORDER.length];
+      apply(current);
     });
   }
 </script>
