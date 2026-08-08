@@ -9,6 +9,10 @@
   --accent: #2F5BFF;
   --accent-soft: rgba(47, 91, 255, 0.09);
 
+  --font-head: 'Manrope Variable', system-ui, sans-serif;
+  --font-text: 'Golos Text Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+
   --step: 32px;
   --radius-sm: 8px;
   --radius-md: 12px;

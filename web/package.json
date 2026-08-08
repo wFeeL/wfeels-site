@@ -11,10 +11,13 @@
     "check:budget": "node ../scripts/check-budget.mjs"
   },
   "dependencies": {
-    "astro": "^7.2.0",
     "@astrojs/mdx": "^7.0.5",
     "@astrojs/sitemap": "^3.7.3",
+    "@fontsource-variable/golos-text": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
     "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.2.0",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
