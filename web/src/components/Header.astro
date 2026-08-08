@@ -3,10 +3,11 @@ import Container from './Container.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import Button from './Button.astro';
 import NavLinks from './NavLinks.astro';
+import ReadingProgress from './ReadingProgress.astro';
 import { dict } from '../i18n/locales';
 
-interface Props { lang: 'ru' | 'en' }
-const { lang } = Astro.props;
+interface Props { lang: 'ru' | 'en'; progress?: boolean }
+const { lang, progress = true } = Astro.props;
 const t = dict(lang);
 
 const NAV = {
@@ -51,6 +52,7 @@ const NAV = {
       </nav>
     </details>
   </Container>
+  {progress && <ReadingProgress />}
 </header>
 
 <style>

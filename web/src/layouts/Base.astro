@@ -13,8 +13,9 @@ interface Props {
   description: string;
   lang?: 'ru' | 'en';
   noindex?: boolean;
+  progress?: boolean;
 }
-const { title, description, lang = 'ru', noindex = false } = Astro.props;
+const { title, description, lang = 'ru', noindex = false, progress = true } = Astro.props;
 const t = dict(lang);
 
 const meta = buildMeta({
@@ -58,7 +59,7 @@ const meta = buildMeta({
     <a class="skip" href="#main">
       {t.skip}
     </a>
-    <Header lang={lang}>
+    <Header lang={lang} progress={progress}>
       <slot name="lang" slot="lang" />
     </Header>
     <main id="main" tabindex="-1">
