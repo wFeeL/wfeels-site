@@ -3,9 +3,11 @@ import Container from './Container.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import Button from './Button.astro';
 import NavLinks from './NavLinks.astro';
+import { dict } from '../i18n/locales';
 
 interface Props { lang: 'ru' | 'en' }
 const { lang } = Astro.props;
+const t = dict(lang);
 
 const NAV = {
   ru: [
@@ -23,16 +25,13 @@ const NAV = {
     { href: '/en/#about', text: 'About' },
   ],
 }[lang];
-
-const NAV_LABEL = lang === 'ru' ? 'Основная навигация' : 'Main navigation';
-const MENU_LABEL = lang === 'ru' ? 'Меню' : 'Menu';
 ---
 <header>
   <Container>
     <div class="bar">
       <a class="brand" href={lang === 'ru' ? '/' : '/en'}>wfeels</a>
 
-      <nav class="nav-wide" aria-label={NAV_LABEL}>
+      <nav class="nav-wide" aria-label={t.nav}>
         <NavLinks items={NAV} />
       </nav>
 
@@ -40,14 +39,14 @@ const MENU_LABEL = lang === 'ru' ? 'Меню' : 'Menu';
         <slot name="lang" />
         <ThemeToggle />
         <Button href="/kontakt" variant="primary">
-          {lang === 'ru' ? 'Написать' : 'Get in touch'}
+          {t.write}
         </Button>
       </div>
     </div>
 
     <details class="nav-narrow">
-      <summary>{MENU_LABEL}</summary>
-      <nav aria-label={NAV_LABEL}>
+      <summary>{t.menu}</summary>
+      <nav aria-label={t.nav}>
         <NavLinks items={NAV} />
       </nav>
     </details>

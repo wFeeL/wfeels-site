@@ -1,7 +1,9 @@
 ---
 import Container from './Container.astro';
+import { dict } from '../i18n/locales';
 interface Props { lang: 'ru' | 'en' }
 const { lang } = Astro.props;
+const t = dict(lang);
 const year = 2026;
 ---
 <footer>
@@ -11,7 +13,7 @@ const year = 2026;
         ? 'Код и часть дизайна пишу вместе с ИИ. Архитектуру, безопасность, дизайн-решения и палитру определяю сам и проверяю всё, что получается.'
         : 'I write code and part of the design together with AI. Architecture, security, design decisions and the palette are mine, and I review everything that comes out.'}
     </p>
-    <nav aria-label={lang === 'ru' ? 'Юридические документы' : 'Legal'}>
+    <nav aria-label={t.legal}>
       <a href="/politika">Политика конфиденциальности</a>
       <a href="/oferta">Пользовательское соглашение</a>
       <a href="/soglasie">Согласие на обработку данных</a>

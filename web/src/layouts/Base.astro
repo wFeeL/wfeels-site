@@ -5,6 +5,7 @@ import '@fontsource-variable/jetbrains-mono';
 import '../styles/base.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import { dict } from '../i18n/locales';
 
 interface Props {
   title: string;
@@ -12,6 +13,7 @@ interface Props {
   lang?: 'ru' | 'en';
 }
 const { title, description, lang = 'ru' } = Astro.props;
+const t = dict(lang);
 ---
 <!doctype html>
 <html lang={lang}>
@@ -33,7 +35,7 @@ const { title, description, lang = 'ru' } = Astro.props;
   </head>
   <body>
     <a class="skip" href="#main">
-      {lang === 'ru' ? 'Перейти к содержимому' : 'Skip to content'}
+      {t.skip}
     </a>
     <Header lang={lang}>
       <slot name="lang" slot="lang" />

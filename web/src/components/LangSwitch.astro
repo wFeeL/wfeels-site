@@ -1,0 +1,34 @@
+---
+import { altLocaleUrl, dict, hasTranslation, localeFromPath } from '../i18n/locales';
+
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const current = localeFromPath(path);
+const target = current === 'ru' ? 'en' : 'ru';
+const t = dict(current);
+const href = altLocaleUrl(path, target);
+const missing = !hasTranslation(path);
+---
+<a
+  class="lang"
+  href={href}
+  hreflang={target}
+  lang={target}
+  title={missing ? t.langSwitchNoPage : t.langSwitch}
+>
+  {target.toUpperCase()}
+</a>
+
+<style>
+  .lang {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    padding: 4px 11px;
+    font: 500 0.6875rem/1 var(--font-mono);
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .lang:hover { color: var(--text); }
+</style>
