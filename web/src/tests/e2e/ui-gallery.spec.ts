@@ -14,23 +14,36 @@ test('витрина закрыта от индексации', async ({ page })
 });
 
 test('темы дают разный фон и разный текст', async ({ page }) => {
-  // body в base.css переходит между темами через `transition: background-color
-  // var(--dur-micro)`. Запрос computed style сразу после смены data-theme попадает
-  // в середину этого перехода и всегда возвращает стартовое значение — эмуляция
-  // reduced-motion (уже уважается сайтом, см. base.css) и короткая пауза читают
-  // итоговый, а не промежуточный цвет.
-  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/dev/ui');
 
+  const read = () =>
+    page.evaluate(() => {
+      const s = getComputedStyle(document.body);
+      return { bg: s.backgroundColor, fg: s.color };
+    });
+
+  // body в base.css переходит между темами через `transition: background-color
+  // var(--dur-micro)`. Запрос computed style сразу после смены data-theme вернёт
+  // ещё СТАРТОВОЕ значение: часы перехода на этот момент показывают ноль, кадров
+  // не было. Поэтому ждём не срок, а устоявшееся значение — два одинаковых чтения
+  // подряд. Так тест не привязан ни к числу миллисекунд, ни к тому, отключена ли
+  // анимация эмуляцией reduced-motion.
   const paint = async (theme: 'light' | 'dark') => {
     await page.evaluate((t) => {
       document.documentElement.dataset.theme = t;
     }, theme);
-    await page.waitForTimeout(50);
-    return page.evaluate(() => {
-      const s = getComputedStyle(document.body);
-      return { bg: s.backgroundColor, fg: s.color };
-    });
+
+    let prev: { bg: string; fg: string } | null = null;
+    await expect
+      .poll(async () => {
+        const now = await read();
+        const settled = prev !== null && now.bg === prev.bg && now.fg === prev.fg;
+        prev = now;
+        return settled;
+      })
+      .toBe(true);
+
+    return read();
   };
 
   const light = await paint('light');

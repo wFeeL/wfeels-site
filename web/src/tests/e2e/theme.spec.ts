@@ -61,4 +61,10 @@ test('у страницы есть знак бренда', async ({ page }) => {
   const icon = await page.request.get('/favicon.svg');
   expect(icon.status()).toBe(200);
   expect(icon.headers()['content-type']).toContain('svg');
+
+  // Буква обязана остаться контуром. <text> рисуется шрифтом машины, которая
+  // открыла файл: на чужом устройстве монограмма поедет, и молча.
+  const svg = await icon.text();
+  expect(svg).toContain('<path');
+  expect(svg).not.toContain('<text');
 });
