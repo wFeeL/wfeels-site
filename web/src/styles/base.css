@@ -20,11 +20,28 @@ body {
 /* Палец попадает уверенно в 44 px, это нижняя граница по рекомендациям
    и Apple, и WCAG 2.5.8. Правило общее, чтобы новый интерактивный элемент
    получал его по умолчанию, а не по памяти автора. */
-a[class], button, summary, input[type="checkbox"] {
+a[class], button, summary {
   min-height: 44px;
 }
 
 button, summary { min-width: 44px; }
+
+/* Чекбокс в это правило не входит намеренно. Раздутый до 44 px квадрат
+   читается как дефект вёрстки, а не как удобная цель. Цель набирает строка
+   целиком: клик по подписи и так переключает чекбокс, поэтому 44 px просит
+   обёртка, а сам квадрат остаётся нормального размера. */
+input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+label:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
 
 h1, h2, h3, .t-display, .t-h1, .t-h2, .t-h3 {
   font-family: var(--font-head);

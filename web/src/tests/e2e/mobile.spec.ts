@@ -49,15 +49,23 @@ test('поля контейнера меняются на трёх ступен�
   expect(await pad()).toBe('40px');
 });
 
-test('переключатель темы окрашен токенами, а не дефолтом браузера',
+test('переключатель темы оформлен компонентом, а не сброшен Preflight',
   async ({ page }) => {
     await page.goto('/');
     const btn = page.locator('#theme-toggle');
-    const style = await btn.evaluate((el) => {
-      const s = getComputedStyle(el);
-      return { bg: s.backgroundColor, border: s.borderTopColor };
+    const s = await btn.evaluate((el) => {
+      const c = getComputedStyle(el);
+      return {
+        borderWidth: c.borderTopWidth,
+        radius: c.borderTopLeftRadius,
+        bg: c.backgroundColor,
+      };
     });
-    // Дефолтная кнопка в Chromium приезжает с непрозрачным серым фоном.
-    expect(style.bg).toBe('rgba(0, 0, 0, 0)');
-    expect(style.border).not.toBe('rgb(0, 0, 0)');
+    // Единственный различитель здесь — ширина рамки. Tailwind Preflight ставит
+    // `border: 0 solid`, поэтому прозрачный фон и «цвет не чёрный» прошли бы и
+    // на голой кнопке без единого стиля компонента. Ненулевая рамка и скругление
+    // доказывают, что применились именно наши правила.
+    expect(s.borderWidth).toBe('1px');
+    expect(s.radius).not.toBe('0px');
+    expect(s.bg).toBe('rgba(0, 0, 0, 0)');
   });
