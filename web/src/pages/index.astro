@@ -1,9 +1,12 @@
 ---
 import Base from '../layouts/Base.astro';
+import Container from '../components/Container.astro';
 import LangSwitch from '../components/LangSwitch.astro';
 ---
 <Base title="wfeels — сайты и автоматизация" description="Сайты, интеграции и ИИ для малого бизнеса.">
   <LangSwitch slot="lang" />
-  <p class="t-label">Сайты и автоматизация</p>
-  <h1 class="t-display">wfeels</h1>
+  <Container>
+    <p class="t-label">Сайты и автоматизация</p>
+    <h1 class="t-display">wfeels</h1>
+  </Container>
 </Base>

@@ -58,3 +58,27 @@
     });
   }
 </script>
+
+<style>
+  #theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color var(--dur-micro) var(--ease),
+                border-color var(--dur-micro) var(--ease);
+  }
+  #theme-toggle:hover {
+    color: var(--text);
+    border-color: var(--text-faint);
+  }
+</style>
