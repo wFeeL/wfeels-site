@@ -1,0 +1,24 @@
+{
+  "name": "wfeels-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --port 4321",
+    "build": "astro build",
+    "preview": "astro preview --port 4321",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "check:budget": "node ../scripts/check-budget.mjs"
+  },
+  "dependencies": {
+    "astro": "^7.2.0",
+    "@astrojs/mdx": "^7.0.5",
+    "@astrojs/sitemap": "^3.7.3",
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "vitest": "^4.1.10"
+  }
+}
