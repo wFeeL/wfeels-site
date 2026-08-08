@@ -32,7 +32,9 @@ const { title, description, lang = 'ru' } = Astro.props;
     <meta name="description" content={description} />
   </head>
   <body>
-    <a class="skip" href="#main">Перейти к содержимому</a>
+    <a class="skip" href="#main">
+      {lang === 'ru' ? 'Перейти к содержимому' : 'Skip to content'}
+    </a>
     <Header lang={lang}>
       <slot name="lang" slot="lang" />
     </Header>
@@ -47,13 +49,20 @@ const { title, description, lang = 'ru' } = Astro.props;
         left: -9999px;
         top: 8px;
         background: var(--accent);
-        color: #fff;
+        color: var(--text-on-accent);
         padding: 8px 16px;
         border-radius: var(--radius-sm);
         z-index: 200;
       }
       .skip:focus { left: 8px; }
-      main:focus { outline: none; }
+
+      /* Рамка вокруг всей страницы выглядела бы плохо, но и молчать нельзя:
+         человек, нажавший skip-link, должен увидеть, что переход случился.
+         Отсюда метка слева, а не outline по периметру. */
+      main:focus {
+        outline: none;
+        box-shadow: inset 3px 0 0 0 var(--accent);
+      }
     </style>
   </body>
 </html>

@@ -8,6 +8,7 @@
   --text-faint: #8B97A8;
   --accent: #2F5BFF;
   --accent-soft: rgba(47, 91, 255, 0.09);
+  --text-on-accent: #FFFFFF;
 
   --font-head: 'Manrope Variable', system-ui, sans-serif;
   --font-text: 'Golos Text Variable', system-ui, sans-serif;
@@ -36,6 +37,7 @@
     --text-faint: #6B7A91;
     --accent: #5B84FF;
     --accent-soft: rgba(91, 132, 255, 0.14);
+    --text-on-accent: #0E1420;
   }
 }
 
@@ -49,4 +51,5 @@
   --text-faint: #6B7A91;
   --accent: #5B84FF;
   --accent-soft: rgba(91, 132, 255, 0.14);
+  --text-on-accent: #0E1420;
 }

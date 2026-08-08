@@ -2,6 +2,7 @@
 import Container from './Container.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import Button from './Button.astro';
+import NavLinks from './NavLinks.astro';
 
 interface Props { lang: 'ru' | 'en' }
 const { lang } = Astro.props;
@@ -22,14 +23,19 @@ const NAV = {
     { href: '/en/#about', text: 'About' },
   ],
 }[lang];
+
+const NAV_LABEL = lang === 'ru' ? 'Основная навигация' : 'Main navigation';
+const MENU_LABEL = lang === 'ru' ? 'Меню' : 'Menu';
 ---
 <header>
   <Container>
     <div class="bar">
       <a class="brand" href={lang === 'ru' ? '/' : '/en'}>wfeels</a>
-      <nav aria-label="Основная навигация">
-        {NAV.map((i) => <a href={i.href}>{i.text}</a>)}
+
+      <nav class="nav-wide" aria-label={NAV_LABEL}>
+        <NavLinks items={NAV} />
       </nav>
+
       <div class="tools">
         <slot name="lang" />
         <ThemeToggle />
@@ -38,6 +44,13 @@ const NAV = {
         </Button>
       </div>
     </div>
+
+    <details class="nav-narrow">
+      <summary>{MENU_LABEL}</summary>
+      <nav aria-label={NAV_LABEL}>
+        <NavLinks items={NAV} />
+      </nav>
+    </details>
   </Container>
 </header>
 
@@ -51,9 +64,33 @@ const NAV = {
   }
   .bar { display: flex; align-items: center; gap: 24px; height: 64px; }
   .brand { font: 800 1.0625rem/1 var(--font-head); color: var(--text); text-decoration: none; }
+
   nav { display: flex; gap: 20px; }
   nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9375rem; }
   nav a:hover { color: var(--text); }
+
   .tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-  @media (max-width: 899px) { nav { display: none; } }
+
+  .nav-narrow { display: none; }
+  .nav-narrow summary {
+    cursor: pointer;
+    padding: 10px 0;
+    font-size: 0.9375rem;
+    color: var(--text-muted);
+    list-style: none;
+  }
+  .nav-narrow summary::-webkit-details-marker { display: none; }
+  .nav-narrow summary::after { content: ' ▾'; }
+  .nav-narrow[open] summary::after { content: ' ▴'; }
+  .nav-narrow nav {
+    flex-direction: column;
+    gap: 0;
+    padding-bottom: 12px;
+  }
+  .nav-narrow nav a { padding: 10px 0; }
+
+  @media (max-width: 899px) {
+    .nav-wide { display: none; }
+    .nav-narrow { display: block; border-top: 1px solid var(--border); }
+  }
 </style>
