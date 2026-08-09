@@ -1,0 +1,45 @@
+---
+import Base from '../layouts/Base.astro';
+import Container from '../components/Container.astro';
+import Section from '../components/Section.astro';
+import LangSwitch from '../components/LangSwitch.astro';
+
+const SECTIONS = [
+  'Кому и на что даётся согласие',
+  'Какие данные обрабатываются',
+  'Цели обработки',
+  'Срок действия согласия',
+  'Как отозвать согласие',
+];
+---
+<Base title="Согласие на обработку персональных данных — wfeels"
+      description="Согласие на обработку данных, отправленных через форму."
+      noindex={true}>
+  <LangSwitch slot="lang" />
+  <Container>
+    <Section>
+      <p class="draft" data-draft-notice>
+        Черновик. Документ не действует, пока в нём не проставлены реальные
+        реквизиты оператора. Страница закрыта от индексации.
+      </p>
+      <h1 class="t-h1">Согласие на обработку персональных данных</h1>
+      {SECTIONS.map((s, i) => (
+        <>
+          <h2 class="t-h3">{i + 1}. {s}</h2>
+          <p class="t-body">Текст раздела заполняется владельцем.</p>
+        </>
+      ))}
+    </Section>
+  </Container>
+</Base>
+
+<style>
+  .draft {
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 0.875rem;
+    margin-bottom: 32px;
+  }
+</style>

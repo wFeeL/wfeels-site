@@ -1,0 +1,51 @@
+---
+import Base from '../layouts/Base.astro';
+import Container from '../components/Container.astro';
+import Section from '../components/Section.astro';
+import LangSwitch from '../components/LangSwitch.astro';
+
+const SECTIONS = [
+  'Общие положения',
+  'Сведения об исполнителе',
+  'Услуги и правила их оказания',
+  'Порядок заключения договора',
+  'Порядок оказания услуг и передачи результата',
+  'Оплата',
+  'Отказ от услуги и возврат средств',
+  'Гарантии и претензии',
+  'Интеллектуальные права',
+  'Персональные данные',
+  'Заключительные положения',
+];
+---
+<Base title="Пользовательское соглашение — wfeels"
+      description="Условия оказания услуг."
+      noindex={true}>
+  <LangSwitch slot="lang" />
+  <Container>
+    <Section>
+      <p class="draft" data-draft-notice>
+        Черновик. Документ не действует, пока в нём не проставлены реальные
+        реквизиты исполнителя. Страница закрыта от индексации.
+      </p>
+      <h1 class="t-h1">Пользовательское соглашение</h1>
+      {SECTIONS.map((s, i) => (
+        <>
+          <h2 class="t-h3">{i + 1}. {s}</h2>
+          <p class="t-body">Текст раздела заполняется владельцем.</p>
+        </>
+      ))}
+    </Section>
+  </Container>
+</Base>
+
+<style>
+  .draft {
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 0.875rem;
+    margin-bottom: 32px;
+  }
+</style>
