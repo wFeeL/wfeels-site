@@ -170,6 +170,34 @@ def test_telegram_failure_still_returns_success():
     assert r.status_code == 202
 
 
+def test_form_failure_answers_with_a_page_not_json(make_client):
+    """Браузер без JavaScript уходит на адрес API навигацией. JSON он показал бы
+    как голый текст на чужом домене — тупик без объяснения и без пути назад.
+    Замер до правки: посетитель видел строку `{"status":"rate_limited"}`."""
+    client = make_client(rate_limit_per_hour=1)
+    body = {**VALID, "elapsed_seconds": "90.0"}
+    client.post("/api/lead", data=body, follow_redirects=False)
+    blocked = client.post("/api/lead", data=body, follow_redirects=False)
+
+    assert blocked.status_code == 429
+    assert blocked.headers["content-type"].startswith("text/html")
+    assert "Заявка не отправлена" in blocked.text
+    assert "/kontakt" in blocked.text
+
+
+def test_json_client_still_gets_json(make_client):
+    """Путь с JavaScript ждёт JSON и разбирает код ответа сам — отдавать ему
+    страницу нельзя."""
+    client = make_client(rate_limit_per_hour=1)
+    body = {**VALID, "elapsed_seconds": 90.0}
+    client.post("/api/lead", json=body)
+    blocked = client.post("/api/lead", json=body)
+
+    assert blocked.status_code == 429
+    assert blocked.headers["content-type"].startswith("application/json")
+    assert blocked.json() == {"status": "rate_limited"}
+
+
 def test_malformed_requests_still_consume_the_rate_limit(make_client, sent):
     """Счётчик стоит первым, до разбора тела. Любая проверка выше него — дыра:
     запрос, отбитый раньше счётчика, лимита не расходует, и по нему можно

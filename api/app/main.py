@@ -1,9 +1,11 @@
 import time
 from typing import Awaitable, Callable
 
+from html import escape
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import ValidationError
 
 # `Settings` импортируется рядом с синглтоном: он стоит в аннотации параметра
@@ -14,6 +16,30 @@ from .schemas import LeadIn
 from .telegram import send_lead
 
 Sender = Callable[[str], Awaitable[bool]]
+
+
+def error_page(site_url: str, message: str) -> str:
+    """Страница отказа для отправки без JavaScript.
+
+    Замер показал, чем оборачивается JSON на этом пути: браузер без JS уходит на
+    адрес API НАВИГАЦИЕЙ, и посетитель остаётся на чужом домене перед строкой
+    `{"status":"rate_limited"}` — без вёрстки, без объяснения и без пути назад.
+    Стили здесь inline и примитивные намеренно: страницу отдаёт API, до таблиц
+    стилей сайта он не дотягивается, а путь этот редкий и запасной.
+    """
+    return (
+        "<!doctype html>"
+        '<html lang="ru"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<meta name="robots" content="noindex, nofollow">'
+        "<title>Заявка не отправлена</title></head>"
+        '<body style="font-family: system-ui, sans-serif; max-width: 34rem;'
+        ' margin: 15vh auto; padding: 0 24px; line-height: 1.6">'
+        "<h1>Заявка не отправлена</h1>"
+        f"<p>{escape(message)}</p>"
+        f'<p><a href="{escape(site_url)}/kontakt">Вернуться к форме</a></p>'
+        "</body></html>"
+    )
 
 
 def client_ip(request: Request, trust_proxy: bool) -> str:
@@ -76,10 +102,22 @@ def create_app(
     # модуля. Обработчик отдаёт готовые ответы двух разных видов, схема тут не
     # нужна вовсе.
     @app.post("/api/lead", response_model=None)
-    async def lead(request: Request) -> JSONResponse | RedirectResponse:
+    async def lead(request: Request) -> JSONResponse | RedirectResponse | HTMLResponse:
         content_type = request.headers.get("content-type", "")
         wants_redirect = "application/x-www-form-urlencoded" in content_type
         now = clock()
+
+        # Отказ отвечает в том виде, в каком клиент способен его прочитать.
+        # Запрос с JavaScript ждёт JSON и разбирает код сам. А браузер без JS
+        # уходит сюда навигацией, и JSON он показал бы как голый текст на чужом
+        # домене — тупик без объяснения и без пути назад. Замер подтвердил: при
+        # исчерпанном лимите посетитель без JS видел строку `rate_limited`.
+        def fail(status: int, code: str, message: str, **extra):
+            if wants_redirect:
+                return HTMLResponse(
+                    error_page(cfg.site_url, message), status_code=status
+                )
+            return JSONResponse({"status": code, **extra}, status_code=status)
 
         # Счётчик частоты стоит ПЕРВЫМ, до разбора тела. Он считает запросы с
         # адреса, а не их содержимое, и любая проверка выше него — это дыра:
@@ -88,7 +126,12 @@ def create_app(
         # замер показывал ровно это — пять битых тел и пять запросов без
         # согласия не тратили ни единицы лимита.
         if not limiter.allow(client_ip(request, cfg.trust_proxy), now=now):
-            return JSONResponse({"status": "rate_limited"}, status_code=429)
+            return fail(
+                429,
+                "rate_limited",
+                "С вашего адреса пришло слишком много заявок. "
+                "Попробуйте ещё раз через час или напишите напрямую.",
+            )
 
         # Тело разбирается до валидации, и разбор тоже умеет падать: пустое тело,
         # оборванный JSON, чужой content-type. Без перехвата это уходит наружу
@@ -100,7 +143,11 @@ def create_app(
                 else await request.json()
             )
         except ValueError:
-            return JSONResponse({"status": "malformed"}, status_code=422)
+            return fail(
+                422,
+                "malformed",
+                "Не удалось прочитать заявку. Отправьте форму ещё раз.",
+            )
 
         # Валидируем вручную, потому что тело приходит в двух форматах.
         # Без явного перехвата ValidationError улетела бы наружу как 500.
@@ -110,18 +157,17 @@ def create_app(
             # Возвращаем поле и вид нарушения, но НЕ само присланное значение.
             # `exc.errors()` кладёт в ответ ключ `input` целиком: сообщение на
             # двести тысяч символов вернулось бы обратно во всей длине.
-            return JSONResponse(
-                {
-                    "status": "invalid",
-                    "errors": [
-                        {
-                            "field": ".".join(str(p) for p in e["loc"]),
-                            "reason": e["type"],
-                        }
-                        for e in exc.errors(include_url=False)
-                    ],
-                },
-                status_code=422,
+            return fail(
+                422,
+                "invalid",
+                "Заявка не прошла проверку. Загляните в поля и отправьте снова.",
+                errors=[
+                    {
+                        "field": ".".join(str(p) for p in e["loc"]),
+                        "reason": e["type"],
+                    }
+                    for e in exc.errors(include_url=False)
+                ],
             )
 
         accepted = JSONResponse({"status": "accepted"}, status_code=202)
@@ -133,7 +179,12 @@ def create_app(
         # мимо браузера, поэтому проверяем здесь же. Отвечаем честной ошибкой, а
         # не молчанием: это не ловушка на бота, а отказ по существу.
         if not payload.consent.strip():
-            return JSONResponse({"status": "consent_required"}, status_code=422)
+            return fail(
+                422,
+                "consent_required",
+                "Без согласия на обработку персональных данных заявку "
+                "принять нельзя.",
+            )
 
         # Приманка и слишком быстрая отправка: молча принимаем и ничего не шлём.
         # Отвечать ошибкой нельзя — так бот узнает, что его раскусили.
