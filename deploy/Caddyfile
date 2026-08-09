@@ -1,0 +1,38 @@
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	handle /api/* {
+		# Тело запроса читается приложением в память целиком до валидации, и
+		# ограничения длины там нет — `max_length` в схеме работает уже после
+		# разбора. Предел ставится здесь, до приложения. 64 КБ с запасом
+		# перекрывают самую подробную заявку: поле сообщения ограничено
+		# четырьмя тысячами символов.
+		request_body {
+			max_size 64KB
+		}
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv/site
+		try_files {path} {path}.html {path}/index.html
+		file_server
+	}
+
+	# Страница 404 отдаётся ЧЕРЕЗ обработчик ошибок, а не последним кандидатом
+	# в `try_files`. Иначе Caddy отдал бы её с кодом 200 — поисковик счёл бы
+	# несуществующий адрес живой страницей и проиндексировал бы её как дубль.
+	handle_errors {
+		rewrite * /404.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+	}
+
+	header /_astro/* Cache-Control "public, max-age=31536000, immutable"
+	header /*.woff2 Cache-Control "public, max-age=31536000, immutable"
+}

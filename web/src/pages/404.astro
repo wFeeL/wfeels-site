@@ -1,0 +1,27 @@
+---
+import Base from '../layouts/Base.astro';
+import Container from '../components/Container.astro';
+import Section from '../components/Section.astro';
+import Button from '../components/Button.astro';
+import LangSwitch from '../components/LangSwitch.astro';
+---
+<Base title="Страница не найдена — wfeels"
+      description="Такой страницы нет.">
+  <LangSwitch slot="lang" />
+  <Container>
+    <Section label="404">
+      <h1 class="t-h1">Такой страницы нет</h1>
+      <p class="t-body-lg">
+        Возможно, адрес набран с опечаткой или страница переехала.
+      </p>
+      <div class="ways">
+        <Button href="/" variant="primary">На главную</Button>
+        <Button href="/kontakt" variant="secondary">Написать</Button>
+      </div>
+    </Section>
+  </Container>
+</Base>
+
+<style>
+  .ways { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+</style>
