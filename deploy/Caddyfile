@@ -1,7 +1,24 @@
 {$SITE_DOMAIN} {
 	encode zstd gzip
 
-	handle /api/* {
+	# `root` объявлен на уровне сайта, а не внутри `handle`: обработчику ошибок
+	# тоже нужно, чем отдавать страницу. Пока `root` жил внутри блока статики,
+	# запрос, ушедший в `handle /api/*`, до него не доходил, и `rewrite * /404.html`
+	# в `handle_errors` упирался в никуда — отказ прокси уходил с пустым телом.
+	root * /srv/site
+
+	@api path /api/*
+
+	# Витрина компонентов служебная: она собрана в статику вместе с сайтом, но
+	# наружу ей не надо. `robots.txt` и `noindex` просят поисковик её не брать,
+	# а это закрывает саму выдачу.
+	@internal path /dev /dev/*
+
+	handle @internal {
+		error 404
+	}
+
+	handle @api {
 		# Тело запроса читается приложением в память целиком до валидации, и
 		# ограничения длины там нет — `max_length` в схеме работает уже после
 		# разбора. Предел ставится здесь, до приложения. 64 КБ с запасом
@@ -14,7 +31,6 @@
 	}
 
 	handle {
-		root * /srv/site
 		try_files {path} {path}.html {path}/index.html
 		file_server
 	}
@@ -23,8 +39,29 @@
 	# в `try_files`. Иначе Caddy отдал бы её с кодом 200 — поисковик счёл бы
 	# несуществующий адрес живой страницей и проиндексировал бы её как дубль.
 	handle_errors {
-		rewrite * /404.html
-		file_server
+		# Отказ на `/api/*` — это неудачная отправка формы, а не ненайденный
+		# адрес. Посетитель без JavaScript отправлял заявку, и «такой страницы
+		# нет» ему не объясняет ничего: нужен короткий текст и дорога назад к
+		# форме. Отсюда у прокси своя ветка, а код ответа сохраняется как есть
+		# (502 при упавшем API, 413 при слишком большом теле).
+		handle @api {
+			header Content-Type "text/html; charset=utf-8"
+			respond `<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Заявка не отправилась — wfeels</title>
+<h1>Заявка не отправилась</h1>
+<p>Сервер приёма заявок ответил ошибкой {err.status_code}. Заявка не принята.</p>
+<p><a href="/kontakt">Вернуться к форме</a> — там же есть прямая связь.</p>
+` {err.status_code}
+		}
+
+		handle {
+			rewrite * /404.html
+			file_server
+		}
 	}
 
 	header {

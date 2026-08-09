@@ -4,6 +4,21 @@ services:
     env_file: .env
     restart: unless-stopped
     expose: ["8000"]
+    # Приложение ничего не пишет на диск: заявка уходит в Telegram, состояние
+    # лимитера живёт в памяти, байткод отключён `PYTHONDONTWRITEBYTECODE`.
+    # Значит и файловая система ему нужна только на чтение.
+    read_only: true
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    # Драйвер по умолчанию логи не ротирует, а перезапуск стоит `unless-stopped`:
+    # без предела лог демона растёт бесконечно. Пока Telegram не настроен,
+    # заявка целиком уходит в лог — то есть это ещё и персональные данные.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   caddy:
     image: caddy:2-alpine
@@ -17,6 +32,16 @@ services:
       - ../web/dist:/srv/site:ro
       - caddy_data:/data
       - caddy_config:/config
+    security_opt: ["no-new-privileges:true"]
+    # Всё, кроме права занять порты ниже 1024. `read_only` тут не ставится:
+    # Caddy пишет сертификаты в `/data` и конфигурацию в `/config`.
+    cap_drop: ["ALL"]
+    cap_add: ["NET_BIND_SERVICE"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   caddy_data:
