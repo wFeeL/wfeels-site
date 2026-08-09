@@ -79,6 +79,16 @@ def create_app(
     async def lead(request: Request) -> JSONResponse | RedirectResponse:
         content_type = request.headers.get("content-type", "")
         wants_redirect = "application/x-www-form-urlencoded" in content_type
+        now = clock()
+
+        # Счётчик частоты стоит ПЕРВЫМ, до разбора тела. Он считает запросы с
+        # адреса, а не их содержимое, и любая проверка выше него — это дыра:
+        # запрос, отбитый до счётчика, лимита не расходует, и по нему можно
+        # долбить бесконечно. Пока счётчик стоял ниже разбора и согласия,
+        # замер показывал ровно это — пять битых тел и пять запросов без
+        # согласия не тратили ни единицы лимита.
+        if not limiter.allow(client_ip(request, cfg.trust_proxy), now=now):
+            return JSONResponse({"status": "rate_limited"}, status_code=429)
 
         # Тело разбирается до валидации, и разбор тоже умеет падать: пустое тело,
         # оборванный JSON, чужой content-type. Без перехвата это уходит наружу
@@ -114,7 +124,6 @@ def create_app(
                 status_code=422,
             )
 
-        now = clock()
         accepted = JSONResponse({"status": "accepted"}, status_code=202)
         redirect = RedirectResponse(f"{cfg.site_url}/spasibo", status_code=303)
         ok = redirect if wants_redirect else accepted
@@ -125,13 +134,6 @@ def create_app(
         # не молчанием: это не ловушка на бота, а отказ по существу.
         if not payload.consent.strip():
             return JSONResponse({"status": "consent_required"}, status_code=422)
-
-        # Счётчик частоты стоит ВЫШЕ приманки намеренно. Если пропускать бота
-        # мимо счётчика, он не расходует лимит и может долбить бесконечно —
-        # то есть защита не действует ровно против того трафика, ради которого
-        # поставлена. Лимит считает запросы с адреса, а не их содержимое.
-        if not limiter.allow(client_ip(request, cfg.trust_proxy), now=now):
-            return JSONResponse({"status": "rate_limited"}, status_code=429)
 
         # Приманка и слишком быстрая отправка: молча принимаем и ничего не шлём.
         # Отвечать ошибкой нельзя — так бот узнает, что его раскусили.

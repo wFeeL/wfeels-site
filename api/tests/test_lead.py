@@ -170,6 +170,21 @@ def test_telegram_failure_still_returns_success():
     assert r.status_code == 202
 
 
+def test_malformed_requests_still_consume_the_rate_limit(make_client, sent):
+    """Счётчик стоит первым, до разбора тела. Любая проверка выше него — дыра:
+    запрос, отбитый раньше счётчика, лимита не расходует, и по нему можно
+    долбить бесконечно."""
+    client = make_client(rate_limit_per_hour=1)
+    junk = client.post(
+        "/api/lead",
+        content="{не json".encode("utf-8"),
+        headers={"content-type": "application/json"},
+    )
+    assert junk.status_code == 422
+    assert client.post("/api/lead", json={**VALID, "elapsed_seconds": 90.0}).status_code == 429
+    assert sent == []
+
+
 def test_honeypot_requests_still_consume_the_rate_limit(make_client, sent):
     """Счётчик стоит выше приманки. Иначе бот не расходует лимит и может долбить
     бесконечно — то есть защита не действует ровно против того трафика, ради
