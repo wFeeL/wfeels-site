@@ -9,7 +9,7 @@ VALID = {
     "name": "Мария",
     "contact": "@maria",
     "message": "Нужен сайт для груминг-салона с записью",
-    "page": "/uslugi/sajt",
+    "page": "/services/sajt",
     "website": "",
     "consent": "on",
     "elapsed_seconds": 0.0,
@@ -78,7 +78,7 @@ def test_form_encoded_lead_redirects_to_thanks(client, sent):
         follow_redirects=False,
     )
     assert r.status_code == 303
-    assert r.headers["location"].endswith("/spasibo")
+    assert r.headers["location"].endswith("/thanks")
     assert len(sent) == 1
 
 
@@ -182,7 +182,7 @@ def test_form_failure_answers_with_a_page_not_json(make_client):
     assert blocked.status_code == 429
     assert blocked.headers["content-type"].startswith("text/html")
     assert "Заявка не отправлена" in blocked.text
-    assert "/kontakt" in blocked.text
+    assert "/contact" in blocked.text
 
 
 def test_json_client_still_gets_json(make_client):

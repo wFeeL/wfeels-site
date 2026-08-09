@@ -37,7 +37,7 @@ def error_page(site_url: str, message: str) -> str:
         ' margin: 15vh auto; padding: 0 24px; line-height: 1.6">'
         "<h1>Заявка не отправлена</h1>"
         f"<p>{escape(message)}</p>"
-        f'<p><a href="{escape(site_url)}/kontakt">Вернуться к форме</a></p>'
+        f'<p><a href="{escape(site_url)}/contact">Вернуться к форме</a></p>'
         "</body></html>"
     )
 
@@ -171,7 +171,7 @@ def create_app(
             )
 
         accepted = JSONResponse({"status": "accepted"}, status_code=202)
-        redirect = RedirectResponse(f"{cfg.site_url}/spasibo", status_code=303)
+        redirect = RedirectResponse(f"{cfg.site_url}/thanks", status_code=303)
         ok = redirect if wants_redirect else accepted
 
         # Согласие на обработку персональных данных — правовое основание собирать
