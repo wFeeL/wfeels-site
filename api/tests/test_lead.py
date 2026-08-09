@@ -135,10 +135,7 @@ def test_malformed_body_is_rejected_not_crashed(client, sent):
     Пятисотка тут означала бы необработанное исключение в обработчике."""
     r = client.post(
         "/api/lead",
-        # В плане тут байтовый литерал `b"{не json"` — такой в Python не
-        # компилируется (bytes допускают только ASCII). Текст сохранён дословно,
-        # изменён лишь способ получить из него байты.
-        content="{не json".encode("utf-8"),
+        content="{не json".encode("utf-8"),  # b"..." не принимает не-ASCII
         headers={"content-type": "application/json"},
     )
     assert r.status_code == 422
@@ -171,6 +168,47 @@ def test_telegram_failure_still_returns_success():
     c = TestClient(app)
     r = c.post("/api/lead", json={**VALID, "elapsed_seconds": 90.0})
     assert r.status_code == 202
+
+
+def test_honeypot_requests_still_consume_the_rate_limit(make_client, sent):
+    """Счётчик стоит выше приманки. Иначе бот не расходует лимит и может долбить
+    бесконечно — то есть защита не действует ровно против того трафика, ради
+    которого поставлена."""
+    client = make_client(rate_limit_per_hour=1)
+    spam = {**VALID, "website": "http://spam", "elapsed_seconds": 90.0}
+    assert client.post("/api/lead", json=spam).status_code == 202
+    assert client.post("/api/lead", json={**VALID, "elapsed_seconds": 90.0}).status_code == 429
+    assert sent == []
+
+
+def test_validation_error_does_not_echo_the_submitted_value(client):
+    """Ответ называет поле и вид нарушения, но не возвращает присланное.
+    Иначе сообщение на двести тысяч символов вернулось бы во всей длине."""
+    huge = "я" * 200_000
+    r = client.post(
+        "/api/lead",
+        json={**VALID, "message": huge, "elapsed_seconds": 90.0},
+    )
+    assert r.status_code == 422
+    assert huge not in r.text
+    assert len(r.content) < 1000
+
+
+def test_forged_negative_elapsed_is_dropped_even_without_a_threshold(make_client, sent):
+    """Проверка на подделку не должна держаться на том, что порог положителен:
+    при `min_fill_seconds = 0` она обязана продолжать работать.
+
+    Замечание о силе теста. План обещал, что без отдельной строки
+    `if payload.elapsed_seconds < 0` этот тест краснеет, — измерено, что нет:
+    при `min_fill_seconds = 0` значение `-3600.0` истинно И меньше нуля, поэтому
+    сравнение с порогом ловит его и без отдельной строки. Тест закрепляет
+    поведение (подделка не уходит в Telegram ни при каком пороге), но отдельную
+    строку не удерживает: она — защита от будущей правки сравнения, а не
+    наблюдаемое сегодня поведение."""
+    client = make_client(min_fill_seconds=0.0)
+    r = client.post("/api/lead", json={**VALID, "elapsed_seconds": -3600.0})
+    assert r.status_code == 202
+    assert sent == []
 
 
 def test_forwarded_address_is_trusted_behind_a_proxy(make_client):
