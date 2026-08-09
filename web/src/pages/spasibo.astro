@@ -1,0 +1,15 @@
+---
+import Base from '../layouts/Base.astro';
+import Container from '../components/Container.astro';
+import Section from '../components/Section.astro';
+import Button from '../components/Button.astro';
+---
+<Base title="Заявка отправлена — wfeels" description="Заявка получена." noindex={true}>
+  <Container>
+    <Section>
+      <h1 class="t-h1">Заявка ушла</h1>
+      <p class="t-body-lg">Отвечу в течение дня.</p>
+      <Button href="/" variant="secondary">На главную</Button>
+    </Section>
+  </Container>
+</Base>

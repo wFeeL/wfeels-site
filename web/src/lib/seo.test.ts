@@ -15,12 +15,19 @@ describe('buildMeta', () => {
   });
 
   it('у двуязычной страницы три альтернативы, включая x-default', () => {
-    const m = buildMeta({ title: 'A', description: 'B', pathname: '/o-mne', site: SITE });
+    const m = buildMeta({ title: 'A', description: 'B', pathname: '/', site: SITE });
     expect(m.alternates).toEqual([
-      { hreflang: 'ru', href: 'https://wfeels.ru/o-mne' },
-      { hreflang: 'en', href: 'https://wfeels.ru/en/o-mne' },
-      { hreflang: 'x-default', href: 'https://wfeels.ru/o-mne' },
+      { hreflang: 'ru', href: 'https://wfeels.ru/' },
+      { hreflang: 'en', href: 'https://wfeels.ru/en' },
+      { hreflang: 'x-default', href: 'https://wfeels.ru/' },
     ]);
+  });
+
+  // Страница без английской пары не должна звать поисковик на несуществующий
+  // адрес: пока `/en/kontakt` нет, hreflang в <head> не появляется вовсе.
+  it('у страницы без английской пары альтернатив нет', () => {
+    const m = buildMeta({ title: 'A', description: 'B', pathname: '/kontakt', site: SITE });
+    expect(m.alternates).toEqual([]);
   });
 
   it('у одноязычной страницы альтернатив нет', () => {

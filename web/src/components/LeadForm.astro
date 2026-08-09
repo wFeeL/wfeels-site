@@ -1,0 +1,118 @@
+---
+import Field from './Field.astro';
+import Button from './Button.astro';
+
+const API_BASE = import.meta.env.PUBLIC_API_BASE ?? '';
+const TELEGRAM = 'https://t.me/wfeels';
+---
+<form id="lead-form" method="post" action={`${API_BASE}/api/lead`}>
+  <Field name="name" label="Как вас зовут" required={true} />
+  <Field name="contact" label="Telegram или почта" required={true} />
+  <Field name="message" label="Что нужно сделать" textarea={true} required={true}
+         hint="Чем конкретнее задача, тем точнее смета." />
+  <Field name="budget" label="Бюджет, если он уже определён" />
+
+  <p class="consent">
+    <input id="f-consent" name="consent" type="checkbox" required />
+    <label for="f-consent">
+      Согласен на <a href="/soglasie">обработку персональных данных</a>
+    </label>
+  </p>
+
+  <input type="hidden" name="page" value="" data-page />
+  <!-- Ноль означает «JavaScript выключен»: сервер тогда пропускает проверку на
+       скорость заполнения. Скрипт подставляет сюда прошедшее время в момент
+       отправки. Абсолютной отметки времени здесь нет намеренно — часы посетителя
+       и часы сервера ничем не связаны, и на их расхождении заявка терялась бы
+       молча. -->
+  <input type="hidden" name="elapsed_seconds" value="0" data-elapsed />
+  <input class="hp" name="website" type="text" tabindex="-1" aria-hidden="true"
+         autocomplete="off" />
+
+  <Button type="submit" variant="primary">Отправить</Button>
+
+  <p class="status" data-form-status="success" hidden>
+    Заявка ушла. Отвечу в течение дня.
+  </p>
+  <p class="status" data-form-status="error" hidden>
+    Не получилось отправить. Напишите напрямую: <a href={TELEGRAM}>Telegram</a>
+  </p>
+</form>
+
+<style>
+  /* Отступ сверху — не украшение: без него подпись первого поля прилипает к
+     заголовку страницы вплотную, у обоих `margin: 0`. */
+  form { max-width: 34rem; margin-top: 32px; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+
+  /* Preflight снимает с ссылок и цвет, и подчёркивание, поэтому «Telegram» в
+     сообщении об ошибке и «обработку персональных данных» в согласии выглядели
+     обычным текстом. Ссылка на Telegram — единственный запасной путь заявки,
+     когда бэкенд недоступен: она обязана читаться как ссылка. */
+  .consent a, .status a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* Чекбокс здесь сосед подписи, а не её потомок, и это намеренно: внутри
+     подписи стоит ссылка на страницу согласия, а вложенная в label ссылка
+     одновременно переходит и переключает чекбокс. Значит общее правило
+     `label:has(> input[type="checkbox"])` из base.css сюда не достаёт —
+     цель нажатия набирает сама строка. */
+  .consent {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    min-height: 44px;
+    font-size: 0.875rem;
+    margin-bottom: 24px;
+  }
+  .consent label { padding-block: 12px; }
+  /* Квадрат опускается на середину ПЕРВОЙ строки подписи, а не прижимается к
+     её верхнему краю: подпись на узком экране переносится на две строки, и при
+     `align-items: center` чекбокс уехал бы в середину блока. */
+  .consent input { margin-block: 12px 0; }
+  .status { margin-top: 16px; font-size: 0.9375rem; }
+  [data-form-status="success"] { color: var(--accent); }
+</style>
+
+<script>
+  const form = document.getElementById('lead-form') as HTMLFormElement | null;
+  if (form) {
+    const page = form.querySelector<HTMLInputElement>('[data-page]')!;
+    const elapsed = form.querySelector<HTMLInputElement>('[data-elapsed]')!;
+    const ok = form.querySelector<HTMLElement>('[data-form-status="success"]')!;
+    const err = form.querySelector<HTMLElement>('[data-form-status="error"]')!;
+
+    // Засечка берётся один раз при показе формы. Наружу уходит РАЗНОСТЬ двух
+    // показаний одних и тех же часов, а не сама отметка времени: разность от
+    // расхождения часов посетителя и сервера не зависит вовсе.
+    let shownAt = Date.now();
+    page.value = location.pathname;
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      ok.hidden = true;
+      err.hidden = true;
+
+      elapsed.value = String((Date.now() - shownAt) / 1000);
+      const data = Object.fromEntries(new FormData(form).entries());
+      try {
+        const res = await fetch(form.action, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ ...data, elapsed_seconds: Number(elapsed.value) }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        form.reset();
+        page.value = location.pathname;
+        shownAt = Date.now();
+        elapsed.value = '0';
+        ok.hidden = false;
+      } catch {
+        err.hidden = false;
+      }
+    });
+  }
+</script>

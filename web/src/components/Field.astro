@@ -1,0 +1,35 @@
+---
+interface Props {
+  name: string;
+  label: string;
+  type?: string;
+  required?: boolean;
+  textarea?: boolean;
+  hint?: string;
+}
+const { name, label, type = 'text', required = false, textarea = false, hint } = Astro.props;
+const id = `f-${name}`;
+---
+<p class="field">
+  <label for={id}>{label}{required && <span aria-hidden="true"> *</span>}</label>
+  {textarea
+    ? <textarea id={id} name={name} required={required} rows="5"></textarea>
+    : <input id={id} name={name} type={type} required={required} />}
+  {hint && <small>{hint}</small>}
+</p>
+
+<style>
+  .field { display: flex; flex-direction: column; gap: 6px; margin: 0 0 20px; }
+  label { font-size: 0.875rem; color: var(--text-muted); }
+  input, textarea {
+    font: 400 1rem/1.5 var(--font-text);
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    width: 100%;
+  }
+  textarea { resize: vertical; }
+  small { font-size: 0.8125rem; color: var(--text-faint); }
+</style>

@@ -1,0 +1,16 @@
+---
+import Base from '../layouts/Base.astro';
+import Container from '../components/Container.astro';
+import Section from '../components/Section.astro';
+import LangSwitch from '../components/LangSwitch.astro';
+import LeadForm from '../components/LeadForm.astro';
+---
+<Base title="Контакты — wfeels" description="Расскажите о задаче, отвечу в течение дня.">
+  <LangSwitch slot="lang" />
+  <Container>
+    <Section label="Контакт">
+      <h1 class="t-h1">Расскажите о задаче</h1>
+      <LeadForm />
+    </Section>
+  </Container>
+</Base>

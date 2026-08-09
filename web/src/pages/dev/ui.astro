@@ -6,6 +6,7 @@ import Button from '../../components/Button.astro';
 import Card from '../../components/Card.astro';
 import Metric from '../../components/Metric.astro';
 import Prose from '../../components/Prose.astro';
+import LeadForm from '../../components/LeadForm.astro';
 
 const TOKENS = [
   '--bg', '--surface', '--grid', '--border',
@@ -66,7 +67,7 @@ const TOKENS = [
     </Section>
 
     <Section id="fields" label="Поля формы">
-      <p class="t-body">Заполняется в задаче 10 вместе с формой заявки.</p>
+      <LeadForm />
     </Section>
   </Container>
 </Base>

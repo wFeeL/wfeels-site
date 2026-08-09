@@ -5,8 +5,11 @@ export const LOCALES = ['ru', 'en'] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'ru';
 
-/** Пути, у которых существует английская версия. Пополняется в спеке 04 (кейсы). */
-export const BILINGUAL_PATHS = ['/', '/o-mne', '/kontakt'];
+/** Пути, у которых РЕАЛЬНО существует английская страница. Не список планов:
+ *  каждый элемент обязан иметь файл под `pages/en/`, это проверяет тест рядом.
+ *  Английское ядро (обо мне, контакт, кейсы) добавляется в спеках 02 и 04
+ *  вместе с двуязычной формой. */
+export const BILINGUAL_PATHS = ['/'];
 
 export function localeFromPath(pathname: string): Locale {
   return pathname === '/en' || pathname.startsWith('/en/') ? 'en' : 'ru';
