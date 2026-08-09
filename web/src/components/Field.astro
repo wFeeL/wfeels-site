@@ -6,15 +6,22 @@ interface Props {
   required?: boolean;
   textarea?: boolean;
   hint?: string;
+  /** Значение атрибута `autocomplete`. На телефоне это разница между одним
+   *  касанием и ручным вводом ровно там, где заявку и бросают. */
+  autocomplete?: string;
 }
-const { name, label, type = 'text', required = false, textarea = false, hint } = Astro.props;
+const {
+  name, label, type = 'text', required = false, textarea = false, hint, autocomplete,
+} = Astro.props;
 const id = `f-${name}`;
 ---
 <p class="field">
   <label for={id}>{label}{required && <span aria-hidden="true"> *</span>}</label>
   {textarea
-    ? <textarea id={id} name={name} required={required} rows="5"></textarea>
-    : <input id={id} name={name} type={type} required={required} />}
+    ? <textarea id={id} name={name} required={required} rows="5"
+                autocomplete={autocomplete}></textarea>
+    : <input id={id} name={name} type={type} required={required}
+             autocomplete={autocomplete} />}
   {hint && <small>{hint}</small>}
 </p>
 
@@ -29,7 +36,16 @@ const id = `f-${name}`;
     border-radius: var(--radius-sm);
     padding: 10px 12px;
     width: 100%;
+    transition: border-color var(--dur-micro) var(--ease);
   }
+  /* Поле обязано отвечать на наведение и на фокус, иначе форма ощущается
+     нарисованной картинкой. Рамка — единственное, что здесь меняется:
+     заливка и размер прыгали бы на глазах. */
+  input:hover, textarea:hover { border-color: var(--text-muted); }
+  input:focus, textarea:focus { border-color: var(--accent); }
   textarea { resize: vertical; }
-  small { font-size: 0.8125rem; color: var(--text-faint); }
+  /* Подсказка под полем — не декор, а единственная конверсионная инструкция
+     формы, поэтому цвет читаемый: `--text-faint` даёт 2,73:1 и спека допускает
+     его только для украшений. */
+  small { font-size: 0.8125rem; color: var(--text-muted); }
 </style>

@@ -4,13 +4,16 @@ import Button from './Button.astro';
 
 const API_BASE = import.meta.env.PUBLIC_API_BASE ?? '';
 const TELEGRAM = 'https://t.me/wfeels';
+const SENDING = 'Отправляю…';
 ---
-<form id="lead-form" method="post" action={`${API_BASE}/api/lead`}>
-  <Field name="name" label="Как вас зовут" required={true} />
-  <Field name="contact" label="Telegram или почта" required={true} />
+<form id="lead-form" method="post" action={`${API_BASE}/api/lead`}
+      data-sending-label={SENDING}>
+  <Field name="name" label="Как вас зовут" required={true} autocomplete="name" />
+  <Field name="contact" label="Telegram или почта" required={true}
+         autocomplete="email" />
   <Field name="message" label="Что нужно сделать" textarea={true} required={true}
-         hint="Чем конкретнее задача, тем точнее смета." />
-  <Field name="budget" label="Бюджет, если он уже определён" />
+         hint="Чем конкретнее задача, тем точнее смета." autocomplete="off" />
+  <Field name="budget" label="Бюджет, если он уже определён" autocomplete="off" />
 
   <p class="consent">
     <input id="f-consent" name="consent" type="checkbox" required />
@@ -31,12 +34,18 @@ const TELEGRAM = 'https://t.me/wfeels';
 
   <Button type="submit" variant="primary">Отправить</Button>
 
-  <p class="status" data-form-status="success" hidden>
-    Заявка ушла. Отвечу в течение дня.
-  </p>
-  <p class="status" data-form-status="error" hidden>
-    Не получилось отправить. Напишите напрямую: <a href={TELEGRAM}>Telegram</a>
-  </p>
+  <!-- Роли живой области объявляют результат незрячему, `tabindex="-1"` даёт
+       перенести на него фокус. Одного показа блока мало: он появляется ниже
+       кнопки, за краем экрана, и до правки не было ни прокрутки, ни объявления —
+       нажатие оставалось без ответа для всех. -->
+  <div class="status ok" data-form-status="success" role="status" tabindex="-1" hidden>
+    <p class="t-label">Отправлено</p>
+    <p>Заявка ушла. Отвечу в течение дня.</p>
+  </div>
+  <div class="status fail" data-form-status="error" role="alert" tabindex="-1" hidden>
+    <p class="t-label">Не отправлено</p>
+    <p>Не получилось отправить. Напишите напрямую: <a href={TELEGRAM}>Telegram</a></p>
+  </div>
 </form>
 
 <style>
@@ -73,8 +82,28 @@ const TELEGRAM = 'https://t.me/wfeels';
      её верхнему краю: подпись на узком экране переносится на две строки, и при
      `align-items: center` чекбокс уехал бы в середину блока. */
   .consent input { margin-block: 12px 0; }
-  .status { margin-top: 16px; font-size: 0.9375rem; }
-  [data-form-status="success"] { color: var(--accent); }
+
+  /* Результат — панель, а не абзац. Обычный текст был легче подвала, а успех,
+     окрашенный в акцент, читался как ещё одна ссылка, а не как подтверждение. */
+  .status {
+    margin-top: 24px;
+    padding: 16px;
+    border: 1px solid;
+    border-radius: var(--radius-md);
+    font-size: 0.9375rem;
+  }
+  .status p { margin: 0; }
+  .status .t-label { margin-bottom: 8px; }
+  /* Успех — акцентная подложка: единственный акцент сайта, второго цвета нет. */
+  .ok { background: var(--accent-soft); border-color: var(--accent); }
+  /* Отказ различается не цветом, а весом: плотная рамка и засечка слева.
+     Заводить второй акцентный цвет спека запрещает. */
+  .fail {
+    background: var(--surface);
+    border-color: var(--text);
+    box-shadow: inset 3px 0 0 0 var(--text);
+  }
+  .fail .t-label { color: var(--text); }
 </style>
 
 <script>
@@ -84,6 +113,20 @@ const TELEGRAM = 'https://t.me/wfeels';
     const elapsed = form.querySelector<HTMLInputElement>('[data-elapsed]')!;
     const ok = form.querySelector<HTMLElement>('[data-form-status="success"]')!;
     const err = form.querySelector<HTMLElement>('[data-form-status="error"]')!;
+    const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+
+    const idleLabel = submit.textContent ?? '';
+    const sendingLabel = form.dataset.sendingLabel ?? idleLabel;
+
+    // Показать результат мало: блок стоит ниже кнопки и на обычном экране не
+    // помещается. Прокрутка ставит его в середину окна, фокус переносит на него
+    // читалку и клавиатуру. `preventScroll` — чтобы focus() не подкрутил окно
+    // по-своему и не отменил центрирование.
+    const announce = (el: HTMLElement) => {
+      el.hidden = false;
+      el.focus({ preventScroll: true });
+      el.scrollIntoView({ block: 'center' });
+    };
 
     // Засечка берётся один раз при показе формы. Наружу уходит РАЗНОСТЬ двух
     // показаний одних и тех же часов, а не сама отметка времени: разность от
@@ -95,6 +138,11 @@ const TELEGRAM = 'https://t.me/wfeels';
       event.preventDefault();
       ok.hidden = true;
       err.hidden = true;
+
+      // Между нажатием и ответом на медленной сети была полная тишина, а второе
+      // нажатие уходило вторым запросом и второй заявкой.
+      submit.disabled = true;
+      submit.textContent = sendingLabel;
 
       elapsed.value = String((Date.now() - shownAt) / 1000);
       const data = Object.fromEntries(new FormData(form).entries());
@@ -109,9 +157,12 @@ const TELEGRAM = 'https://t.me/wfeels';
         page.value = location.pathname;
         shownAt = Date.now();
         elapsed.value = '0';
-        ok.hidden = false;
+        announce(ok);
       } catch {
-        err.hidden = false;
+        announce(err);
+      } finally {
+        submit.disabled = false;
+        submit.textContent = idleLabel;
       }
     });
   }

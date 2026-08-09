@@ -20,9 +20,17 @@ const Tag = href ? 'a' : 'button';
     text-decoration: none;
     cursor: pointer;
     border: 1px solid transparent;
-    transition: opacity var(--dur-micro) var(--ease);
+    transition: opacity var(--dur-micro) var(--ease),
+                transform var(--dur-micro) var(--ease);
   }
   .btn:hover { opacity: 0.88; }
+  /* Нажатие обязано ощущаться, иначе кнопка кажется неживой. Один пиксель вниз —
+     весь эффект: смещение больше сдвигает соседей на глазах. */
+  .btn:active { transform: translateY(1px); }
+  /* Состояние отправки. Правило стоит после `:hover` намеренно: у них равная
+     специфичность, и при обратном порядке наведение на выключенную кнопку
+     вернуло бы ей вид рабочей. */
+  .btn:disabled { opacity: 0.6; cursor: progress; transform: none; }
   .primary { background: var(--accent); color: var(--text-on-accent); }
   .secondary { background: transparent; color: var(--text); border-color: var(--border); }
 </style>

@@ -2,14 +2,39 @@
 import Base from '../layouts/Base.astro';
 import Container from '../components/Container.astro';
 import Section from '../components/Section.astro';
+import LangSwitch from '../components/LangSwitch.astro';
 import Button from '../components/Button.astro';
+
+const TELEGRAM = 'https://t.me/wfeels';
 ---
 <Base title="Заявка отправлена — wfeels" description="Заявка получена." noindex={true}>
+  <LangSwitch slot="lang" />
   <Container>
-    <Section>
+    <Section label="Контакт">
       <h1 class="t-h1">Заявка ушла</h1>
-      <p class="t-body-lg">Отвечу в течение дня.</p>
+      <p class="t-body-lg lead">Отвечу в течение дня.</p>
+      <!-- Запасной канал был дан тому, у кого отправка не получилась, и не дан
+           тому, у кого получилась. Адрес тот же, что в сообщении об ошибке. -->
+      <!-- Ссылка стоит на той же строке намеренно: перенос строки перед тегом
+           компилятор Astro съедает вместе с пробелом, и выходит «напрямую:Telegram». -->
+      <p class="fallback">Если за сутки ответа не будет — напишите напрямую: <a href={TELEGRAM}>Telegram</a></p>
       <Button href="/" variant="secondary">На главную</Button>
     </Section>
   </Container>
 </Base>
+
+<style>
+  /* Ритм по шкале отступов 24/32/48: до правки заголовок, строка и кнопка
+     стояли слипшимися блоком. */
+  .lead { margin: 24px 0 0; }
+  .fallback {
+    margin: 24px 0 32px;
+    font-size: 0.9375rem;
+    color: var(--text-muted);
+  }
+  .fallback a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+</style>

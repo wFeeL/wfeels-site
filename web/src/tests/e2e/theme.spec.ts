@@ -38,6 +38,41 @@ test.describe('темы', () => {
     await ctx.close();
   });
 
+  test('схема цветов объявлена и меняется вместе с темой', async ({ browser }) => {
+    const ctx = await browser.newContext({ colorScheme: 'dark' });
+    const page = await ctx.newPage();
+    const scheme = () =>
+      page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+
+    await page.goto('/kontakt');
+    // Без объявления схемы браузер рисует поля выбора, скроллбары и подложку
+    // автозаполнения по светлым правилам поверх тёмной палитры.
+    expect(await scheme()).toBe('dark');
+
+    await page.evaluate(() => localStorage.setItem('theme', 'light'));
+    await page.reload();
+    expect(await scheme()).toBe('light');
+    await ctx.close();
+  });
+
+  test('чекбокс согласия красится акцентом темы, а не системным', async ({ browser }) => {
+    const ctx = await browser.newContext({ colorScheme: 'light' });
+    const page = await ctx.newPage();
+    const accent = () =>
+      page.locator('input[name="consent"]')
+        .evaluate((el) => getComputedStyle(el).accentColor);
+
+    await page.goto('/kontakt');
+    // При `auto` отмеченный чекбокс красится системным акцентом ОС: у гостя
+    // с розовым акцентом на «Чертеже» появился бы розовый квадрат.
+    expect(await accent()).toBe('rgb(47, 91, 255)'); // --accent светлой #2F5BFF
+
+    await page.evaluate(() => localStorage.setItem('theme', 'dark'));
+    await page.reload();
+    expect(await accent()).toBe('rgb(91, 132, 255)'); // --accent тёмной #5B84FF
+    await ctx.close();
+  });
+
   test('скрипт темы стоит в разметке раньше стилей — вспышке неоткуда взяться',
     async ({ request }) => {
       const html = await (await request.get('/')).text();

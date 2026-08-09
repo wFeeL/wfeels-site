@@ -61,6 +61,21 @@ test('раскрывашка открывается с клавиатуры', as
   await expect(menu.locator('a').first()).toBeVisible();
 });
 
+test('текущая страница отмечена в навигации', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/kontakt');
+
+  const current = page.locator('header nav.nav-wide a[aria-current="page"]');
+  await expect(current).toHaveCount(1);
+  await expect(current).toHaveText('Контакты');
+
+  // На главной пункта «Главная» в навигации нет — отмечать нечего, и лишней
+  // отметки быть не должно.
+  await page.goto('/');
+  await expect(page.locator('header nav.nav-wide a[aria-current="page"]'))
+    .toHaveCount(0);
+});
+
 test('в подвале есть юридические ссылки и строка про ИИ', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('footer a[href="/politika"]')).toBeVisible();

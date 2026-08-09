@@ -5,10 +5,15 @@ import Button from './Button.astro';
 import NavLinks from './NavLinks.astro';
 import ReadingProgress from './ReadingProgress.astro';
 import { dict } from '../i18n/locales';
+import { HEADER_CTA_HREF, showHeaderCta } from '../lib/nav';
 
 interface Props { lang: 'ru' | 'en'; progress?: boolean }
 const { lang, progress = true } = Astro.props;
 const t = dict(lang);
+
+/* Кнопка не рисуется там, где вела бы в никуда: правило и список страниц
+   живут в `lib/nav.ts`, страницы про кнопку ничего не знают. */
+const cta = showHeaderCta(Astro.url.pathname);
 
 const NAV = {
   ru: [
@@ -39,9 +44,11 @@ const NAV = {
       <div class="tools">
         <slot name="lang" />
         <ThemeToggle />
-        <Button href="/kontakt" variant="primary">
-          {t.write}
-        </Button>
+        {cta && (
+          <Button href={HEADER_CTA_HREF} variant="primary">
+            {t.write}
+          </Button>
+        )}
       </div>
     </div>
 
@@ -69,6 +76,8 @@ const NAV = {
   nav { display: flex; gap: 20px; }
   nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9375rem; }
   nav a:hover { color: var(--text); }
+  /* Отметка текущей страницы видна и глазу, не только программе. */
+  nav a[aria-current="page"] { color: var(--text); font-weight: 500; }
 
   .tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 

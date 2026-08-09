@@ -1,5 +1,15 @@
 ---
+import { samePath } from '../lib/nav';
+
 interface Props { items: { href: string; text: string }[] }
 const { items } = Astro.props;
+
+/* Отметку ставит сам компонент по адресу страницы: страницам не приходится
+   передавать сюда «где я», а значит и забыть это нечего. */
+const here = Astro.url.pathname;
 ---
-{items.map((i) => <a href={i.href}>{i.text}</a>)}
+{items.map((i) => (
+  <a href={i.href} aria-current={samePath(i.href, here) ? 'page' : undefined}>
+    {i.text}
+  </a>
+))}
