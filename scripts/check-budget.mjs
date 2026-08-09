@@ -8,6 +8,51 @@ const MAX_JS_GZIP_BYTES = 30 * 1024;
 
 const PAGES = ['index.html', 'kontakt/index.html', 'politika/index.html'];
 
+// Исполняемые типы `<script>`. Отсутствие атрибута — тоже JS.
+// `application/ld+json`, `importmap`, `speculationrules` браузер как код не
+// исполняет: это данные, и в предел на JS они не идут.
+const JS_TYPES = new Set([
+  'module',
+  'text/javascript',
+  'application/javascript',
+  'text/ecmascript',
+  'application/ecmascript',
+]);
+
+// Весь JavaScript страницы: тела инлайновых `<script>` и содержимое внешних
+// файлов, на которые они ссылаются. Astro встраивает свои модульные скрипты
+// прямо в разметку, поэтому обход только по `.js`-файлам `dist` не находит
+// ничего и предел молча показывает ноль при любом объёме кода.
+function collectPageJs(html, distDir) {
+  const parts = [];
+
+  for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    const [, attrs, body] = m;
+    const type = attrs.match(/\btype\s*=\s*["']?([^"'\s>]+)/i)?.[1].toLowerCase();
+    if (type !== undefined && !JS_TYPES.has(type)) continue;
+
+    const src = attrs.match(/\bsrc\s*=\s*["']([^"']+)["']/i)?.[1];
+    if (src) {
+      if (/^[a-z]+:|^\/\//i.test(src)) continue; // внешний домен — не наш вес
+      try {
+        parts.push(readFileSync(join(distDir, src.replace(/^\/?/, '/'))));
+      } catch {
+        continue;
+      }
+    } else if (body.trim() !== '') {
+      parts.push(Buffer.from(body, 'utf8'));
+    }
+  }
+
+  return parts;
+}
+
+// Сжимаем сумму, а не складываем сжатые куски: скрипты лежат в одном документе
+// и делят словарь, поэтому сумма отдельных gzip завышает реальный вес.
+function gzipTotal(parts) {
+  return parts.length === 0 ? 0 : gzipSync(Buffer.concat(parts)).length;
+}
+
 function walk(dir) {
   let entries;
   try {
@@ -31,8 +76,8 @@ for (const page of PAGES) {
   const refs = [...html.toString().matchAll(/\/_astro\/[^"']+/g)].map((m) => m[0]);
 
   let total = html.length;
-  let jsGzip = 0;
   let fontBytes = 0;
+  const jsGzip = gzipTotal(collectPageJs(html.toString(), DIST));
 
   for (const ref of new Set(refs)) {
     const file = join(DIST, ref);
@@ -43,11 +88,10 @@ for (const page of PAGES) {
       continue;
     }
     total += buf.length;
-    if (extname(file) === '.js') jsGzip += gzipSync(buf).length;
 
     // Шрифты не упомянуты в HTML — на них ссылается CSS, поэтому обход только
-    // по разметке их не видит. А это самая тяжёлая часть страницы: около 111 КБ,
-    // четверть всего бюджета ещё до единой буквы контента. Гейт, который их не
+    // по разметке их не видит. А это самая тяжёлая часть страницы: 148 КБ,
+    // больше трети бюджета ещё до единой буквы контента. Гейт, который их не
     // считает, разрешает ровно тот перевес, ради которого он поставлен.
     if (extname(file) === '.css') {
       const css = buf.toString();
