@@ -12,6 +12,21 @@ for (const path of PAGES) {
 
   test(`${path} честно помечен как черновик`, async ({ page }) => {
     await page.goto(path);
-    await expect(page.locator('[data-draft-notice]')).toBeVisible();
+    const notice = page.locator('[data-draft-notice]');
+
+    // `toBeVisible()` ловит `display: none` и `visibility: hidden`, но не увод
+    // за край экрана: у такого элемента ненулевой прямоугольник, и Playwright
+    // считает его видимым. Проверено мутацией — `position: absolute;
+    // left: -9999px` в блоке <style> страницы оставлял тест зелёным, а пометку
+    // невидимой. Приём не выдуманный: ровно им в этом же репозитории убран
+    // skip-link (Base.astro, правило `.skip`), то есть погасить пометку можно
+    // штатной идиомой проекта. Поэтому рядом стоит требование быть в окне.
+    await expect(notice).toBeVisible();
+    await expect(notice).toBeInViewport();
+
+    // Существования пометки мало: смысл в конкретных словах. Документ обязан
+    // говорить, что он НЕ ДЕЙСТВУЕТ, — без этой формулировки страница снова
+    // начинает выдавать заготовку за действующий документ.
+    await expect(notice).toContainText('не действует');
   });
 }

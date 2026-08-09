@@ -9,8 +9,15 @@ const SENDING = 'Отправляю…';
 <form id="lead-form" method="post" action={`${API_BASE}/api/lead`}
       data-sending-label={SENDING}>
   <Field name="name" label="Как вас зовут" required={true} autocomplete="name" />
-  <Field name="contact" label="Telegram или почта" required={true}
-         autocomplete="email" />
+  <!-- `autocomplete` здесь намеренно НЕ задан. Атрибут объявляет браузеру, чем
+       поле ЯВЛЯЕТСЯ, а это поле принимает два разных вида значения, и половина
+       людей вводит `@handle`. Значения «почта или ник» в списке autofill нет:
+       `email` объявил бы почту там, где её нет, и браузер подставлял бы адрес
+       человеку, который собирался написать ник, — молча и правдоподобно.
+       `off` тоже не выход: он выключает и подстановку тем, кто вводит почту.
+       Без атрибута поле наследует `on` и получает историю ввода самого браузера
+       — то есть ровно то, что человек писал сюда в прошлый раз, ник или почту. -->
+  <Field name="contact" label="Telegram или почта" required={true} />
   <Field name="message" label="Что нужно сделать" textarea={true} required={true}
          hint="Чем конкретнее задача, тем точнее смета." autocomplete="off" />
   <Field name="budget" label="Бюджет, если он уже определён" autocomplete="off" />
@@ -115,8 +122,14 @@ const SENDING = 'Отправляю…';
     const err = form.querySelector<HTMLElement>('[data-form-status="error"]')!;
     const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
 
-    const idleLabel = submit.textContent ?? '';
-    const sendingLabel = form.dataset.sendingLabel ?? idleLabel;
+    // Спокойное состояние кнопки запоминается УЗЛАМИ, а не строкой. Присваивание
+    // `textContent` заменяет все дочерние узлы разом: сегодня в кнопке только
+    // текст, и подмена строкой незаметна, но в день, когда в слот положат иконку,
+    // она исчезнет после первой же отправки и обратно не вернётся — молча, без
+    // ошибки. Снятые со страницы узлы остаются живыми, пока на них ссылается этот
+    // массив, поэтому возвращаются ровно теми же, вместе с иконкой.
+    const idleNodes = Array.from(submit.childNodes);
+    const sendingLabel = form.dataset.sendingLabel ?? submit.textContent ?? '';
 
     // Показать результат мало: блок стоит ниже кнопки и на обычном экране не
     // помещается. Прокрутка ставит его в середину окна, фокус переносит на него
@@ -162,7 +175,7 @@ const SENDING = 'Отправляю…';
         announce(err);
       } finally {
         submit.disabled = false;
-        submit.textContent = idleLabel;
+        submit.replaceChildren(...idleNodes);
       }
     });
   }
