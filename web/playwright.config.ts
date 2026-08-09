@@ -19,6 +19,10 @@ export default defineConfig({
         // не срабатывает. Источник: astro/dist/cli/preview/index.js, строка
         // `agentDetected = !process.env.ASTRO_PREVIEW_BACKGROUND && isRunByAgent()`.
         ASTRO_PREVIEW_BACKGROUND: '1',
+        // Витрина компонентов не входит в боевую сборку (`lib/dev-pages.ts`), а
+        // здесь она нужна: на ней стоят проверки примитивов, тем и полосы
+        // прогресса. Флаг ставится только тут — боевая сборка его не знает.
+        DEV_PAGES: '1',
       },
       url: 'http://localhost:4321',
       reuseExistingServer: !process.env.CI,

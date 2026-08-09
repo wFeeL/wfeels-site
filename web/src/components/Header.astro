@@ -4,7 +4,7 @@ import ThemeToggle from './ThemeToggle.astro';
 import Button from './Button.astro';
 import NavLinks from './NavLinks.astro';
 import ReadingProgress from './ReadingProgress.astro';
-import { dict } from '../i18n/locales';
+import { dict, hasTranslation } from '../i18n/locales';
 import { HEADER_CTA_HREF, showHeaderCta } from '../lib/nav';
 
 interface Props { lang: 'ru' | 'en'; progress?: boolean }
@@ -15,7 +15,13 @@ const t = dict(lang);
    живут в `lib/nav.ts`, страницы про кнопку ничего не знают. */
 const cta = showHeaderCta(Astro.url.pathname);
 
-const NAV = {
+/* Кнопка ведёт на русскую страницу контактов: английской ещё нет. Молча
+   уводить англоязычного посетителя на русскую форму нельзя, поэтому ссылка
+   помечена языком цели и поясняющей подписью. Условие само истечёт: как только
+   `/kontakt` появится в `BILINGUAL_PATHS`, пометка исчезнет. */
+const ctaForeign = lang === 'en' && !hasTranslation(HEADER_CTA_HREF);
+
+const NAV: { href: string; text: string }[] = {
   ru: [
     { href: '/uslugi', text: 'Услуги' },
     { href: '/keysy', text: 'Кейсы' },
@@ -23,13 +29,14 @@ const NAV = {
     { href: '/kontakt', text: 'Контакты' },
     { href: '/o-mne', text: 'Обо мне' },
   ],
-  en: [
-    { href: '/en/#services', text: 'Services' },
-    { href: '/en/#cases', text: 'Cases' },
-    { href: '/en/#pricing', text: 'Pricing' },
-    { href: '/en/#contact', text: 'Contact' },
-    { href: '/en/#about', text: 'About' },
-  ],
+  /* Английских разделов не существует: их приносит спека 02 вместе с
+     английским ядром. До правки здесь стояли пять пунктов на `/en/#services` и
+     подобные — на странице таких мест нет, и нажатие не делало ничего: ни
+     перехода, ни прокрутки, ни честной 404. Пункт, который ничего не делает,
+     обманывает сильнее отсутствующего: посетитель считает раздел
+     существующим и решает, что сломан сайт. Навигация вернётся сюда вместе с
+     разделами, на которые ей вести. */
+  en: [],
 }[lang];
 ---
 <header>
@@ -37,27 +44,43 @@ const NAV = {
     <div class="bar">
       <a class="brand" href={lang === 'ru' ? '/' : '/en'}>wfeels</a>
 
-      <nav class="nav-wide" aria-label={t.nav}>
-        <NavLinks items={NAV} />
-      </nav>
+      {NAV.length > 0 && (
+        <nav class="nav-wide" aria-label={t.nav}>
+          <NavLinks items={NAV} />
+        </nav>
+      )}
 
       <div class="tools">
         <slot name="lang" />
         <ThemeToggle />
-        {cta && (
-          <Button href={HEADER_CTA_HREF} variant="primary">
+        {/* Место кнопки занято всегда, даже когда самой кнопки нет. Шапка
+            липкая: без резерва переключатели темы и языка проезжали 123 px —
+            треть узкого экрана — при каждом переходе на `/kontakt` и
+            `/spasibo`. Заполнитель рисуется тем же компонентом и тем же
+            текстом, поэтому ширина совпадает точно, а не подобрана числом. */}
+        {cta ? (
+          <Button
+            href={HEADER_CTA_HREF}
+            variant="primary"
+            hreflang={ctaForeign ? 'ru' : undefined}
+            title={ctaForeign ? t.ctaLangNote : undefined}
+          >
             {t.write}
           </Button>
+        ) : (
+          <Button variant="primary" placeholder={true}>{t.write}</Button>
         )}
       </div>
     </div>
 
-    <details class="nav-narrow">
-      <summary>{t.menu}</summary>
-      <nav aria-label={t.nav}>
-        <NavLinks items={NAV} />
-      </nav>
-    </details>
+    {NAV.length > 0 && (
+      <details class="nav-narrow">
+        <summary>{t.menu}</summary>
+        <nav aria-label={t.nav}>
+          <NavLinks items={NAV} stacked={true} />
+        </nav>
+      </details>
+    )}
   </Container>
   {progress && <ReadingProgress />}
 </header>
@@ -73,11 +96,11 @@ const NAV = {
   .bar { display: flex; align-items: center; gap: 24px; height: 64px; }
   .brand { font: 800 1.0625rem/1 var(--font-head); color: var(--text); text-decoration: none; }
 
+  /* Здесь только раскладка навигации. Вид самих ссылок описан в
+     NavLinks.astro — тот компонент их и рисует, а стиль, написанный про чужую
+     разметку, Astro скоупит в никуда. Так уже было: четыре правила `nav a`
+     стояли в этом файле и не применялись ни разу. */
   nav { display: flex; gap: 20px; }
-  nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9375rem; }
-  nav a:hover { color: var(--text); }
-  /* Отметка текущей страницы видна и глазу, не только программе. */
-  nav a[aria-current="page"] { color: var(--text); font-weight: 500; }
 
   .tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
@@ -96,11 +119,6 @@ const NAV = {
     flex-direction: column;
     gap: 0;
     padding-bottom: 12px;
-  }
-  .nav-narrow nav a {
-    display: flex;
-    align-items: center;
-    min-height: 44px;
   }
 
   @media (max-width: 899px) {

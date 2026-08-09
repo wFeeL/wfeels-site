@@ -3,6 +3,8 @@ import Base from '../layouts/Base.astro';
 import Container from '../components/Container.astro';
 import Section from '../components/Section.astro';
 import LangSwitch from '../components/LangSwitch.astro';
+import Prose from '../components/Prose.astro';
+import DraftNotice from '../components/DraftNotice.astro';
 
 const SECTIONS = [
   'Общие положения',
@@ -24,28 +26,19 @@ const SECTIONS = [
   <LangSwitch slot="lang" />
   <Container>
     <Section>
-      <p class="draft" data-draft-notice>
+      <DraftNotice>
         Черновик. Документ не действует, пока в нём не проставлены реальные
         реквизиты исполнителя. Страница закрыта от индексации.
-      </p>
+      </DraftNotice>
       <h1 class="t-h1">Пользовательское соглашение</h1>
-      {SECTIONS.map((s, i) => (
-        <>
-          <h2 class="t-h3">{i + 1}. {s}</h2>
-          <p class="t-body">Текст раздела заполняется владельцем.</p>
-        </>
-      ))}
+      <Prose>
+        {SECTIONS.map((s, i) => (
+          <>
+            <h2>{i + 1}. {s}</h2>
+            <p>Текст раздела заполняется владельцем.</p>
+          </>
+        ))}
+      </Prose>
     </Section>
   </Container>
 </Base>
-
-<style>
-  .draft {
-    border: 1px solid var(--accent);
-    background: var(--accent-soft);
-    border-radius: var(--radius-sm);
-    padding: 12px 16px;
-    font-size: 0.875rem;
-    margin-bottom: 32px;
-  }
-</style>

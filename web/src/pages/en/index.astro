@@ -3,7 +3,13 @@ import Base from '../../layouts/Base.astro';
 import Container from '../../components/Container.astro';
 import LangSwitch from '../../components/LangSwitch.astro';
 ---
-<Base lang="en" title="wfeels — websites and automation" description="Websites, integrations and AI for small business." progress={false}>
+<Base
+  lang="en"
+  title="wfeels — websites and automation"
+  description="Websites, integrations and AI for small business."
+  progress={false}
+  schema="website"
+>
   <LangSwitch slot="lang" />
   <Container>
     <p class="t-label">Websites and automation</p>

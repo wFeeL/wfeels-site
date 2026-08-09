@@ -103,15 +103,50 @@ test('подсказка под полем набрана цветом, приг
 
 test('на странице формы и после отправки в шапке нет второй основной кнопки',
   async ({ page }) => {
-    await page.goto('/kontakt');
-    await expect(page.locator('header .btn')).toHaveCount(0);
+    for (const path of ['/kontakt', '/spasibo']) {
+      await page.goto(path);
+      // Нажать не на что: ссылки-кнопки в шапке здесь нет.
+      await expect(page.locator('header a.btn'), path).toHaveCount(0);
 
-    await page.goto('/spasibo');
-    await expect(page.locator('header .btn')).toHaveCount(0);
+      // Но её место занято — иначе переключатели уезжали бы вправо при каждом
+      // переходе на эту страницу (проверка положения — в shell.spec.ts).
+      // Заполнитель — не ссылка и не кнопка: ни фокуса, ни объявления читалкой.
+      const slot = page.locator('header .btn');
+      await expect(slot, path).toHaveCount(1);
+      await expect(slot, path).not.toBeVisible();
+      await expect(slot, path).toHaveAttribute('aria-hidden', 'true');
+      expect(await slot.evaluate((el) => el.tagName), path).toBe('SPAN');
+    }
 
     await page.goto('/');
-    await expect(page.locator('header .btn')).toHaveCount(1);
+    await expect(page.locator('header a.btn')).toHaveCount(1);
+    await expect(page.locator('header a.btn')).toBeVisible();
   });
+
+test('подтверждение отправки не тише отказа', async ({ page }) => {
+  await page.goto('/kontakt');
+  const weight = (selector: string) =>
+    page.locator(selector).evaluate((el) => {
+      const s = getComputedStyle(el);
+      return {
+        border: s.borderTopWidth,
+        bar: s.boxShadow !== 'none',
+        tinted: s.backgroundColor,
+      };
+    });
+
+  const ok = await weight('[data-form-status="success"]');
+  const fail = await weight('[data-form-status="error"]');
+
+  // Второй акцентный цвет спека запрещает, поэтому отказ различается весом:
+  // плотной рамкой и засечкой слева. Но до правки эта засечка была только у
+  // отказа, и он получался заметнее подтверждения — на форме, где успех
+  // случается чаще. Строение панелей одинаковое, различает их цвет и подложка.
+  expect(ok.border, 'рамки панелей разной толщины').toBe(fail.border);
+  expect(ok.bar, 'у подтверждения нет засечки, а у отказа есть').toBe(true);
+  expect(fail.bar).toBe(true);
+  expect(ok.tinted, 'подтверждение без подложки').not.toBe(fail.tinted);
+});
 
 test('на /spasibo подвал прижат к низу окна', async ({ page }) => {
   for (const size of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {

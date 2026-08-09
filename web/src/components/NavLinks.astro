@@ -1,15 +1,68 @@
 ---
 import { samePath } from '../lib/nav';
 
-interface Props { items: { href: string; text: string }[] }
-const { items } = Astro.props;
+interface Props {
+  items: { href: string; text: string }[];
+  /** Пункты идут столбцом в раскрывашке, а не строкой в шапке. */
+  stacked?: boolean;
+}
+const { items, stacked = false } = Astro.props;
 
 /* Отметку ставит сам компонент по адресу страницы: страницам не приходится
    передавать сюда «где я», а значит и забыть это нечего. */
 const here = Astro.url.pathname;
 ---
 {items.map((i) => (
-  <a href={i.href} aria-current={samePath(i.href, here) ? 'page' : undefined}>
+  <a
+    class:list={['nav-link', { stacked }]}
+    href={i.href}
+    aria-current={samePath(i.href, here) ? 'page' : undefined}
+  >
     {i.text}
   </a>
 ))}
+
+<style>
+  /* Вид ссылки описан ЗДЕСЬ, а не в шапке, и это не вкусовщина.
+
+     Astro скоупит стили по компоненту: правило `nav a`, написанное в
+     Header.astro, компилируется в селектор с атрибутом скоупа шапки на КАЖДОМ
+     звене, а сам <a> рисует этот компонент и носит свой атрибут. Селектор не
+     совпадал ни с чем — четыре правила молчали целиком. Замер: цвет пункта до
+     и после наведения одинаковый (rgb(15,22,32)), высота пункта в мобильном
+     меню 26 px при норме 44, текущая страница отличалась только атрибутом
+     `aria-current`, то есть была видна читалке и не видна глазу.
+
+     Пока <a> живёт в этом файле, его стили живут здесь же: тогда правило не
+     может разойтись с разметкой молча. */
+  .nav-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.9375rem;
+    transition: color var(--dur-micro) var(--ease);
+  }
+
+  .nav-link:hover { color: var(--text); }
+
+  /* Отметка текущей страницы видна и глазу, и программе: цвет, насыщенность и
+     акцентная черта под словом. Один различитель был бы слабее — цвет теряется
+     в тёмной теме, а насыщенность на 15 px шрифта заметна не всем. */
+  .nav-link[aria-current='page'] {
+    color: var(--text);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
+  }
+
+  /* В раскрывашке пункты стоят столбцом, и цель нажатия набирается высотой
+     строки: 44 px — нижняя граница и по WCAG 2.5.8, и по рекомендациям Apple.
+     То же число заведено общим правилом в base.css, но оно достаёт до ссылок
+     с классом-оформлением, а не до любой ссылки. */
+  .nav-link.stacked {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+</style>

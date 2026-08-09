@@ -73,6 +73,37 @@ test.describe('темы', () => {
     await ctx.close();
   });
 
+  test('цвет полосы браузера объявлен и следует выбранной теме', async ({ browser }) => {
+    const ctx = await browser.newContext({ colorScheme: 'dark' });
+    const page = await ctx.newPage();
+    await page.goto('/');
+
+    const declared = () =>
+      page.locator('meta[name="theme-color"]').evaluateAll((metas) =>
+        metas.map((m) => ({
+          media: m.getAttribute('media') ?? '',
+          content: (m.getAttribute('content') ?? '').toUpperCase(),
+        })),
+      );
+
+    // Без этого браузер на телефоне оставляет свою верхнюю полосу светлой над
+    // тёмной страницей — светлая рамка вокруг #0E1420.
+    const initial = await declared();
+    expect(initial.length, 'theme-color не объявлен').toBeGreaterThanOrEqual(2);
+    expect(initial.find((m) => m.media.includes('dark'))?.content).toBe('#0E1420');
+    expect(initial.find((m) => m.media.includes('light'))?.content).toBe('#F4F6F9');
+
+    // Выбор пользователя перекрывает системную схему — вместе с полосой браузера.
+    await page.getByRole('button', { name: /тема/i }).click(); // system -> light
+    await expect
+      .poll(async () => (await declared()).every((m) => m.content === '#F4F6F9'), {
+        message: 'выбор светлой темы не доехал до полосы браузера',
+      })
+      .toBe(true);
+
+    await ctx.close();
+  });
+
   test('скрипт темы стоит в разметке раньше стилей — вспышке неоткуда взяться',
     async ({ request }) => {
       const html = await (await request.get('/')).text();

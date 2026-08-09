@@ -8,6 +8,8 @@
 </button>
 
 <script>
+  import { THEME_COLOR } from '../lib/theme';
+
   const ORDER = ['system', 'light', 'dark'] as const;
   const ICON = { system: '◐', light: '☀', dark: '☾' } as const;
   const NAME = { system: 'системная', light: 'светлая', dark: 'тёмная' } as const;
@@ -16,6 +18,23 @@
   const btn = document.getElementById('theme-toggle');
   if (btn) {
     const icon = btn.querySelector('[data-icon]')!;
+    const themeColors =
+      document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+
+    /* Полоса браузера над страницей. В разметке лежат две записи с `media` по
+       системной схеме — это ответ тому, кто ничего не выбирал. Выбор человека
+       системную схему перекрывает, значит обе записи обязаны нести один и тот
+       же цвет; возврат к системной теме возвращает каждой записи её
+       собственный. Иначе выбравший тёмную тему на светлой системе видел бы
+       тёмную страницу в светлой рамке браузера. */
+    const paint = (state: State) => {
+      themeColors.forEach((meta) => {
+        const own = (meta.getAttribute('media') ?? '').includes('dark')
+          ? THEME_COLOR.dark
+          : THEME_COLOR.light;
+        meta.setAttribute('content', state === 'system' ? own : THEME_COLOR[state]);
+      });
+    };
 
     const read = (): State => {
       try {
@@ -32,6 +51,7 @@
       } else {
         document.documentElement.dataset.theme = state;
       }
+      paint(state);
       // Видимое состояние обновляется всегда, даже если хранилище недоступно.
       btn.dataset.state = state;
       btn.setAttribute('aria-label', `Тема оформления: ${NAME[state]}`);

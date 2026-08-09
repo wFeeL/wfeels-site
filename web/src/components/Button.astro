@@ -1,9 +1,32 @@
 ---
-interface Props { href?: string; variant?: 'primary' | 'secondary'; type?: 'button' | 'submit' }
-const { href, variant = 'primary', type = 'button' } = Astro.props;
-const Tag = href ? 'a' : 'button';
+interface Props {
+  href?: string;
+  variant?: 'primary' | 'secondary';
+  type?: 'button' | 'submit';
+  title?: string;
+  /** Язык страницы, куда ведёт ссылка, если он не совпадает с языком кнопки. */
+  hreflang?: string;
+  /** Не кнопка, а её место: тот же ящик, но невидимый и неинтерактивный.
+   *  Нужен там, где кнопку намеренно сняли, а раскладка обязана устоять. */
+  placeholder?: boolean;
+}
+const {
+  href, variant = 'primary', type = 'button', title, hreflang, placeholder = false,
+} = Astro.props;
+
+/* Заполнитель — <span>: не ссылка и не кнопка, поэтому в фокус не попадает
+   вовсе, а не «спрятан от фокуса» отдельным правилом, которое можно забыть.
+   Читалка его тоже не видит: `aria-hidden` плюс `visibility: hidden`. */
+const Tag = placeholder ? 'span' : href ? 'a' : 'button';
 ---
-<Tag class:list={['btn', variant]} href={href} type={href ? undefined : type}>
+<Tag
+  class:list={['btn', variant, { placeholder }]}
+  href={placeholder ? undefined : href}
+  type={placeholder || href ? undefined : type}
+  title={placeholder ? undefined : title}
+  hreflang={placeholder ? undefined : hreflang}
+  aria-hidden={placeholder ? 'true' : undefined}
+>
   <slot />
 </Tag>
 
@@ -33,4 +56,7 @@ const Tag = href ? 'a' : 'button';
   .btn:disabled { opacity: 0.6; cursor: progress; transform: none; }
   .primary { background: var(--accent); color: var(--text-on-accent); }
   .secondary { background: transparent; color: var(--text); border-color: var(--border); }
+  /* `visibility: hidden`, а не `opacity: 0`: место занимает, но не участвует ни
+     в наведении, ни в попадании курсора. */
+  .placeholder { visibility: hidden; }
 </style>

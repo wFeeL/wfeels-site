@@ -5,7 +5,14 @@ import Section from '../components/Section.astro';
 import LangSwitch from '../components/LangSwitch.astro';
 import LeadForm from '../components/LeadForm.astro';
 ---
-<Base title="Контакты — wfeels" description="Расскажите о задаче, отвечу в течение дня.">
+<!-- Разметка страницы контактов описывает саму страницу и привязывает её к
+     сайту. Ни организации, ни адреса, ни телефона: реквизитов ещё нет, а
+     выдуманные в `ld+json` были бы той же неправдой, что и в тексте. -->
+<Base
+  title="Контакты — wfeels"
+  description="Расскажите о задаче, отвечу в течение дня."
+  schema="contact"
+>
   <LangSwitch slot="lang" />
   <Container>
     <Section label="Контакт">
