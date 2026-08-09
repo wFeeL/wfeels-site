@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from app.config import Settings
 from app.main import create_app
 
 
@@ -15,19 +16,48 @@ VALID = {
 }
 
 
+def make_settings(**overrides) -> Settings:
+    """Настройки собираются явно и без чтения `.env`. Иначе весь набор молча
+    зависел бы от того, настроена ли машина: в день, когда рядом появится
+    настоящий `api/.env`, тесты предела частоты и разрешённого источника начали
+    бы падать не из-за кода, а из-за конфига."""
+    base = dict(
+        telegram_bot_token="",
+        telegram_chat_id="",
+        site_url="http://localhost:4321",
+        rate_limit_per_hour=5,
+        min_fill_seconds=2.0,
+        trust_proxy=True,
+    )
+    return Settings(_env_file=None, **{**base, **overrides})
+
+
 @pytest.fixture
 def sent():
     return []
 
 
 @pytest.fixture
-def client(monkeypatch, sent):
-    async def fake_send(text: str) -> bool:
-        sent.append(text)
-        return True
+def make_client(sent):
+    def build(**overrides) -> TestClient:
+        async def fake_send(text: str) -> bool:
+            sent.append(text)
+            return True
 
-    app = create_app(sender=fake_send, clock=lambda: 100.0)
-    return TestClient(app)
+        return TestClient(
+            create_app(
+                sender=fake_send,
+                clock=lambda: 100.0,
+                config=make_settings(**overrides),
+            )
+        )
+
+    return build
+
+
+@pytest.fixture
+def client(make_client):
+    return make_client()
 
 
 def test_health(client):
@@ -100,6 +130,31 @@ def test_short_message_is_rejected(client):
     assert r.status_code == 422
 
 
+def test_malformed_body_is_rejected_not_crashed(client, sent):
+    """Оборванное тело — это «прислали ерунду», а не «сломался сервер».
+    Пятисотка тут означала бы необработанное исключение в обработчике."""
+    r = client.post(
+        "/api/lead",
+        # В плане тут байтовый литерал `b"{не json"` — такой в Python не
+        # компилируется (bytes допускают только ASCII). Текст сохранён дословно,
+        # изменён лишь способ получить из него байты.
+        content="{не json".encode("utf-8"),
+        headers={"content-type": "application/json"},
+    )
+    assert r.status_code == 422
+    assert sent == []
+
+
+def test_empty_body_is_rejected_not_crashed(client, sent):
+    r = client.post(
+        "/api/lead",
+        content=b"",
+        headers={"content-type": "application/json"},
+    )
+    assert r.status_code == 422
+    assert sent == []
+
+
 def test_rate_limit_blocks_sixth_request(client, sent):
     for _ in range(5):
         client.post("/api/lead", json={**VALID, "elapsed_seconds": 90.0})
@@ -108,14 +163,37 @@ def test_rate_limit_blocks_sixth_request(client, sent):
     assert len(sent) == 5
 
 
-def test_telegram_failure_still_returns_success(monkeypatch):
+def test_telegram_failure_still_returns_success():
     async def broken(text: str) -> bool:
         raise RuntimeError("телеграм недоступен")
 
-    app = create_app(sender=broken, clock=lambda: 100.0)
+    app = create_app(sender=broken, clock=lambda: 100.0, config=make_settings())
     c = TestClient(app)
     r = c.post("/api/lead", json={**VALID, "elapsed_seconds": 90.0})
     assert r.status_code == 202
+
+
+def test_forwarded_address_is_trusted_behind_a_proxy(make_client):
+    """За обратным прокси настоящий адрес посетителя приходит заголовком. Без
+    его учёта счётчик видел бы всех посетителей одним адресом самого прокси и
+    закрывал бы сайт для всех после пятой заявки в час."""
+    client = make_client(rate_limit_per_hour=1)
+    body = {**VALID, "elapsed_seconds": 90.0}
+    first = client.post("/api/lead", json=body, headers={"x-forwarded-for": "1.1.1.1"})
+    second = client.post("/api/lead", json=body, headers={"x-forwarded-for": "2.2.2.2"})
+    assert first.status_code == 202
+    assert second.status_code == 202
+
+
+def test_forwarded_address_is_ignored_without_a_proxy(make_client):
+    """Если прокси нет, заголовок подделает кто угодно и обнулит себе лимит
+    каждым запросом. Тогда верить можно только адресу соединения."""
+    client = make_client(rate_limit_per_hour=1, trust_proxy=False)
+    body = {**VALID, "elapsed_seconds": 90.0}
+    first = client.post("/api/lead", json=body, headers={"x-forwarded-for": "1.1.1.1"})
+    second = client.post("/api/lead", json=body, headers={"x-forwarded-for": "2.2.2.2"})
+    assert first.status_code == 202
+    assert second.status_code == 429
 
 
 def test_browser_may_send_the_lead_from_the_site_origin(client):

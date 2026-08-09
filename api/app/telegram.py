@@ -1,10 +1,20 @@
 import logging
 
-import httpx
+import httpx2
 
 from .config import settings
 
 log = logging.getLogger(__name__)
+
+# Клиент печатает в лог полный адрес запроса на уровне INFO, а в адресе Telegram
+# лежит токен бота — так устроен их API, иначе с ним нельзя. Сегодня это не течёт
+# только потому, что корневой логгер по умолчанию стоит на WARNING. Одной строки
+# `logging.basicConfig(level=logging.INFO)` при деплое хватило бы, чтобы токен
+# оказался в файле лога навсегда. Гарантия должна принадлежать коду, а не удаче.
+# Гасятся оба имени: сейчас в проекте `httpx2`, но имя `httpx` остаётся живым —
+# любая зависимость, вернувшая старый клиент, вернула бы и утечку.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpx2").setLevel(logging.WARNING)
 
 
 async def send_lead(text: str) -> bool:
@@ -14,7 +24,7 @@ async def send_lead(text: str) -> bool:
 
     url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx2.AsyncClient(timeout=10.0) as client:
             r = await client.post(
                 url,
                 json={
