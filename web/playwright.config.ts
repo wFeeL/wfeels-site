@@ -32,7 +32,7 @@ export default defineConfig({
       command: '.venv/bin/uvicorn app.main:app --port 8000',
       cwd: '../api',
       env: {
-        // Адрес редиректа на /spasibo при отправке без JavaScript, он же
+        // Адрес редиректа на /thanks при отправке без JavaScript, он же
         // единственный разрешённый источник для CORS.
         SITE_URL: 'http://localhost:4321',
         // Счётчик частоты живёт в памяти процесса, а `reuseExistingServer`

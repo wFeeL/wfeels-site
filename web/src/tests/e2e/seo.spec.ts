@@ -23,9 +23,9 @@ test('главная и страница контактов несут стру�
     expect(home['@type']).toBe('WebSite');
     expect(home.inLanguage).toBe('ru');
 
-    const contact = await schema('/kontakt');
+    const contact = await schema('/contact');
     expect(contact['@type']).toBe('ContactPage');
-    expect(contact.url).toContain('/kontakt');
+    expect(contact.url).toContain('/contact');
     expect(contact.isPartOf['@type']).toBe('WebSite');
 
     const en = await schema('/en');
@@ -36,7 +36,7 @@ test('главная и страница контактов несут стру�
 test('sitemap не содержит служебных и юридических страниц', () => {
   const xml = readFileSync('dist/sitemap-0.xml', 'utf8');
   expect(xml).toContain('</urlset>');
-  for (const p of ['/dev/', '/politika', '/oferta', '/soglasie', '/spasibo']) {
+  for (const p of ['/dev/', '/privacy', '/terms', '/consent', '/thanks']) {
     expect(xml).not.toContain(p);
   }
 });

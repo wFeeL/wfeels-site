@@ -1,16 +1,16 @@
 /** Пути, которые не попадают в sitemap: служебные и юридические черновики. */
 export const SITEMAP_EXCLUDED = [
   '/dev',
-  '/politika',
-  '/oferta',
-  '/soglasie',
-  '/spasibo',
+  '/privacy',
+  '/terms',
+  '/consent',
+  '/thanks',
 ];
 
 /**
  * Совпадение точное или по каталогу. Проверять простым `startsWith` нельзя:
- * тогда будущая `/politika-arhiv` молча выпала бы из карты сайта заодно
- * с настоящей `/politika`.
+ * тогда будущая `/privacy-archive` молча выпала бы из карты сайта заодно
+ * с настоящей `/privacy`.
  */
 export function isIndexable(pathname: string): boolean {
   return !SITEMAP_EXCLUDED.some(

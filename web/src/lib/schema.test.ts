@@ -3,7 +3,7 @@ import { pageSchema, serializeSchema } from './schema';
 
 const INPUT = {
   site: 'https://example.com',
-  canonical: 'https://example.com/kontakt',
+  canonical: 'https://example.com/contact',
   title: 'Контакты — wfeels',
   description: 'Расскажите о задаче.',
   lang: 'ru' as const,

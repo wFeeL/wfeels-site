@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const PAGES = ['/politika', '/oferta', '/soglasie'];
+const PAGES = ['/privacy', '/terms', '/consent'];
 
 for (const path of PAGES) {
   test(`${path} отдаётся и закрыт от индексации`, async ({ page }) => {

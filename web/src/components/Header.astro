@@ -18,16 +18,16 @@ const cta = showHeaderCta(Astro.url.pathname);
 /* Кнопка ведёт на русскую страницу контактов: английской ещё нет. Молча
    уводить англоязычного посетителя на русскую форму нельзя, поэтому ссылка
    помечена языком цели и поясняющей подписью. Условие само истечёт: как только
-   `/kontakt` появится в `BILINGUAL_PATHS`, пометка исчезнет. */
+   `/contact` появится в `BILINGUAL_PATHS`, пометка исчезнет. */
 const ctaForeign = lang === 'en' && !hasTranslation(HEADER_CTA_HREF);
 
 const NAV: { href: string; text: string }[] = {
   ru: [
-    { href: '/uslugi', text: 'Услуги' },
-    { href: '/keysy', text: 'Кейсы' },
-    { href: '/tseny', text: 'Цены' },
-    { href: '/kontakt', text: 'Контакты' },
-    { href: '/o-mne', text: 'Обо мне' },
+    { href: '/services', text: 'Услуги' },
+    { href: '/cases', text: 'Кейсы' },
+    { href: '/pricing', text: 'Цены' },
+    { href: '/contact', text: 'Контакты' },
+    { href: '/about', text: 'Обо мне' },
   ],
   /* Английских разделов не существует: их приносит спека 02 вместе с
      английским ядром. До правки здесь стояли пять пунктов на `/en/#services` и
@@ -55,8 +55,8 @@ const NAV: { href: string; text: string }[] = {
         <ThemeToggle />
         {/* Место кнопки занято всегда, даже когда самой кнопки нет. Шапка
             липкая: без резерва переключатели темы и языка проезжали 123 px —
-            треть узкого экрана — при каждом переходе на `/kontakt` и
-            `/spasibo`. Заполнитель рисуется тем же компонентом и тем же
+            треть узкого экрана — при каждом переходе на `/contact` и
+            `/thanks`. Заполнитель рисуется тем же компонентом и тем же
             текстом, поэтому ширина совпадает точно, а не подобрана числом. */}
         {cta ? (
           <Button
@@ -94,7 +94,18 @@ const NAV: { href: string; text: string }[] = {
     border-bottom: 1px solid var(--border);
   }
   .bar { display: flex; align-items: center; gap: 24px; height: 64px; }
-  .brand { font: 800 1.0625rem/1 var(--font-head); color: var(--text); text-decoration: none; }
+
+  /* Коробка знака бренда — 44 px (общее правило целей нажатия в base.css), а
+     строка в ней 17 px. Без центрирования строка вставала по верху коробки, и
+     знак висел выше середины шапки на 13 px. Сами коробки в `.bar`
+     отцентрованы верно — съезжал именно текст внутри них. */
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    font: 800 1.0625rem/1 var(--font-head);
+    color: var(--text);
+    text-decoration: none;
+  }
 
   /* Здесь только раскладка навигации. Вид самих ссылок описан в
      NavLinks.astro — тот компонент их и рисует, а стиль, написанный про чужую
@@ -105,16 +116,23 @@ const NAV: { href: string; text: string }[] = {
   .tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
   .nav-narrow { display: none; }
+  /* `display: flex` вместо строчного потока — по той же причине, что у знака
+     бренда: `min-height: 44px` из base.css растит коробку, а слово «Меню»
+     оставалось прижатым к её верху. Треугольник при этом становится вторым
+     элементом строки, поэтому пробел из `content` заменён на `gap`: пробел в
+     начале содержимого схлопнулся бы. */
   .nav-narrow summary {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     cursor: pointer;
-    padding: 10px 0;
     font-size: 0.9375rem;
     color: var(--text-muted);
     list-style: none;
   }
   .nav-narrow summary::-webkit-details-marker { display: none; }
-  .nav-narrow summary::after { content: ' ▾'; }
-  .nav-narrow[open] summary::after { content: ' ▴'; }
+  .nav-narrow summary::after { content: '▾'; }
+  .nav-narrow[open] summary::after { content: '▴'; }
   .nav-narrow nav {
     flex-direction: column;
     gap: 0;

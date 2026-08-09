@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Container from '../components/Container.astro';
+import Section from '../components/Section.astro';
 import LangSwitch from '../components/LangSwitch.astro';
 ---
 <Base
@@ -10,8 +11,12 @@ import LangSwitch from '../components/LangSwitch.astro';
   schema="website"
 >
   <LangSwitch slot="lang" />
+  {/* Секция, а не голая пара «метка + заголовок» в контейнере: отступы страницы
+      задаёт `Section`, и главная, писавшая разметку мимо него, не получала
+      верхнего отступа вовсе — метка стояла вплотную к шапке. */}
   <Container>
-    <p class="t-label">Сайты и автоматизация</p>
-    <h1 class="t-display">wfeels</h1>
+    <Section label="Сайты и автоматизация">
+      <h1 class="t-display">wfeels</h1>
+    </Section>
   </Container>
 </Base>

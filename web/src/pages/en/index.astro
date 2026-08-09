@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Container from '../../components/Container.astro';
+import Section from '../../components/Section.astro';
 import LangSwitch from '../../components/LangSwitch.astro';
 ---
 <Base
@@ -12,7 +13,8 @@ import LangSwitch from '../../components/LangSwitch.astro';
 >
   <LangSwitch slot="lang" />
   <Container>
-    <p class="t-label">Websites and automation</p>
-    <h1 class="t-display">wfeels</h1>
+    <Section label="Websites and automation">
+      <h1 class="t-display">wfeels</h1>
+    </Section>
   </Container>
 </Base>

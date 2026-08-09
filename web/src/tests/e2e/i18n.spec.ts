@@ -30,7 +30,7 @@ test('в английской шапке нет пунктов, которым �
 
 test('ни одна ссылка каркаса не указывает на несуществующее место страницы',
   async ({ page }) => {
-    for (const start of ['/', '/en', '/kontakt']) {
+    for (const start of ['/', '/en', '/contact']) {
       await page.goto(start);
       const hrefs = await page.locator('header a[href], footer a[href]')
         .evaluateAll((links) => links.map((l) => l.getAttribute('href') ?? ''));
@@ -56,12 +56,12 @@ test('подвал английской страницы английский ц
   // Но их заголовки в подвале обязаны быть на языке страницы.
   expect(text, `в английском подвале осталась кириллица:\n${text}`)
     .not.toMatch(/[А-Яа-яЁё]/);
-  await expect(page.locator('footer a[href="/politika"]')).toHaveText(/privacy/i);
+  await expect(page.locator('footer a[href="/privacy"]')).toHaveText(/privacy/i);
 });
 
 test('с одноязычной страницы переключатель ведёт на английскую главную, а не в 404',
   async ({ page }) => {
-    await page.goto('/politika');
+    await page.goto('/privacy');
     const link = page.locator('a.lang');
     await expect(link).toHaveAttribute('href', '/en');
     await expect(link).toHaveAttribute('title', /нет на английском/);

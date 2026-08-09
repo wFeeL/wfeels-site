@@ -10,7 +10,7 @@ const DIST = fileURLToPath(new URL('../web/dist/', import.meta.url));
 const MAX_PAGE_BYTES = 400 * 1024;
 const MAX_JS_GZIP_BYTES = 30 * 1024;
 
-const PAGES = ['index.html', 'kontakt/index.html', 'politika/index.html'];
+const PAGES = ['index.html', 'contact/index.html', 'privacy/index.html'];
 
 const FONT_EXT = new Set(['.woff2', '.woff', '.ttf', '.otf', '.eot']);
 

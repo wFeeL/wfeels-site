@@ -110,6 +110,11 @@ const structured = schema
         position: absolute;
         left: -9999px;
         top: 8px;
+        /* Общее правило в base.css растит коробку до 44 px, а текст в блоке
+           ложится сверху. Здесь это видно первому, кто идёт по сайту с
+           клавиатуры. */
+        display: inline-flex;
+        align-items: center;
         background: var(--accent);
         color: var(--text-on-accent);
         padding: 8px 16px;

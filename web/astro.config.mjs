@@ -32,6 +32,11 @@ export default defineConfig({
   site: SITE,
   output: 'static',
   trailingSlash: 'never',
+  /* Панель разработчика Astro (плашка внизу экрана в `astro dev`) выключена по
+     просьбе владельца: она перекрывает нижний край страницы ровно там, где он
+     смотрит вёрстку. В боевую сборку панель не попадала никогда — это
+     инструмент режима разработки, `astro build` его не выпускает. */
+  devToolbar: { enabled: false },
   i18n: {
     defaultLocale: 'ru',
     locales: ['ru', 'en'],

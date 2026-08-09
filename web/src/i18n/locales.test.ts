@@ -27,19 +27,19 @@ describe('BILINGUAL_PATHS', () => {
 describe('localeFromPath', () => {
   it('корень — русский', () => expect(localeFromPath('/')).toBe('ru'));
   it('русский путь без префикса', () =>
-    expect(localeFromPath('/uslugi/telegram-bot')).toBe('ru'));
+    expect(localeFromPath('/services/telegram-bot')).toBe('ru'));
   it('английский путь по префиксу', () =>
-    expect(localeFromPath('/en/o-mne')).toBe('en'));
+    expect(localeFromPath('/en/about')).toBe('en'));
   it('слово, начинающееся на en, не считается префиксом', () =>
     expect(localeFromPath('/energetika')).toBe('ru'));
 });
 
 describe('stripLocale', () => {
-  it('снимает префикс', () => expect(stripLocale('/en/o-mne')).toBe('/o-mne'));
+  it('снимает префикс', () => expect(stripLocale('/en/about')).toBe('/about'));
   it('корень английского становится корнем', () =>
     expect(stripLocale('/en')).toBe('/'));
   it('русский путь не меняется', () =>
-    expect(stripLocale('/o-mne')).toBe('/o-mne'));
+    expect(stripLocale('/about')).toBe('/about'));
 });
 
 describe('hasTranslation', () => {
@@ -48,13 +48,13 @@ describe('hasTranslation', () => {
     expect(hasTranslation('/en')).toBe(true);
   });
   it('страница, английской версии которой ещё нет', () => {
-    expect(hasTranslation('/o-mne')).toBe(false);
-    expect(hasTranslation('/kontakt')).toBe(false);
+    expect(hasTranslation('/about')).toBe(false);
+    expect(hasTranslation('/contact')).toBe(false);
   });
   it('посадочная только на русском', () =>
-    expect(hasTranslation('/uslugi/telegram-bot')).toBe(false));
+    expect(hasTranslation('/services/telegram-bot')).toBe(false));
   it('юридические только на русском', () =>
-    expect(hasTranslation('/politika')).toBe(false));
+    expect(hasTranslation('/privacy')).toBe(false));
 });
 
 describe('altLocaleUrl', () => {
@@ -63,9 +63,9 @@ describe('altLocaleUrl', () => {
     expect(altLocaleUrl('/en', 'ru')).toBe('/');
   });
   it('одноязычная страница ведёт на английскую главную, а не в 404', () =>
-    expect(altLocaleUrl('/uslugi/telegram-bot', 'en')).toBe('/en'));
+    expect(altLocaleUrl('/services/telegram-bot', 'en')).toBe('/en'));
   it('путь, английской версии которого нет, ведёт на главную в обе стороны', () => {
-    expect(altLocaleUrl('/kontakt', 'en')).toBe('/en');
-    expect(altLocaleUrl('/en/kontakt', 'ru')).toBe('/');
+    expect(altLocaleUrl('/contact', 'en')).toBe('/en');
+    expect(altLocaleUrl('/en/contact', 'ru')).toBe('/');
   });
 });

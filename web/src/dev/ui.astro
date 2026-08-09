@@ -11,6 +11,10 @@ import LeadForm from '../components/LeadForm.astro';
 const TOKENS = [
   '--bg', '--surface', '--grid', '--border',
   '--text', '--text-muted', '--text-faint', '--accent',
+  // Служебный цвет состояния, а не второй акцент: им помечено обязательное
+  // поле и им же будут показаны ошибки. В витрине стоит рядом с палитрой,
+  // чтобы его нельзя было завести вторым, не заметив первого.
+  '--danger',
 ];
 ---
 <Base title="Витрина компонентов" description="Служебная страница" noindex={true}>

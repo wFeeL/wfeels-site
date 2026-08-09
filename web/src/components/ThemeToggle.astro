@@ -1,80 +1,98 @@
-<button
-  id="theme-toggle"
-  type="button"
-  aria-label="Тема оформления: системная"
-  data-state="system"
->
-  <span aria-hidden="true" data-icon>◐</span>
+<button id="theme-toggle" type="button" aria-label="Тема оформления">
+  {/* Значок рисует CSS, а не скрипт, и оба варианта лежат в разметке.
+      Причина: до правки в разметке стоял третий значок «системная», и человек,
+      у которого система тёмная, первым кадром видел не тот знак — а потом
+      скрипт его подменял. Теперь ветка выбирается ровно теми же условиями, что
+      и сама палитра в `tokens.css`, то есть до первого кадра и без скрипта. */}
+  <span class="icon light" aria-hidden="true">☀</span>
+  <span class="icon dark" aria-hidden="true">☾</span>
 </button>
 
 <script>
   import { THEME_COLOR } from '../lib/theme';
 
-  const ORDER = ['system', 'light', 'dark'] as const;
-  const ICON = { system: '◐', light: '☀', dark: '☾' } as const;
-  const NAME = { system: 'системная', light: 'светлая', dark: 'тёмная' } as const;
-  type State = (typeof ORDER)[number];
+  const NAME = { light: 'светлая', dark: 'тёмная' } as const;
+  type State = keyof typeof NAME;
 
   const btn = document.getElementById('theme-toggle');
   if (btn) {
-    const icon = btn.querySelector('[data-icon]')!;
     const themeColors =
       document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
 
-    /* Полоса браузера над страницей. В разметке лежат две записи с `media` по
-       системной схеме — это ответ тому, кто ничего не выбирал. Выбор человека
-       системную схему перекрывает, значит обе записи обязаны нести один и тот
-       же цвет; возврат к системной теме возвращает каждой записи её
-       собственный. Иначе выбравший тёмную тему на светлой системе видел бы
-       тёмную страницу в светлой рамке браузера. */
-    const paint = (state: State) => {
-      themeColors.forEach((meta) => {
-        const own = (meta.getAttribute('media') ?? '').includes('dark')
-          ? THEME_COLOR.dark
-          : THEME_COLOR.light;
-        meta.setAttribute('content', state === 'system' ? own : THEME_COLOR[state]);
-      });
-    };
-
-    const read = (): State => {
+    /** Что человек выбрал сам. `null` — не выбирал ничего. */
+    const stored = (): State | null => {
       try {
         const v = localStorage.getItem('theme');
-        return v === 'light' || v === 'dark' ? v : 'system';
+        return v === 'light' || v === 'dark' ? v : null;
       } catch {
-        return 'system';
+        return null;
       }
     };
 
-    const apply = (state: State) => {
-      if (state === 'system') {
-        delete document.documentElement.dataset.theme;
-      } else {
-        document.documentElement.dataset.theme = state;
-      }
-      paint(state);
-      // Видимое состояние обновляется всегда, даже если хранилище недоступно.
-      btn.dataset.state = state;
+    /** Тема, которая сейчас НА ЭКРАНЕ. Читается оттуда же, откуда её берут
+     *  стили: `data-theme` на документе, иначе схема системы. Спрашивать
+     *  хранилище здесь нельзя — при заблокированном хранилище оно всегда
+     *  отвечает «выбора нет», и кнопка ходила бы по кругу из одного шага. */
+    const effective = (): State => {
+      const applied = document.documentElement.dataset.theme;
+      if (applied === 'light' || applied === 'dark') return applied;
+      return media.matches ? 'dark' : 'light';
+    };
+
+    /* Подпись — единственное, что скрипт обязан обновлять всегда: значок
+       рисуется стилями, а читалка стилей не видит. */
+    const label = (state: State) => {
       btn.setAttribute('aria-label', `Тема оформления: ${NAME[state]}`);
-      icon.textContent = ICON[state];
-
-      try {
-        if (state === 'system') localStorage.removeItem('theme');
-        else localStorage.setItem('theme', state);
-      } catch {
-        // Приватный режим или заблокированное хранилище: тема работает
-        // до перезагрузки, выбор просто не запоминается.
-      }
     };
 
-    // Текущее состояние держим в памяти, а не перечитываем из хранилища на
-    // каждый клик: при заблокированном хранилище read() всегда вернул бы
-    // 'system', и кнопка ходила бы по кругу 'system' → 'light' → 'system'.
-    let current: State = read();
-    apply(current);
+    /* Полоса браузера над страницей. В разметке лежат две записи с `media` по
+       системной схеме — это ответ тому, кто ничего не выбирал, и трогать их до
+       первого нажатия нельзя: иначе смена схемы в системе перестала бы
+       доезжать до полосы. Выбор человека системную схему перекрывает, значит
+       обе записи обязаны нести один и тот же цвет. */
+    const paint = (state: State) => {
+      themeColors.forEach((meta) => meta.setAttribute('content', THEME_COLOR[state]));
+    };
+
+    /* Состояний ровно два: светлая и тёмная. Третьего, «системного», у кнопки
+       нет — владелец снял его осознанно. Системная настройка при этом никуда
+       не делась: она остаётся НАЧАЛЬНЫМ значением для того, кто ничего не
+       выбирал. Пока выбора нет, `data-theme` на документе не появляется вовсе,
+       и страница продолжает следовать за системой вживую — в том числе если
+       систему переключат при открытой вкладке. */
+    const choice = stored();
+    if (choice === null) {
+      label(effective());
+      // Систему могут переключить при открытой вкладке: палитра поедет за ней
+      // сама, а подпись кнопки — только отсюда.
+      media.addEventListener('change', () => {
+        if (stored() === null) label(effective());
+      });
+    } else {
+      // `data-theme` к этому моменту уже стоит: его ставит инлайновый скрипт в
+      // <head>, до первого кадра. Присваивание здесь — не подстраховка «на
+      // всякий случай», а единственная строка, которая не даст теме пропасть,
+      // если разметку когда-нибудь поменяют, а этот модуль забудут.
+      document.documentElement.dataset.theme = choice;
+      paint(choice);
+      label(choice);
+    }
 
     btn.addEventListener('click', () => {
-      current = ORDER[(ORDER.indexOf(current) + 1) % ORDER.length];
-      apply(current);
+      const next: State = effective() === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      paint(next);
+      // Видимое состояние обновляется всегда, даже если хранилище недоступно.
+      label(next);
+      try {
+        localStorage.setItem('theme', next);
+      } catch {
+        // Приватный режим или заблокированное хранилище: тема работает
+        // до перезагрузки, выбор просто не запоминается. Следующее нажатие
+        // всё равно попадёт куда надо: `effective()` смотрит на `data-theme`
+        // через ту же ветку, что и стили.
+      }
     });
   }
 </script>
@@ -101,4 +119,15 @@
     color: var(--text);
     border-color: var(--text-faint);
   }
+
+  /* Ветки те же, что у палитры в `tokens.css`, и в том же порядке: светлая по
+     умолчанию, тёмная по системе (пока человек не выбрал светлую), тёмная по
+     выбору. Знак всегда показывает тему, которая сейчас на экране. */
+  .icon.dark { display: none; }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .icon.light { display: none; }
+    :global(:root:not([data-theme='light'])) .icon.dark { display: inline; }
+  }
+  :global(:root[data-theme='dark']) .icon.light { display: none; }
+  :global(:root[data-theme='dark']) .icon.dark { display: inline; }
 </style>
