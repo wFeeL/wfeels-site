@@ -1,10 +1,20 @@
 ---
 import Container from './Container.astro';
+import Button from './Button.astro';
 import { dict } from '../i18n/locales';
+import { TELEGRAM_URL } from '../lib/contacts';
+import { samePath, sections } from '../lib/nav';
+
 interface Props { lang: 'ru' | 'en' }
 const { lang } = Astro.props;
 const t = dict(lang);
 const year = 2026;
+
+/* Разделы приходят ровно оттуда же, откуда их берёт шапка. Своего списка у
+   подвала нет: два ручных перечня одних и тех же путей расходятся молча, и в
+   этом репозитории так уже случалось. */
+const SECTIONS = sections(lang);
+const here = Astro.url.pathname;
 
 /* Документы русские на обеих версиях сайта, а их заголовки — на языке
    страницы. `hreflang` объявляет язык цели там, где он отличается от языка
@@ -15,45 +25,192 @@ const LEGAL = [
   { href: '/terms', text: t.legalTerms },
   { href: '/consent', text: t.legalConsent },
 ];
+
+/* Три обязательства, снимающие главный страх аудитории: «пропадёт и не
+   ответит». Сами формулировки — в словаре, вместе с объяснением, почему они
+   такие. */
+const FACTS = [t.footerReply, t.footerCity, t.footerHours];
 ---
 <footer>
   <Container>
-    <p class="ai">
-      {lang === 'ru'
-        ? 'Код и часть дизайна пишу вместе с ИИ. Архитектуру, безопасность, дизайн-решения и палитру определяю сам и проверяю всё, что получается.'
-        : 'I write code and part of the design together with AI. Architecture, security, design decisions and the palette are mine, and I review everything that comes out.'}
-    </p>
-    <nav aria-label={t.legal}>
-      {LEGAL.map((l) => (
-        <a href={l.href} hreflang={foreign ? 'ru' : undefined}>{l.text}</a>
-      ))}
-    </nav>
-    <p class="year">© {year} wfeels</p>
+    <div class="groups">
+      <div class="brand-group">
+        <p class="wordmark">wfeels</p>
+        <p class="tagline">{t.footerTagline}</p>
+
+        {/* Прямой выход — кнопка, а не строчная ссылка: решение владельца, и
+            оно же единственное действие подвала. Второй кнопки здесь нет, так
+            что спорить ей не с чем.
+
+            Новую вкладку кнопка НЕ открывает, и это разобрано, а не забыто.
+            `https://t.me/…` — универсальная ссылка: на телефоне её перехватывает
+            приложение Telegram, и страница в браузере вообще никуда не уходит;
+            с `target="_blank"` рядом оставалась бы пустая вкладка. На десктопе
+            уход честный, а возврат — одна кнопка «назад», с сохранением места
+            прокрутки. Навязанное новое окно к тому же нарушает WCAG 3.2.5 и
+            ломает жест «назад» на телефоне.
+
+            `rel="me"` — заявление, что профиль по ссылке принадлежит тому же
+            человеку, чей это сайт (registered link type «me»); на этом держится
+            проверка личности во внешних сервисах. `noopener`/`noreferrer` не
+            ставятся намеренно: без `target="_blank"` окна-открывателя не
+            возникает, защищать нечего, а `noreferrer` только спрятал бы от нас
+            же источник перехода. */}
+        <p class="cta">
+          <Button href={TELEGRAM_URL} variant="primary" rel="me">
+            {t.footerTelegram}
+          </Button>
+        </p>
+
+        <ul class="facts">
+          {FACTS.map((fact) => <li>{fact}</li>)}
+        </ul>
+      </div>
+
+      {SECTIONS.length > 0 && (
+        <nav class="group" aria-labelledby="footer-sections">
+          <h2 class="group-title" id="footer-sections">{t.footerSections}</h2>
+          <ul class="links">
+            {SECTIONS.map((i) => (
+              <li>
+                <a
+                  href={i.href}
+                  aria-current={samePath(i.href, here) ? 'page' : undefined}
+                >{i.text}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+
+      <nav class="group" aria-labelledby="footer-legal">
+        <h2 class="group-title" id="footer-legal">{t.legal}</h2>
+        <ul class="links">
+          {LEGAL.map((l) => (
+            <li>
+              <a href={l.href} hreflang={foreign ? 'ru' : undefined}>{l.text}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
+
+    <div class="bottom">
+      <p class="ai">{t.footerAi}</p>
+      <p class="year">© {year} wfeels</p>
+    </div>
   </Container>
 </footer>
 
 <style>
   footer {
     border-top: 1px solid var(--border);
-    padding-block: 48px;
+    padding-block: 48px 32px;
     color: var(--text-muted);
     font-size: 0.875rem;
   }
-  .ai { max-width: 62ch; margin: 0 0 24px; }
-  nav { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 16px; }
+
+  /* Столбик на телефоне; с 480 px две колонки, и бренд занимает свою строку
+     целиком — иначе кнопка и три обязательства ужимаются вдвое ради двух
+     коротких списков. С 900 px (та же точка, на которой разворачивается
+     навигация шапки) три группы встают в ряд, и брендовой отдана бо́льшая
+     доля: в ней кнопка и самая длинная строка. */
+  .groups { display: grid; gap: 32px; }
+  @media (min-width: 480px) {
+    .groups { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 40px; }
+    .brand-group { grid-column: 1 / -1; }
+  }
+  @media (min-width: 900px) {
+    .groups {
+      grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr));
+      gap: 48px;
+    }
+    .brand-group { grid-column: auto; }
+  }
+
+  .wordmark {
+    margin: 0;
+    font: 800 1.0625rem/1 var(--font-head);
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  /* Мера строки: без неё описание тянется во всю ширину колонки на десктопе. */
+  .tagline { margin: 8px 0 0; max-width: 34ch; }
+  .cta { margin: 24px 0 0; }
+
+  /* Обязательства набраны основным цветом, а не приглушённым: это не подпись к
+     кнопке, а то, ради чего человек её нажмёт. Чертёжная засечка слева заменяет
+     маркер списка — иконок в подвале нет по решению владельца, а голый столбик
+     строк читался бы как продолжение описания. */
+  .facts { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 8px; }
+  .facts li { position: relative; padding-left: 20px; color: var(--text); }
+  /* Засечка 2 px, а не 1: строки списка стоят с шагом 31,1 px, поэтому линия в
+     один пиксель попадает между пикселями экрана и размывается — на снимке
+     первые две засечки синие, а третья выходила серой. Два пикселя ложатся
+     ровно при любом сдвиге. */
+  .facts li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.75em;
+    width: 10px;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  /* Заголовок группы — моно-метка «Чертежа», но основным цветом, а не акцентом:
+     акцент в подвале уже занят ссылками, и одинаковый цвет у заголовка и у
+     пунктов под ним стирает между ними границу. Различают их ещё и капслок с
+     трекингом, и отсутствие подчёркивания. */
+  .group-title {
+    margin: 0 0 4px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .links { list-style: none; margin: 0; padding: 0; }
 
   /* Preflight снимает с ссылок цвет и подчёркивание, и ссылки подвала выходили
      неотличимы от текста рядом: тот же приглушённый цвет, тот же вес, без
-     подчёркивания. Ровно это уже чинили в форме — правка сюда не доехала.
-     Оформление то же самое, что у ссылок формы и страницы «спасибо»: акцент и
-     подчёркивание. Высота — цель нажатия пальцем. */
-  nav a {
+     подчёркивания. Оформление то же самое, что у ссылок формы и страницы
+     «спасибо»: акцент и подчёркивание. Высота 44 px — цель нажатия пальцем,
+     `inline-flex` ставит строку по центру этой цели, а не по её верху. */
+  .links a {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
+    /* Поля, а не только `min-height`. Пока высота набиралась одним минимумом,
+       ссылка в одну строку получала 21 px воздуха, а ссылка в две — ноль:
+       на ширинах 900…1030 px «Политика конфиденциальности» переносится, и три
+       юридические ссылки слипались в шесть подчёркнутых строк подряд, между
+       которыми не было видно границы. Поля дают перенесённому пункту тот же
+       воздух, что и обычному, и держат его при любой длине заголовка. */
+    padding-block: 10px;
     color: var(--accent);
     text-decoration: underline;
     text-underline-offset: 2px;
   }
+  /* Отметка текущей страницы обязана быть видна глазу, а не только читалке.
+     Подчёркнуты в подвале все ссылки, цвет у них общий — значит различитель
+     остаётся один, насыщенность. */
+  .links a[aria-current='page'] { font-weight: 600; }
+
+  /* Нижняя строка отбита чертой: строка про ИИ и копирайт относятся ко всему
+     подвалу, а не к третьей группе, под которой они стоят на телефоне. */
+  .bottom {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 12px;
+  }
+  @media (min-width: 900px) {
+    .bottom { grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: end; }
+  }
+  .ai { margin: 0; max-width: 62ch; }
   .year { margin: 0; font-family: var(--font-mono); font-size: 0.75rem; }
 </style>

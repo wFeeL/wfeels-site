@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { HEADER_CTA_HREF, normalizePath, samePath, showHeaderCta } from './nav';
+import {
+  HEADER_CTA_HREF, normalizePath, samePath, sections, showHeaderCta,
+} from './nav';
+import { hasTranslation, LOCALES } from '../i18n/locales';
 
 describe('normalizePath', () => {
   it('снимает хвостовой слэш', () => expect(normalizePath('/contact/')).toBe('/contact'));
@@ -24,6 +27,43 @@ describe('samePath', () => {
   it('ссылка на секцию не отмечается никогда', () => {
     expect(samePath('/en/#services', '/en')).toBe(false);
     expect(samePath('/en/#services', '/en/')).toBe(false);
+  });
+});
+
+/* Разделы читают двое — шапка и подвал. Совпадение того, что они показывают,
+   проверяет e2e (`tests/e2e/footer.spec.ts`): здесь проверяются свойства самого
+   списка, которые ни один из двух потребителей проверить не может. */
+describe('sections', () => {
+  it('пути абсолютные и без якоря', () => {
+    for (const lang of LOCALES) {
+      for (const item of sections(lang)) {
+        expect(item.href.startsWith('/'), `${item.href} — не абсолютный путь`)
+          .toBe(true);
+        // Отметку текущей страницы и шапка, и подвал ставят по пути, а ссылку с
+        // якорем `samePath` не отмечает никогда: пункт-якорь тихо потерял бы
+        // отметку в обоих местах разом.
+        expect(item.href.includes('#'), `${item.href} — якорь, а не страница`)
+          .toBe(false);
+      }
+    }
+  });
+
+  it('один и тот же раздел не встречается дважды', () => {
+    for (const lang of LOCALES) {
+      const paths = sections(lang).map((i) => normalizePath(i.href));
+      expect(new Set(paths).size, `повтор в разделах ${lang}`).toBe(paths.length);
+    }
+  });
+
+  // Правило, которое переживёт эту задачу: английский раздел появляется в
+  // навигации только вместе со своей английской страницей. Сегодня список пуст
+  // и тест проходит впустую — красным он станет в тот день, когда пункт добавят
+  // раньше страницы, то есть ровно тогда, когда он нужен.
+  it('английский раздел обязан иметь английскую страницу', () => {
+    for (const item of sections('en')) {
+      expect(hasTranslation(item.href), `${item.href} — английской страницы нет`)
+        .toBe(true);
+    }
   });
 });
 

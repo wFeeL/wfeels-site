@@ -5,7 +5,7 @@ import Button from './Button.astro';
 import NavLinks from './NavLinks.astro';
 import ReadingProgress from './ReadingProgress.astro';
 import { dict, hasTranslation } from '../i18n/locales';
-import { HEADER_CTA_HREF, showHeaderCta } from '../lib/nav';
+import { HEADER_CTA_HREF, sections, showHeaderCta } from '../lib/nav';
 
 interface Props { lang: 'ru' | 'en'; progress?: boolean }
 const { lang, progress = true } = Astro.props;
@@ -21,23 +21,10 @@ const cta = showHeaderCta(Astro.url.pathname);
    `/contact` появится в `BILINGUAL_PATHS`, пометка исчезнет. */
 const ctaForeign = lang === 'en' && !hasTranslation(HEADER_CTA_HREF);
 
-const NAV: { href: string; text: string }[] = {
-  ru: [
-    { href: '/services', text: 'Услуги' },
-    { href: '/cases', text: 'Кейсы' },
-    { href: '/pricing', text: 'Цены' },
-    { href: '/contact', text: 'Контакты' },
-    { href: '/about', text: 'Обо мне' },
-  ],
-  /* Английских разделов не существует: их приносит спека 02 вместе с
-     английским ядром. До правки здесь стояли пять пунктов на `/en/#services` и
-     подобные — на странице таких мест нет, и нажатие не делало ничего: ни
-     перехода, ни прокрутки, ни честной 404. Пункт, который ничего не делает,
-     обманывает сильнее отсутствующего: посетитель считает раздел
-     существующим и решает, что сломан сайт. Навигация вернётся сюда вместе с
-     разделами, на которые ей вести. */
-  en: [],
-}[lang];
+/* Перечень разделов приходит из `lib/nav.ts` — оттуда же его берёт подвал.
+   Своего списка у шапки нет намеренно: второй ручной перечень тех же путей
+   расходится с первым молча. */
+const NAV = sections(lang);
 ---
 <header>
   <Container>

@@ -4,8 +4,7 @@ import Container from '../components/Container.astro';
 import Section from '../components/Section.astro';
 import LangSwitch from '../components/LangSwitch.astro';
 import Button from '../components/Button.astro';
-
-const TELEGRAM = 'https://t.me/wfeels';
+import { TELEGRAM_URL } from '../lib/contacts';
 ---
 <Base title="Заявка отправлена — wfeels" description="Заявка получена." noindex={true}>
   <LangSwitch slot="lang" />
@@ -17,7 +16,7 @@ const TELEGRAM = 'https://t.me/wfeels';
            тому, у кого получилась. Адрес тот же, что в сообщении об ошибке. -->
       <!-- Ссылка стоит на той же строке намеренно: перенос строки перед тегом
            компилятор Astro съедает вместе с пробелом, и выходит «напрямую:Telegram». -->
-      <p class="fallback">Если за сутки ответа не будет — напишите напрямую: <a href={TELEGRAM}>Telegram</a></p>
+      <p class="fallback">Если за сутки ответа не будет — напишите напрямую: <a href={TELEGRAM_URL}>Telegram</a></p>
       <Button href="/" variant="secondary">На главную</Button>
     </Section>
   </Container>

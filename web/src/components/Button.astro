@@ -6,12 +6,15 @@ interface Props {
   title?: string;
   /** Язык страницы, куда ведёт ссылка, если он не совпадает с языком кнопки. */
   hreflang?: string;
+  /** Отношение к цели для внешних адресов (`me` — профиль того же человека). */
+  rel?: string;
   /** Не кнопка, а её место: тот же ящик, но невидимый и неинтерактивный.
    *  Нужен там, где кнопку намеренно сняли, а раскладка обязана устоять. */
   placeholder?: boolean;
 }
 const {
-  href, variant = 'primary', type = 'button', title, hreflang, placeholder = false,
+  href, variant = 'primary', type = 'button', title, hreflang, rel,
+  placeholder = false,
 } = Astro.props;
 
 /* Заполнитель — <span>: не ссылка и не кнопка, поэтому в фокус не попадает
@@ -25,6 +28,7 @@ const Tag = placeholder ? 'span' : href ? 'a' : 'button';
   type={placeholder || href ? undefined : type}
   title={placeholder ? undefined : title}
   hreflang={placeholder ? undefined : hreflang}
+  rel={placeholder ? undefined : rel}
   aria-hidden={placeholder ? 'true' : undefined}
 >
   <slot />
