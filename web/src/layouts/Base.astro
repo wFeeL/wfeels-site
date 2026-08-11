@@ -5,6 +5,7 @@ import '@fontsource-variable/jetbrains-mono';
 import '../styles/base.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import Rail from '../components/Rail.astro';
 import { dict } from '../i18n/locales';
 import { buildMeta } from '../lib/seo';
 import { pageSchema, serializeSchema, type SchemaKind } from '../lib/schema';
@@ -16,11 +17,18 @@ interface Props {
   lang?: 'ru' | 'en';
   noindex?: boolean;
   progress?: boolean;
+  /** Страница несёт рельс-скроллспай (`Rail.astro`) — сегодня только главная
+   *  (план `02-home-plan.md`, задача 4). Рельс рисуется здесь, а не в
+   *  `Header`, и не внутри `<main>`: клавиатурный фокус обязан идти
+   *  skip-link → шапка → содержимое → подвал → рельс, а не перехватываться
+   *  фиксированным элементом раньше содержимого страницы. */
+  rail?: boolean;
   /** Структурированная разметка страницы, если она у страницы есть. */
   schema?: SchemaKind;
 }
 const {
-  title, description, lang = 'ru', noindex = false, progress = true, schema,
+  title, description, lang = 'ru', noindex = false, progress = true,
+  rail = false, schema,
 } = Astro.props;
 const t = dict(lang);
 
@@ -97,13 +105,14 @@ const structured = schema
     <a class="skip" href="#main">
       {t.skip}
     </a>
-    <Header lang={lang} progress={progress}>
+    <Header lang={lang} progress={progress} rail={rail}>
       <slot name="lang" slot="lang" />
     </Header>
     <main id="main" tabindex="-1">
       <slot />
     </main>
     <Footer lang={lang} />
+    {rail && <Rail />}
 
     <style>
       .skip {

@@ -5,21 +5,37 @@ import Button from './Button.astro';
 import NavLinks from './NavLinks.astro';
 import ReadingProgress from './ReadingProgress.astro';
 import { dict, hasTranslation } from '../i18n/locales';
-import { HEADER_CTA_HREF, sections, showHeaderCta } from '../lib/nav';
+import { headerCtaHref, sections, showHeaderCta } from '../lib/nav';
+import { TELEGRAM_URL } from '../lib/contacts';
 
-interface Props { lang: 'ru' | 'en'; progress?: boolean }
-const { lang, progress = true } = Astro.props;
+interface Props {
+  lang: 'ru' | 'en';
+  progress?: boolean;
+  /** Страница несёт рельс (`Rail.astro`, рисует его `Base.astro` вне шапки).
+   *  При `true` полоса прогресса становится напарником рельса, а не заменой:
+   *  видна только ниже 1100 px, где рельса ещё нет (план, задача 4, «рельс
+   *  или полоса, а не ничего»). Сегодня это только главная. */
+  rail?: boolean;
+}
+const { lang, progress = true, rail = false } = Astro.props;
 const t = dict(lang);
 
 /* Кнопка не рисуется там, где вела бы в никуда: правило и список страниц
    живут в `lib/nav.ts`, страницы про кнопку ничего не знают. */
 const cta = showHeaderCta(Astro.url.pathname);
 
+/* Адрес кнопки зависит от страницы: на главной — якорь этой же страницы, а не
+   `/contact`. Правило и оба адреса живут в `lib/nav.ts`, рядом с
+   `showHeaderCta` — сюда попадает уже готовое значение. */
+const ctaHref = headerCtaHref(Astro.url.pathname);
+
 /* Кнопка ведёт на русскую страницу контактов: английской ещё нет. Молча
    уводить англоязычного посетителя на русскую форму нельзя, поэтому ссылка
    помечена языком цели и поясняющей подписью. Условие само истечёт: как только
-   `/contact` появится в `BILINGUAL_PATHS`, пометка исчезнет. */
-const ctaForeign = lang === 'en' && !hasTranslation(HEADER_CTA_HREF);
+   `/contact` появится в `BILINGUAL_PATHS`, пометка исчезнет.
+   Якорь (`#contact`) в эту проверку не попадает: это переход внутри той же
+   страницы, а не уход на другой язык. */
+const ctaForeign = lang === 'en' && !ctaHref.startsWith('#') && !hasTranslation(ctaHref);
 
 /* Перечень разделов приходит из `lib/nav.ts` — оттуда же его берёт подвал.
    Своего списка у шапки нет намеренно: второй ручной перечень тех же путей
@@ -40,14 +56,31 @@ const NAV = sections(lang);
       <div class="tools">
         <slot name="lang" />
         <ThemeToggle />
+        {/* Прямой канал рядом с переключателями, доступен с любой страницы и
+            никуда не уводит безвозвратно: посетитель посадочной страницы,
+            которого пункт меню увёл на главную (см. `lib/nav.ts`), получает
+            здесь запасной путь, не открывающий вкладку. Адрес один на весь
+            сайт — `lib/contacts.ts`, второго места с ним не заводим.
+            `rel="me"` заявляет, что профиль принадлежит тому же человеку, чей
+            это сайт; `target="_blank"` не ставится по той же причине, что и в
+            подвале (`Footer.astro`): на телефоне ссылку перехватывает
+            приложение, а на десктопе возврат — одна кнопка «назад». */}
+        <a class="telegram" href={TELEGRAM_URL} rel="me" aria-label={t.footerTelegram}>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+        </a>
         {/* Место кнопки занято всегда, даже когда самой кнопки нет. Шапка
-            липкая: без резерва переключатели темы и языка проезжали 123 px —
-            треть узкого экрана — при каждом переходе на `/contact` и
+            липкая: без резерва переключатели темы, языка и Telegram проезжали
+            через треть узкого экрана при каждом переходе на `/contact` и
             `/thanks`. Заполнитель рисуется тем же компонентом и тем же
             текстом, поэтому ширина совпадает точно, а не подобрана числом. */}
         {cta ? (
           <Button
-            href={HEADER_CTA_HREF}
+            href={ctaHref}
             variant="primary"
             hreflang={ctaForeign ? 'ru' : undefined}
             title={ctaForeign ? t.ctaLangNote : undefined}
@@ -69,7 +102,7 @@ const NAV = sections(lang);
       </details>
     )}
   </Container>
-  {progress && <ReadingProgress />}
+  {progress && <ReadingProgress mobileOnly={rail} />}
 </header>
 
 <style>
@@ -80,7 +113,7 @@ const NAV = sections(lang);
     background: var(--surface);
     border-bottom: 1px solid var(--border);
   }
-  .bar { display: flex; align-items: center; gap: 24px; height: 64px; }
+  .bar { display: flex; align-items: center; gap: 16px 24px; min-height: 64px; }
 
   /* Коробка знака бренда — 44 px (общее правило целей нажатия в base.css), а
      строка в ней 17 px. Без центрирования строка вставала по верху коробки, и
@@ -101,6 +134,36 @@ const NAV = sections(lang);
   nav { display: flex; gap: 20px; }
 
   .tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+  /* Ниже 480 px четыре органа управления (язык, тема, Telegram, кнопка с
+     текстом «Обсудить задачу») не помещаются в одну строку без сжатия целей
+     нажатия ниже 44 px — а сжимать их нельзя (WCAG 2.5.8). Перенос вместо
+     сжатия: `.bar` и `.tools` сами решают, когда содержимого больше, чем
+     ширины, и переносят лишнее на вторую строку, не трогая размер целей.
+     Высота шапки при этом растёт вместе с переносом (`min-height`, а не
+     `height`) — на остальных страницах ровно то же самое содержимое, поэтому
+     высота шапки на любой конкретной ширине по-прежнему одинакова везде. */
+  @media (max-width: 479px) {
+    .bar { flex-wrap: wrap; padding-block: 10px; }
+    .tools { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+  }
+
+  /* Тот же ящик, что у переключателя темы: 44×44 px, круглая рамка того же
+     цвета. Одинаковый вид у соседних органов управления читается как один
+     ряд инструментов, а не как три случайных элемента подряд. */
+  .telegram {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--text-muted);
+    transition: color var(--dur-micro) var(--ease),
+                border-color var(--dur-micro) var(--ease);
+  }
+  .telegram:hover { color: var(--text); border-color: var(--text-faint); }
 
   .nav-narrow { display: none; }
   /* `display: flex` вместо строчного потока — по той же причине, что у знака

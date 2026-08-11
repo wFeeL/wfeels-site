@@ -1,6 +1,6 @@
 export default {
   skip: 'Skip to content',
-  write: 'Get in touch',
+  write: 'Discuss a project',
   ctaLangNote: 'The contact page is in Russian',
   menu: 'Menu',
   langSwitch: 'Переключить на русский',

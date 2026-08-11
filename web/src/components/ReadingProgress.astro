@@ -1,4 +1,15 @@
-<div id="reading-progress" aria-hidden="true"><i></i></div>
+---
+interface Props {
+  /** На главной ≥1100 px эту работу забирает рельс (`Rail.astro`) — план,
+   *  задача 4, «рельс или полоса, а не ничего». Полоса в этом режиме рисуется
+   *  только ниже 1100 px; на любой другой странице (`mobileOnly` не передан)
+   *  она видна при любой ширине, как и раньше. Точка перелома — общий список
+   *  в `tokens.css`. */
+  mobileOnly?: boolean;
+}
+const { mobileOnly = false } = Astro.props;
+---
+<div id="reading-progress" class:list={{ 'mobile-only': mobileOnly }} aria-hidden="true"><i></i></div>
 
 <style>
   /* Полоса ЛЕЖИТ на кромке шапки, а не стоит под ней последним потомком. Пока
@@ -15,6 +26,9 @@
     bottom: -1px;
     height: 2px;
     background: transparent;
+  }
+  @media (min-width: 1100px) {
+    #reading-progress.mobile-only { display: none; }
   }
   #reading-progress > i {
     display: block;

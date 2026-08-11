@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  HEADER_CTA_HREF, normalizePath, samePath, sections, showHeaderCta,
+  HEADER_CTA_HREF, headerCtaHref, normalizePath, samePath, sections, showHeaderCta,
 } from './nav';
 import { hasTranslation, LOCALES } from '../i18n/locales';
+import { hasHomeSection } from './sections';
 
 describe('normalizePath', () => {
   it('снимает хвостовой слэш', () => expect(normalizePath('/contact/')).toBe('/contact'));
@@ -21,38 +22,59 @@ describe('samePath', () => {
   it('другая страница не отмечается', () =>
     expect(samePath('/services', '/contact')).toBe(false));
 
-  // Ссылка на секцию той же страницы — не «текущая страница»: иначе на /en все
-  // пять пунктов навигации разом получили бы aria-current, и отметка перестала
-  // бы что-либо значить.
+  // Ссылка на секцию той же страницы — не «текущая страница»: иначе на любой
+  // странице все четыре пункта навигации разом получили бы aria-current, и
+  // отметка перестала бы что-либо значить. С этой задачи так устроены ВСЕ
+  // пункты шапки — не только английские — и текущий раздел показывает только
+  // рельс (задача 4). НЕ «чинить» это: подробное обоснование — рядом с самой
+  // функцией в `nav.ts`.
   it('ссылка на секцию не отмечается никогда', () => {
     expect(samePath('/en/#services', '/en')).toBe(false);
     expect(samePath('/en/#services', '/en/')).toBe(false);
+    expect(samePath('/#services', '/')).toBe(false);
+    expect(samePath('#contact', '/')).toBe(false);
   });
 });
 
 /* Разделы читают двое — шапка и подвал. Совпадение того, что они показывают,
    проверяет e2e (`tests/e2e/footer.spec.ts`): здесь проверяются свойства самого
-   списка, которые ни один из двух потребителей проверить не может. */
+   списка, которые ни один из двух потребителей проверить не может.
+
+   С этой задачи пункты — якоря секций главной (`/#services` и подобные), а не
+   адреса отдельных страниц: `/pricing`, `/about` и подобные не существуют.
+   Раньше тест утверждал обратное — «пути абсолютные и БЕЗ якоря» — это было
+   верно для старого устройства шапки и перестало быть требованием, которое
+   стоит защищать: у решения «пункты — якоря» (спека 02, раздел 3) ровно
+   противоположная форма. Новый инвариант — якорь ведёт на главную и указывает
+   на секцию, которая там реально есть; проверяется через `lib/sections.ts`,
+   единственный источник этого списка, а не второй ручной перечень тех же
+   строк, который однажды расходится с первым. */
 describe('sections', () => {
-  it('пути абсолютные и без якоря', () => {
+  it('каждый пункт — путь к главной с якорем на реальную секцию', () => {
     for (const lang of LOCALES) {
       for (const item of sections(lang)) {
-        expect(item.href.startsWith('/'), `${item.href} — не абсолютный путь`)
+        const m = item.href.match(/^\/#([a-z-]+)$/);
+        expect(m, `${item.href} — не путь вида /#якорь`).not.toBeNull();
+        const id = m![1];
+        expect(hasHomeSection(id), `${item.href} — такой секции нет в lib/sections.ts`)
           .toBe(true);
-        // Отметку текущей страницы и шапка, и подвал ставят по пути, а ссылку с
-        // якорем `samePath` не отмечает никогда: пункт-якорь тихо потерял бы
-        // отметку в обоих местах разом.
-        expect(item.href.includes('#'), `${item.href} — якорь, а не страница`)
-          .toBe(false);
       }
     }
   });
 
   it('один и тот же раздел не встречается дважды', () => {
     for (const lang of LOCALES) {
-      const paths = sections(lang).map((i) => normalizePath(i.href));
-      expect(new Set(paths).size, `повтор в разделах ${lang}`).toBe(paths.length);
+      const hrefs = sections(lang).map((i) => i.href);
+      expect(new Set(hrefs).size, `повтор в разделах ${lang}`).toBe(hrefs.length);
     }
+  });
+
+  it('в русской навигации ровно четыре пункта, «Контакты» среди них нет', () => {
+    const ru = sections('ru');
+    expect(ru.length).toBe(4);
+    expect(ru.some((i) => i.text === 'Контакты'), 'пункт «Контакты» вернулся')
+      .toBe(false);
+    expect(ru.map((i) => i.text)).toEqual(['Услуги', 'Кейсы', 'Цены', 'Обо мне']);
   });
 
   // Правило, которое переживёт эту задачу: английский раздел появляется в
@@ -83,5 +105,25 @@ describe('showHeaderCta', () => {
   it('английская версия тех же страниц считается так же', () => {
     expect(showHeaderCta('/en/contact')).toBe(false);
     expect(showHeaderCta('/en')).toBe(true);
+  });
+});
+
+describe('headerCtaHref', () => {
+  it('на главной — якорь этой же страницы, без перехода', () => {
+    expect(headerCtaHref('/')).toBe('#contact');
+    expect(headerCtaHref('/')).not.toBe(HEADER_CTA_HREF);
+  });
+  it('хвостовой слэш главной не мешает', () => {
+    expect(headerCtaHref('')).toBe('#contact');
+  });
+  it('на любой другой странице — адрес страницы контактов', () => {
+    expect(headerCtaHref('/privacy')).toBe(HEADER_CTA_HREF);
+    expect(headerCtaHref('/cases')).toBe(HEADER_CTA_HREF);
+  });
+  // На `/en` одиннадцати секций ещё нет (спека 02 кладёт их только на
+  // русскую версию) — якорь `#contact` вёл бы в пустоту. Кнопка на английской
+  // главной по-прежнему ведёт на страницу контактов, как до этой задачи.
+  it('на английской главной секций ещё нет — ведёт на страницу, не на якорь', () => {
+    expect(headerCtaHref('/en')).toBe(HEADER_CTA_HREF);
   });
 });

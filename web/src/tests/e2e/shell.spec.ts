@@ -17,16 +17,29 @@ test('skip-link — первый в фокусе, уводит к содержи
     expect(shadow).not.toBe('none');
   });
 
-test('на десктопе в шапке пять пунктов навигации', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/');
-  const links = page.locator('header nav.nav-wide a');
-  await expect(links).toHaveCount(5);
-  await expect(links.nth(0)).toHaveText('Услуги');
-  await expect(page.locator('header details.nav-narrow')).toBeHidden();
-});
+// Пунктов стало четыре, не пять: «Контакты» снят (кнопка «Обсудить задачу»
+// ведёт туда же — второй элемент с той же целью читался бы как случайность,
+// не как решение). Оставшиеся четыре — якоря секций главной, а не адреса
+// страниц (`lib/nav.ts`, `lib/sections.ts`).
+test('на десктопе в шапке четыре пункта навигации — якоря секций главной',
+  async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/');
+    const links = page.locator('header nav.nav-wide a');
+    await expect(links).toHaveCount(4);
+    await expect(links.nth(0)).toHaveText('Услуги');
+    await expect(links.nth(0)).toHaveAttribute('href', '/#services');
+    // Последний пункт — «Обо мне», не «Контакты»: пункта с этой целью в
+    // навигации больше нет вовсе.
+    await expect(links.nth(3)).toHaveText('Обо мне');
+    for (const link of await links.all()) {
+      const href = await link.getAttribute('href');
+      expect(href, `${href} — не якорь секции главной`).toMatch(/^\/#[a-z-]+$/);
+    }
+    await expect(page.locator('header details.nav-narrow')).toBeHidden();
+  });
 
-test('на узком экране те же пять пунктов достижимы через раскрывашку',
+test('на узком экране те же четыре пункта достижимы через раскрывашку',
   async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     await page.goto('/');
@@ -36,7 +49,7 @@ test('на узком экране те же пять пунктов дости�
     const menu = page.locator('header details.nav-narrow');
     await expect(menu).toBeVisible();
     const links = menu.locator('a');
-    await expect(links).toHaveCount(5);
+    await expect(links).toHaveCount(4);
     // toBeHidden() на локаторе с несколькими элементами падает по strict
     // mode (не оценивает видимость, а сразу требует ровно один элемент),
     // поэтому проверяем каждую ссылку отдельно.
@@ -45,10 +58,10 @@ test('на узком экране те же пять пунктов дости�
     }
 
     await menu.locator('summary').click();
-    await expect(links).toHaveCount(5);
+    await expect(links).toHaveCount(4);
     await expect(links.nth(0)).toBeVisible();
     await expect(links.nth(0)).toHaveText('Услуги');
-    await expect(links.nth(4)).toHaveText('Обо мне');
+    await expect(links.nth(3)).toHaveText('Обо мне');
   });
 
 test('раскрывашка открывается с клавиатуры', async ({ page }) => {
@@ -61,20 +74,21 @@ test('раскрывашка открывается с клавиатуры', as
   await expect(menu.locator('a').first()).toBeVisible();
 });
 
-test('текущая страница отмечена в навигации', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/contact');
-
-  const current = page.locator('header nav.nav-wide a[aria-current="page"]');
-  await expect(current).toHaveCount(1);
-  await expect(current).toHaveText('Контакты');
-
-  // На главной пункта «Главная» в навигации нет — отмечать нечего, и лишней
-  // отметки быть не должно.
-  await page.goto('/');
-  await expect(page.locator('header nav.nav-wide a[aria-current="page"]'))
-    .toHaveCount(0);
-});
+// Раньше единственный пункт-адрес («Контакты») получал `aria-current` на
+// `/contact`, и тест проверял именно это совпадение. Теперь ВСЕ пункты шапки —
+// якоря секций главной, а `samePath` намеренно не считает ссылку с якорем
+// совпадением ни при какой странице (`lib/nav.ts`, комментарий у `samePath`):
+// иначе на любой странице разом отмечались бы все четыре пункта. Текущий
+// раздел показывает рельс (задача 4), а не шапка — и это верно, а не пробел.
+test('в шапке нет отметки текущей страницы — эту работу теперь делает рельс',
+  async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    for (const path of ['/', '/contact', '/privacy']) {
+      await page.goto(path);
+      await expect(page.locator('header nav.nav-wide a[aria-current="page"]'))
+        .toHaveCount(0);
+    }
+  });
 
 /* Четыре теста ниже держат то, что до правки было написано в стилях шапки и
    не применялось ни разу: правила `nav a` жили в Header.astro, а сами ссылки
@@ -101,46 +115,48 @@ test('пункт навигации отвечает на курсор и при
     .not.toBe(idle);
 });
 
-test('под курсором у пункта появляется та же черта, что у текущей страницы',
+// До этой задачи тест сравнивал наведённый пункт с «текущей страницей»
+// (`aria-current="page"` на `/contact`). Теперь все пункты шапки — якоря
+// секций главной, `samePath` не отмечает ссылку с якорем никогда
+// (`lib/nav.ts`), и «текущего» пункта в шапке больше не бывает вовсе — эту
+// работу забирает рельс (задача 4). Сравнивать наведённое состояние стало не
+// с чем, и то, что раньше проверяла вторая половина теста (текущий пункт
+// отличим от наведённого), устарело вместе с самим механизмом.
+// Осталось и осталось важным: наведение действительно рисует акцентную черту,
+// а не только меняет цвет — это поведение никуда не делось и его нужно
+// беречь отдельно от вопроса «какая страница открыта».
+test('под курсором у пункта навигации появляется акцентная черта',
   async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto('/contact');
+    await page.goto('/');
 
     const style = (selector: string) =>
       page.locator(selector).first().evaluate((el) => {
         const s = getComputedStyle(el);
-        return {
-          color: s.color,
-          weight: s.fontWeight,
-          line: s.textDecorationLine,
-          decoColor: s.textDecorationColor,
-          thickness: s.textDecorationThickness,
-        };
+        return { line: s.textDecorationLine, decoColor: s.textDecorationColor };
       });
 
-    const current = await style('header nav.nav-wide a[aria-current="page"]');
-    const other = 'header nav.nav-wide a:not([aria-current])';
-    const idle = await style(other);
-
+    const link = 'header nav.nav-wide a';
+    const idle = await style(link);
     // До правки наведение меняло только цвет. Владелец просил ту же черту.
     expect(idle.line, 'в покое пункт подчёркнут — черта перестала что-то значить')
       .not.toContain('underline');
 
-    await page.locator(other).first().hover();
-    const hovered = await style(other);
+    await page.locator(link).first().hover();
+    const hovered = await style(link);
     expect(hovered.line, 'под курсором черты нет').toContain('underline');
-    expect(hovered.decoColor, 'черта под курсором не акцентная')
-      .toBe(current.decoColor);
-    expect(hovered.thickness, 'черта под курсором другой толщины')
-      .toBe(current.thickness);
-
-    // Черта теперь есть у обоих, поэтому отметка текущей страницы обязана
-    // держаться на чём-то ещё. Держится на двух: цвете и насыщенности.
-    expect(current.color, 'наведённый пункт не отличить от текущего по цвету')
-      .not.toBe(hovered.color);
-    expect(current.weight, 'наведённый пункт не отличить от текущего по насыщенности')
-      .not.toBe(hovered.weight);
+    // Акцентный цвет черты — тот же токен, что красит саму ссылку в фокусе,
+    // а не первый попавшийся: `oklch`/`rgb` значение читаем напрямую у DOM,
+    // а не переизобретаем константу в тесте.
+    const accent = await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+    expect(accent.length, 'токен --accent не задан на этой сборке').toBeGreaterThan(0);
   });
+// Прежний тест «текущий пункт отличается от остальных не только атрибутом»
+// сравнивал наведённый и «текущий» (`aria-current`) пункты — сравнивать
+// больше не с чем, отдельная проверка отсутствия `aria-current` уже есть
+// выше («в шапке нет отметки текущей страницы...»), повторять её здесь не
+// нужно.
 
 /** Середина видимого ТЕКСТА, а не коробки вокруг него. Разница здесь и есть
  *  предмет проверки: общее правило `min-height: 44px` растит коробку, а текст
@@ -216,23 +232,6 @@ test('в подвале текст ссылок тоже стоит по цен�
   ).toBeLessThanOrEqual(2);
 });
 
-test('текущий пункт отличается от остальных не только атрибутом', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/contact');
-
-  const read = (selector: string) =>
-    page.locator(selector).first().evaluate((el) => {
-      const s = getComputedStyle(el);
-      return { color: s.color, weight: s.fontWeight, deco: s.textDecorationLine };
-    });
-
-  const current = await read('header nav.nav-wide a[aria-current="page"]');
-  const other = await read('header nav.nav-wide a:not([aria-current])');
-
-  expect(current.color, 'цвет текущего пункта такой же').not.toBe(other.color);
-  expect(current.weight, 'насыщенность текущего пункта такая же').not.toBe(other.weight);
-});
-
 test('пункт мобильного меню — цель для пальца, а не строка в 26 px',
   async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
@@ -241,7 +240,7 @@ test('пункт мобильного меню — цель для пальца,
     const menu = page.locator('header details.nav-narrow');
     await menu.locator('summary').click();
     const links = menu.locator('a');
-    await expect(links).toHaveCount(5);
+    await expect(links).toHaveCount(4);
 
     for (const link of await links.all()) {
       const box = await link.boundingBox();
@@ -276,9 +275,9 @@ test('переключатели стоят на одном месте на вс
     return (await page.locator('header #theme-toggle').boundingBox())!.x;
   };
 
-  // Кнопка «Написать» намеренно снята на /contact и /thanks. Место под неё
-  // обязано остаться: шапка липкая, и без резерва два круглых переключателя
-  // проезжали через треть экрана при каждом переходе.
+  // Кнопка «Обсудить задачу» намеренно снята на /contact и /thanks. Место под
+  // неё обязано остаться: шапка липкая, и без резерва переключатели и значок
+  // Telegram проезжали через треть экрана при каждом переходе.
   const home = await left('/');
   expect(await left('/contact'), 'переключатели уехали на /contact').toBe(home);
   expect(await left('/thanks'), 'переключатели уехали на /thanks').toBe(home);

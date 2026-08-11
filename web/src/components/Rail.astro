@@ -1,0 +1,220 @@
+---
+import { railPoints } from '../lib/rail';
+
+/* Семь точек — из lib/rail.ts, которая строит их из lib/sections.ts. Второго
+   перечня секций/точек здесь нет (план, задача 4, «Никаких вторых списков»). */
+const points = railPoints();
+---
+{/* Рельс живёт вне <main> в разметке (Base.astro кладёт его после <Footer>),
+    чтобы фиксированное позиционирование не выдавало его как визуально первый
+    элемент: клавиатурный фокус идёт skip-link → шапка → main → подвал →
+    рельс. Рельс не перехватывает фокус раньше содержимого страницы, хотя
+    визуально висит поверх него. */}
+<nav class="rail" aria-label="Разделы страницы" data-rail>
+  <ol>
+    {points.map((p) => (
+      <li>
+        <button
+          type="button"
+          class="point"
+          data-target={p.targetId}
+          data-sections={p.sectionIds.join(',')}
+          aria-label={p.label}
+        >
+          <span class="dot" aria-hidden="true"></span>
+          <span class="label" aria-hidden="true">{p.label}</span>
+        </button>
+      </li>
+    ))}
+  </ol>
+</nav>
+
+<style>
+  /* Точка перелома 1100 px — общий список в tokens.css: «появляется правый
+     рельс». Ниже неё рельс не рисуется вовсе (не только прячется визуально):
+     `display: none` снимает его и из таб-порядка, а замену — полосу прогресса
+     — рисует ReadingProgress рядом (Header.astro, проп `rail`). */
+  .rail {
+    display: none;
+    position: fixed;
+    top: 50%;
+    right: 24px;
+    transform: translateY(-50%);
+    width: var(--rail);
+    z-index: 40;
+  }
+  @media (min-width: 1100px) {
+    .rail { display: block; }
+  }
+
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  /* `button` уже получает 44×44 px из общего правила целей нажатия
+     (base.css) — здесь только раскладка содержимого внутри цели. */
+  .point {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-inline: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+  }
+
+  .dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--text-faint);
+    background: transparent;
+    transition: background-color var(--dur-micro) var(--ease),
+                border-color var(--dur-micro) var(--ease),
+                transform var(--dur-micro) var(--ease);
+  }
+
+  .label {
+    font: 500 0.6875rem/1 var(--font-mono);
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    /* Метка видна только рядом со своей точкой при наведении/фокусе и всегда
+       у активной точки — семь подписей, стоящих в столбик постоянно, спорили
+       бы с контентом страницы больше, чем помогали бы ориентироваться. */
+    opacity: 0;
+    transform: translateX(4px);
+    transition: opacity var(--dur-micro) var(--ease),
+                transform var(--dur-micro) var(--ease),
+                color var(--dur-micro) var(--ease);
+  }
+
+  .point:hover .label,
+  .point:focus-visible .label,
+  .point.active .label {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .point:hover .dot,
+  .point:focus-visible .dot {
+    border-color: var(--accent);
+  }
+
+  .point.active .dot {
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: scale(1.25);
+  }
+
+  .point.active .label { color: var(--text); }
+</style>
+
+<script>
+  /* Скроллспай без IntersectionObserver-порогов: активная точка — та, чья
+     ближайшая (по порядку страницы) секция уже прокручена мимо верхней
+     границы окна. Приём работает одинаково надёжно и на длинной секции
+     с настоящим текстом, и на короткой секции-заглушке (задача 2), где
+     средняя IO-полоса могла бы вообще не пересечься с элементом. Список
+     точек читается из уже отрисованной разметки (`data-target`,
+     `data-sections`) — второй раз `lib/sections.ts` в клиентский бандл не
+     идёт, чтобы не тащить исходники всех секций в JS ради семи строк.
+
+     `prefers-reduced-motion: reduce` выключает анимацию клика: скролл
+     мгновенный, а не плавный (план, задача 4). */
+  const nav = document.querySelector<HTMLElement>('nav.rail[data-rail]');
+  const buttons = nav
+    ? Array.from(nav.querySelectorAll<HTMLButtonElement>('button.point'))
+    : [];
+
+  if (nav && buttons.length > 0) {
+    const sectionToButton = new Map<string, HTMLButtonElement>();
+    for (const btn of buttons) {
+      for (const id of (btn.dataset.sections ?? '').split(',').filter(Boolean)) {
+        sectionToButton.set(id, btn);
+      }
+    }
+
+    const sections = Array.from(sectionToButton.keys())
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null)
+      // `data-sections` перечисляет якоря в порядке страницы (Map держит
+      // порядок вставки), так что пересортировка не нужна — но проверяем
+      // явно, а не полагаемся молча на порядок Map.
+      .sort((a, b) => a.offsetTop - b.offsetTop);
+
+    const setActive = (id: string | null) => {
+      const active = id ? sectionToButton.get(id) ?? null : null;
+      for (const btn of buttons) {
+        const isActive = btn === active;
+        btn.classList.toggle('active', isActive);
+        if (isActive) btn.setAttribute('aria-current', 'true');
+        else btn.removeAttribute('aria-current');
+      }
+    };
+
+    // Прокрутка достигла низа страницы: браузер не может подвинуть окно
+    // дальше, даже если верх последней секции ещё не долетел до линии
+    // отсчёта (короткая последняя секция плюс подвал под ней — обычное
+    // дело). Без этой поправки последняя точка рельса не подсвечивалась бы
+    // вовсе, пока секция не станет достаточно длинной, чтобы дотянуть верх
+    // страницы до своего начала.
+    const atBottom = () =>
+      window.scrollY + window.innerHeight >=
+      document.documentElement.scrollHeight - 2;
+
+    const currentSectionId = (): string | null => {
+      if (atBottom()) return sections[sections.length - 1]?.id ?? null;
+      // Строка отсчёта — верх окна. Секция становится «текущей», как только
+      // её верх пересёк эту линию, и остаётся ей, пока верх следующей секции
+      // не пересечёт её тоже: точка активна, пока видна хотя бы часть любой
+      // секции её группы (план, задача 4), а не только пока секция целиком
+      // в кадре.
+      const line = window.scrollY;
+      let current: HTMLElement | null = null;
+      for (const el of sections) {
+        if (el.offsetTop <= line + 1) current = el;
+        else break;
+      }
+      return (current ?? sections[0])?.id ?? null;
+    };
+
+    let ticking = false;
+    const update = () => {
+      setActive(currentSectionId());
+      ticking = false;
+    };
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    update();
+
+    const reduceMotion =
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    for (const btn of buttons) {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.target ?? '');
+        if (!target) return;
+        target.scrollIntoView({
+          behavior: reduceMotion ? 'auto' : 'smooth',
+          block: 'start',
+        });
+      });
+    }
+  }
+</script>

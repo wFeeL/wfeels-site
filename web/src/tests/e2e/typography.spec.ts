@@ -2,12 +2,19 @@ import { test, expect } from '@playwright/test';
 
 test('заголовок набран Manrope, текст — Golos Text, метка — JetBrains Mono',
   async ({ page }) => {
-    await page.goto('/');
     const fam = (sel: string) =>
-      page.locator(sel).evaluate((el) => getComputedStyle(el).fontFamily);
+      page.locator(sel).first().evaluate((el) => getComputedStyle(el).fontFamily);
 
+    await page.goto('/');
     expect(await fam('h1')).toContain('Manrope');
     expect(await fam('body')).toContain('Golos Text');
+
+    // Метка проверяется на `/contact`, не на главной: с задачи 2 плана
+    // «Главная» одиннадцать секций `/` несут только заголовки-заглушки без
+    // метки (текст ещё не утверждён владельцем) — `.t-label` там сейчас нет
+    // ни у одной секции. Сам класс и его шрифт от этого не меняются, и
+    // страница с меткой на сайте по-прежнему есть.
+    await page.goto('/contact');
     expect(await fam('.t-label')).toContain('JetBrains Mono');
   });
 

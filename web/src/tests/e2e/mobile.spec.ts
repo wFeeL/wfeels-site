@@ -19,7 +19,7 @@ test('на 375 px все органы управления в шапке при�
     await page.goto('/');
 
     const controls = page.locator(
-      'header a.lang, header #theme-toggle, header .btn, header summary'
+      'header a.lang, header #theme-toggle, header a.telegram, header .btn, header summary'
     );
     const count = await controls.count();
     expect(count).toBeGreaterThan(0);

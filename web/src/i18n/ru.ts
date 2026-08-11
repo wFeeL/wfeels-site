@@ -1,6 +1,6 @@
 export default {
   skip: 'Перейти к содержимому',
-  write: 'Написать',
+  write: 'Обсудить задачу',
   ctaLangNote: 'Страница контактов на русском',
   menu: 'Меню',
   langSwitch: 'Switch to English',
