@@ -83,26 +83,33 @@ const points = railPoints();
                 transform var(--dur-micro) var(--ease);
   }
 
+  /* Подпись видна всегда, а не только при наведении/фокусе (design-review,
+     дефект 2): шесть точек из семи без имени — не навигация, а ряд
+     безымянных кружков, по которому нельзя выбрать пункт. Приглушённый цвет
+     неактивных подписей — унаследованный `color: var(--text-muted)` с
+     `.point`, активная перекрашивается ниже.
+
+     Фиксированная ширина — не оформление, а причина дефекта 1: без неё
+     ширина подписи (а с ней и всего ряда) зависит от длины слова, и точка,
+     стоящая от подписи на фиксированном отступе, гуляет по вертикали вместе
+     с текстом. `64px` — набранная ширина самой длинной подписи (`ПРОЦЕСС` /
+     `ОБО МНЕ` / `КОНТАКТ`, ≈58,5 px при 11 px/JetBrains Mono/трекинге
+     0.16em) с запасом на разницу рендеринга шрифта между браузерами. */
   .label {
+    flex: none;
+    width: 64px;
     font: 500 0.6875rem/1 var(--font-mono);
     letter-spacing: .16em;
     text-transform: uppercase;
+    text-align: right;
     white-space: nowrap;
-    /* Метка видна только рядом со своей точкой при наведении/фокусе и всегда
-       у активной точки — семь подписей, стоящих в столбик постоянно, спорили
-       бы с контентом страницы больше, чем помогали бы ориентироваться. */
-    opacity: 0;
-    transform: translateX(4px);
-    transition: opacity var(--dur-micro) var(--ease),
-                transform var(--dur-micro) var(--ease),
-                color var(--dur-micro) var(--ease);
+    transition: color var(--dur-micro) var(--ease);
   }
 
   .point:hover .label,
   .point:focus-visible .label,
   .point.active .label {
-    opacity: 1;
-    transform: translateX(0);
+    color: var(--text);
   }
 
   .point:hover .dot,
@@ -115,8 +122,6 @@ const points = railPoints();
     border-color: var(--accent);
     transform: scale(1.25);
   }
-
-  .point.active .label { color: var(--text); }
 </style>
 
 <script>
