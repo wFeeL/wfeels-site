@@ -59,14 +59,17 @@ describe('dist/index.html — секции 5 и 6', () => {
     expect(forbidden.test(casesSectionHtml)).toBe(false);
   });
 
-  it('тизер фабрики: текст на месте, рисунка ядра ещё нет (задача 14)', () => {
+  it('тизер фабрики: текст, метка и ядро на месте (задача 14)', () => {
+    expect(html).toContain('ФАБРИКА БОТОВ');
     expect(html).toContain(FACTORY_TEASER.title);
     expect(html).toContain(FACTORY_TEASER.text);
     expect(html).toContain(FACTORY_TEASER.linkText);
     expect(html).toContain(FACTORY_TEASER.href);
-    // Место зарезервировано разметкой (`data-factory-core-slot`), но пусто —
-    // никакого <svg> внутри тизера до задачи 14.
-    expect(html).toContain('data-factory-core-slot');
+    // Рисунок ядра — оба раскроя, в разметке без выполнения JavaScript.
+    expect(html).toContain('class="core-svg core-a"');
+    expect(html).toContain('class="core-svg core-b"');
+    expect(html).toContain('BOT_FACTORY');
+    expect(html).toContain('Закрашенный тик — снятое демо · полый — тема без демо');
   });
 
   it('секция 6: метка, заголовок и все три доказательства дословно на странице', () => {

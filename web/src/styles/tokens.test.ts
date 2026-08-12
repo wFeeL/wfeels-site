@@ -72,3 +72,39 @@ describe('--danger', () => {
     }
   });
 });
+
+/** Значение произвольного (не hex-цветового) токена внутри блока темы —
+ *  ширины штриха записаны в `px`, непрозрачность — безразмерным числом. */
+function tokenRaw(selector: string, name: string): string {
+  const start = CSS.indexOf(selector);
+  expect(start, `в tokens.css нет блока ${selector}`).toBeGreaterThan(-1);
+  const open = CSS.indexOf('{', start);
+  const close = CSS.indexOf('}', open);
+  const found = new RegExp(`${name}:\\s*([^;]+);`).exec(CSS.slice(open, close));
+  expect(found, `в блоке ${selector} нет ${name}`).not.toBeNull();
+  return found![1].trim();
+}
+
+describe('токены обводки ядра фабрики (02-home-core.md, раздел 8)', () => {
+  // Общесистемные — заведены задачей 14, ими пользуется вычерченное ядро
+  // тизера фабрики, а позже и линия фона, и схемы на посадочных.
+  it('--stroke-hair — 1px', () => {
+    expect(tokenRaw(':root {', '--stroke-hair')).toBe('1px');
+  });
+  it('--stroke-line — 1.5px', () => {
+    expect(tokenRaw(':root {', '--stroke-line')).toBe('1.5px');
+  });
+  it('--stroke-bold — 2px', () => {
+    expect(tokenRaw(':root {', '--stroke-bold')).toBe('2px');
+  });
+
+  // Непрозрачность волосяной линии — две величины намеренно: одна не
+  // различима одинаково на #F4F6F9 и на #0E1420, проверено рендером.
+  it.each([
+    ['светлая', ':root {', '0.45'],
+    ['тёмная по выбору', ':root[data-theme="dark"]', '0.6'],
+    ['тёмная по системе', ':root:not([data-theme="light"])', '0.6'],
+  ] as const)('--stroke-hair-opacity в теме «%s» равна %s', (_, selector, expected) => {
+    expect(tokenRaw(selector, '--stroke-hair-opacity')).toBe(expected);
+  });
+});
