@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pageSchema, serializeSchema } from './schema';
+import { pageSchema, serializeSchema, faqPageSchema } from './schema';
 
 const INPUT = {
   site: 'https://example.com',
@@ -33,6 +33,29 @@ describe('pageSchema', () => {
       name: 'wfeels',
       url: 'https://example.com',
     });
+  });
+});
+
+describe('faqPageSchema', () => {
+  const ITEMS = [
+    { question: 'Вопрос один?', answer: 'Ответ **с полужирным** словом.' },
+    { question: 'Вопрос два?', answer: 'Обычный ответ.' },
+  ];
+
+  it('тип FAQPage, по одной Question на вопрос', () => {
+    const data = faqPageSchema(ITEMS);
+    expect(data['@context']).toBe('https://schema.org');
+    expect(data['@type']).toBe('FAQPage');
+    expect(data.mainEntity).toHaveLength(2);
+    expect(data.mainEntity[0]['@type']).toBe('Question');
+    expect(data.mainEntity[0].name).toBe('Вопрос один?');
+    expect(data.mainEntity[0].acceptedAnswer['@type']).toBe('Answer');
+  });
+
+  it('маркеры полужирного «**» снимаются в тексте ответа schema.org', () => {
+    const data = faqPageSchema(ITEMS);
+    expect(data.mainEntity[0].acceptedAnswer.text).toBe('Ответ с полужирным словом.');
+    expect(data.mainEntity[0].acceptedAnswer.text).not.toContain('**');
   });
 });
 

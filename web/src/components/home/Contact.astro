@@ -1,0 +1,46 @@
+---
+/* Секция 11 — контакт. Текст утверждён дословно
+ * (`70-workshop/specs/site-v3/02-texts.md`, секция 11). Заголовок намеренно
+ * совпадает со страницей `/contact` (`pages/contact.astro`) — два входа в
+ * одно действие обязаны называться одинаково.
+ *
+ * `LeadForm` — тот же компонент, что на `/contact`, вторым экземпляром: на
+ * каждой странице своя копия разметки, но код один (план `02-home-plan.md`,
+ * задача 12). Адрес Telegram — из `lib/contacts.ts`, третьего места с ним
+ * здесь не заводится.
+ */
+import Label from '../Label.astro';
+import Prose from '../Prose.astro';
+import LeadForm from '../LeadForm.astro';
+import { TELEGRAM_URL, telegramHandle } from '../../lib/contacts';
+---
+<Label>ПОСЛЕДНИЙ ШАГ</Label>
+<h2 class="t-h2">Расскажите о задаче</h2>
+<Prose>
+  <p>
+    Напишите пару строк: что нужно — или что сейчас не работает. Отвечу в
+    течение дня.
+  </p>
+  <p>
+    Дальше несколько вопросов и вилка срока и цены. Ни к чему не обязывает:
+    если задача окажется не моя, скажу сразу.
+  </p>
+</Prose>
+
+<LeadForm />
+
+<p class="alt">
+  Не любите формы — напишите сразу в Telegram: <a href={TELEGRAM_URL} rel="me"><strong>{telegramHandle()}</strong></a>
+</p>
+
+<style>
+  .alt {
+    margin: 24px 0 0;
+    color: var(--text-muted);
+  }
+  .alt a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+</style>

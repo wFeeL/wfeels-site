@@ -46,6 +46,34 @@ export function pageSchema(kind: SchemaKind, ctx: SchemaContext) {
   };
 }
 
+export interface FaqEntry {
+  question: string;
+  /** Ответ как есть, включая `**слово**` разметки полужирного из
+   *  `data/faq.ts` — `faqPageSchema` сама снимает эти маркеры: `text` в
+   *  `Answer` schema.org читает как обычный текст, а не HTML/Markdown. */
+  answer: string;
+}
+
+/** Разметка `FAQPage` секции 10. Ровно один экземпляр на странице (план
+ *  `02-home-plan.md`, задача 12): на главной уже есть блок `website`
+ *  (`pageSchema('website', …)` выше) — два блока `ld+json` допустимы, два
+ *  `FAQPage` нет. Второй перечень вопросов здесь не заводится — читает
+ *  `items`, тот же массив, что рисует разметку секции. */
+export function faqPageSchema(items: readonly FaqEntry[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer.replace(/\*\*/g, ''),
+      },
+    })),
+  };
+}
+
 /** JSON для вставки внутрь `<script type="application/ld+json">`.
  *
  *  Разборщик HTML ищет в содержимом скрипта закрывающий тег и не знает ничего

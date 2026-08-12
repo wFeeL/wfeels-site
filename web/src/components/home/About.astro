@@ -1,0 +1,71 @@
+---
+/* Секция 9 — обо мне. Большое фото и текст, утверждённый дословно
+ * (`70-workshop/specs/site-v3/02-texts.md`, секция 9). Единственная секция
+ * сайта, где называется происхождение реального бизнеса — без имени
+ * (D-011, `ABOUT_CLIENT_LABEL` в `data/about.ts`). Содержимое читается из
+ * `data/about.ts`, второй ручной копии текста здесь нет.
+ */
+import Label from '../Label.astro';
+import Prose from '../Prose.astro';
+import {
+  ABOUT_PHOTO, ABOUT_LEAD, ABOUT_BLOCKS, ABOUT_CLOSING,
+} from '../../data/about';
+
+if (ABOUT_BLOCKS.length !== 2) {
+  throw new Error('home/About.astro: секция 9 несёт ровно два блока сверх лида и закрытия.');
+}
+---
+<Label>КТО ЭТО ДЕЛАЕТ</Label>
+<h2 class="t-h2">Обо мне</h2>
+
+<div class="layout">
+  <img
+    class="photo"
+    src={ABOUT_PHOTO.src}
+    width={ABOUT_PHOTO.width}
+    height={ABOUT_PHOTO.height}
+    alt={ABOUT_PHOTO.alt}
+    loading="lazy"
+    decoding="async"
+  />
+  <Prose>
+    <p class="t-body-lg lead"><strong>{ABOUT_LEAD}</strong></p>
+    {ABOUT_BLOCKS.map((block) => (
+      <>
+        <h3 class="t-h3">{block.title}</h3>
+        <p>{block.text}</p>
+      </>
+    ))}
+    <p class="closing"><strong>{ABOUT_CLOSING}</strong></p>
+  </Prose>
+</div>
+
+<style>
+  /* Столбик на телефоне: фото сверху, во всю ширину. С 700 px — фото слева
+     фиксированной долей, текст занимает остаток и держит собственную меру
+     (`Prose`, 68ch) — широкий контейнер секции не растягивает абзац во весь
+     остаток колонки. */
+  .layout {
+    display: grid;
+    gap: 24px;
+    margin-top: 24px;
+  }
+  @media (min-width: 700px) {
+    .layout {
+      grid-template-columns: minmax(240px, 340px) 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+  }
+
+  .photo {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+  }
+
+  .lead { margin-bottom: 8px; }
+  .closing { margin-top: 32px; }
+</style>

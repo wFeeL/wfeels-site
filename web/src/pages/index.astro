@@ -11,12 +11,15 @@ import Cases from '../components/home/Cases.astro';
 import Proof from '../components/home/Proof.astro';
 import Process from '../components/home/Process.astro';
 import Guarantees from '../components/home/Guarantees.astro';
+import About from '../components/home/About.astro';
+import Faq from '../components/home/Faq.astro';
+import Contact from '../components/home/Contact.astro';
 
 /** Секции с настоящим текстом (план `02-home-plan.md`, задачи 5–13). Читает
  *  отсюда цикл ниже вместо `if`-цепочки в разметке — второй список секций
  *  здесь не заводится: и этот, и заглушка ниже используют один и тот же `id`
- *  из `lib/sections.ts`. Секции 9–11 остаются заголовком-заглушкой, пока их
- *  текст не пришёл своей задачей плана (задача 12). */
+ *  из `lib/sections.ts`. Секция 4 остаётся заголовком-заглушкой, пока её
+ *  разметка не собрана (задача 8, часть «Секция 4 рисует ступени»). */
 const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
   hero: Hero,
   pain: Pain,
@@ -25,6 +28,9 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
   proof: Proof,
   process: Process,
   guarantees: Guarantees,
+  about: About,
+  faq: Faq,
+  contact: Contact,
 };
 ---
 <Base
@@ -45,13 +51,12 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
       секции здесь руками нельзя: список путей в этом репозитории уже дважды
       расходился именно так.
 
-      Секции 1–3, 5–8 несут настоящий текст, утверждённый владельцем
+      Секции 1–3, 5–11 несут настоящий текст, утверждённый владельцем
       (`70-workshop/specs/site-v3/02-texts.md`) и свёрстанный своим
       компонентом (`components/home/*`, `HOME_COMPONENTS` выше). Секция 4
       (задача 8) пока рисует только числа в `data/pricing.ts` — сама
-      разметка ступеней ещё не собрана; секции 9–11 остаются
-      заголовком-заглушкой без метки, их текст ещё не пришёл своей задачей
-      плана (задача 12), и вёрстка по рыбе с последующей заменой запрещена. */}
+      разметка ступеней ещё не собрана, и вёрстка по рыбе с последующей
+      заменой запрещена. */}
   <Container>
     {HOME_SECTIONS.map((s) => {
       const Content = HOME_COMPONENTS[s.id];

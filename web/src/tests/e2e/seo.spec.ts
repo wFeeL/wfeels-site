@@ -8,7 +8,7 @@ test('на главной есть canonical, robots и hreflang', async ({ page
   await expect(page.locator('link[hreflang="x-default"]')).toHaveCount(1);
 });
 
-test('главная и страница контактов несут структурированную разметку',
+test('страница контактов и английская главная несут ровно один блок структурированной разметки',
   async ({ page }) => {
     const schema = async (path: string) => {
       await page.goto(path);
@@ -18,11 +18,6 @@ test('главная и страница контактов несут стру�
       return JSON.parse(raw[0]);
     };
 
-    const home = await schema('/');
-    expect(home['@context']).toBe('https://schema.org');
-    expect(home['@type']).toBe('WebSite');
-    expect(home.inLanguage).toBe('ru');
-
     const contact = await schema('/contact');
     expect(contact['@type']).toBe('ContactPage');
     expect(contact.url).toContain('/contact');
@@ -31,6 +26,27 @@ test('главная и страница контактов несут стру�
     const en = await schema('/en');
     expect(en['@type']).toBe('WebSite');
     expect(en.inLanguage).toBe('en');
+  });
+
+test('главная несёт два блока структурированной разметки — WebSite и ровно один FAQPage',
+  async ({ page }) => {
+    // Секция 10 (частые вопросы) кладёт свой `FAQPage` рядом с `WebSite` из
+    // `Base.astro` (план `02-home-plan.md`, задача 12): два блока `ld+json`
+    // на странице допустимы, два `FAQPage` — нет.
+    await page.goto('/');
+    const raw = await page.locator('script[type="application/ld+json"]').allTextContents();
+    expect(raw, 'на главной должно быть ровно два блока ld+json').toHaveLength(2);
+    const blocks = raw.map((r) => JSON.parse(r));
+
+    const website = blocks.find((b) => b['@type'] === 'WebSite');
+    expect(website, 'блок WebSite не найден').toBeDefined();
+    expect(website['@context']).toBe('https://schema.org');
+    expect(website.inLanguage).toBe('ru');
+
+    const faqBlocks = blocks.filter((b) => b['@type'] === 'FAQPage');
+    expect(faqBlocks, 'ровно один блок FAQPage').toHaveLength(1);
+    expect(faqBlocks[0].mainEntity.length).toBeGreaterThan(0);
+    expect(faqBlocks[0].mainEntity[0]['@type']).toBe('Question');
   });
 
 test('sitemap не содержит служебных и юридических страниц', () => {
