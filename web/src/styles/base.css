@@ -23,6 +23,15 @@ body {
   overflow-wrap: break-word;
   transition: background-color var(--dur-micro) var(--ease),
               color var(--dur-micro) var(--ease);
+  /* `position: relative` даёт линии на фоне (`BackgroundLine.astro`, задача
+     13) точку отсчёта для `position: absolute; inset: 0` на всю фактическую
+     высоту страницы. `isolation: isolate` создаёт свой контекст наложения:
+     без него отрицательный z-index линии способен провалиться ниже
+     собственного фона body в auto-height родителе и стать невидимым —
+     проверено рендером. Оба свойства ничего не меняют, пока `BackgroundLine`
+     не подключён (сегодня — только главная). */
+  position: relative;
+  isolation: isolate;
 }
 
 main { flex: 1 0 auto; }

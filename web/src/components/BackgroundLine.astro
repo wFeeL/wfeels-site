@@ -1,0 +1,129 @@
+---
+/* Линия на фоне — спека `02-home.md`, раздел 15; геометрия по D-020 (кривые
+ * разрешены), механика по D-024 (родная CSS-анимация по прокрутке, без
+ * GSAP). Сегодня подключена только на главной (`pages/index.astro`) — это
+ * первая страница, где линия появляется по-настоящему; на посадочных она
+ * тоньше и бледнее (спека 03, вне этого плана).
+ *
+ * Геометрия считается на сборке, а не пишется руками: анкерные точки — на
+ * узлах сетки 32 px (`--step`), период и амплитуда заданы один раз и
+ * повторяются весь путь вниз — «один язык кривой на весь сайт» (00-overview,
+ * раздел 4). Путь сделан заведомо длиннее любой реальной длины страницы —
+ * тогда его нижний край всегда обрезается краем страницы (SVG обрезает
+ * содержимое по границе элемента по умолчанию), и линия «уходит за нижний
+ * край», а не заканчивается видимой точкой в воздухе.
+ *
+ * SVG не несёт viewBox: без него единица координат `d` равна 1 CSS-px
+ * собственного бокса SVG-элемента, поэтому числа ниже — это буквально
+ * пиксели в готовой странице, а не абстрактные единицы, растянутые
+ * `preserveAspectRatio`. Ширина полосы качания фиксирована в реальных
+ * пикселях и не зависит от ширины окна — на любой ширине это один и тот же
+ * рисунок, прибитый к левому краю страницы.
+ */
+
+const STEP = 32; // --step из tokens.css, продублировать числом нельзя — CSS-переменная в d="" не работает
+
+const X_LOW = STEP * 2;   // 64  — левая граница качания
+const X_HIGH = STEP * 10; // 320 — правая граница качания
+const PERIOD_Y = STEP * 12; // 384 — вертикальный период одной волны
+
+// Генерируем путь заведомо длиннее любой реальной высоты страницы (11 секций
+// плюс шапка с подвалом). PERIOD_COUNT подобран с запасом и округлён к
+// периоду волны, чтобы конец пути гарантированно оказался ниже подвала на
+// любой ширине и любой высоте шрифта.
+const PERIOD_COUNT = 60; // 60 × 384 = 23 040 px
+const TOTAL_HEIGHT = PERIOD_COUNT * PERIOD_Y;
+
+function buildPath(): string {
+  const half = PERIOD_Y / 2;
+  let x = X_LOW;
+  let y = 0;
+  const parts = [`M ${x} ${y}`];
+  for (let i = 0; i < PERIOD_COUNT; i++) {
+    const nextX = x === X_LOW ? X_HIGH : X_LOW;
+    const nextY = y + PERIOD_Y;
+    // S-образная кривая: управляющие точки смещены на половину периода по
+    // вертикали от каждого конца — тот же приём повторяется на каждом шаге,
+    // отсюда «один язык кривой».
+    parts.push(`C ${x} ${y + half}, ${nextX} ${nextY - half}, ${nextX} ${nextY}`);
+    x = nextX;
+    y = nextY;
+  }
+  return parts.join(' ');
+}
+
+const d = buildPath();
+// Нормализованная длина пути для stroke-dasharray/-dashoffset: браузер сам
+// пересчитывает реальную геометрическую длину в это число, без getTotalLength()
+// в рантайме (это был бы JS, а его здесь ноль).
+const PATH_LENGTH = 1000;
+---
+<div class="bg-line" aria-hidden="true">
+  <svg width={X_LOW + X_HIGH} height={TOTAL_HEIGHT} focusable="false">
+    <path class="line-path" d={d} pathLength={PATH_LENGTH} />
+  </svg>
+</div>
+
+<style define:vars={{ pathLength: PATH_LENGTH }}>
+  /* Обёртка растягивается на всю высоту страницы, а не только видимого окна.
+     `isolation: isolate` на body (base.css) создаёт локальный контекст
+     наложения — отрицательный z-index здесь прячет линию за фоном шапки,
+     секций и подвала, но не проваливается за собственный фон body: без
+     изоляции элемент с z-index:-1 в auto-height родителе рискует уйти под
+     фон body целиком и стать невидимым, это и есть та самая ловушка. */
+  .bg-line {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  svg {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 16px;
+  }
+
+  .line-path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: var(--stroke-line, 1.5px);
+    /* Низкая непрозрачность акцента — измерено `styles/tokens.test.ts` и
+       отчётом задачи 13: контраст текста над линией даже прямо на штрихе
+       держится ≥ 11:1 в обеих темах, запас далеко за пределами AA (4.5:1). */
+    opacity: 0.16;
+  }
+
+  /* Состояние ПО УМОЛЧАНИЮ — линия прорисована целиком (нет ни dasharray,
+     ни dashoffset). Это одно и то же состояние покрывает оба случая:
+     `prefers-reduced-motion: reduce` и браузер без поддержки
+     `animation-timeline` (Firefox держит её за флагом на 2026-08). Анимация
+     навешивается СВЕРХУ, только если оба условия — поддержка и разрешение
+     на движение — выполнены одновременно. */
+  @supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .line-path {
+        stroke-dasharray: var(--pathLength);
+        stroke-dashoffset: var(--pathLength);
+        /* Раздельные свойства, не сокращение `animation:` — сборка сводит
+           `animation` + `animation-timeline` в один шорткод
+           (`animation: … scroll(root)`), а собранный Chromium 151 такую
+           форму не разбирает и молча роняет анимацию целиком: `animationName`
+           уходит в `none`, хотя dasharray стоит. Проверено сборкой и
+           автоматическим тестом (`background-line.spec.ts`, «обычный путь»). */
+        animation-name: bg-line-draw;
+        animation-duration: 1ms; /* реальную длительность задаёт таймлайн ниже */
+        animation-timing-function: linear;
+        animation-fill-mode: forwards;
+        animation-timeline: scroll(root);
+        animation-range: 0% 100%;
+      }
+    }
+  }
+
+  @keyframes bg-line-draw {
+    to { stroke-dashoffset: 0; }
+  }
+</style>
