@@ -1,0 +1,49 @@
+---
+/* Секция 7 — как я работаю. Пять шагов, текст утверждён дословно
+ * (`70-workshop/specs/site-v3/02-texts.md`, секция 7). Шаг 5 намеренно
+ * короткий — полная формулировка гарантии живёт в секции 8
+ * (`Guarantees.astro`), чтобы один факт не стоял дважды на расстоянии
+ * экрана (02-texts.md, «Что здесь нельзя менять при правке»). Содержимое
+ * читается из `data/process.ts`, второй ручной копии текста здесь нет.
+ */
+import Label from '../Label.astro';
+import Prose from '../Prose.astro';
+import { PROCESS_STEPS } from '../../data/process';
+
+if (PROCESS_STEPS.length !== 5) {
+  throw new Error('home/Process.astro: секция 7 несёт ровно пять шагов.');
+}
+---
+<Label>КАК ЭТО БУДЕТ</Label>
+<h2 class="t-h2">Как я работаю</h2>
+<Prose>
+  {/* `<ol>` без CSS-счётчика: утверждённый заголовок каждого шага уже несёт
+      свой номер («1. Разбор задачи») — счётчик поверх него задвоил бы
+      нумерацию, показав «01» и «1.» рядом. Список остаётся семантическим
+      `<ol>` ради структуры для скринридера, а порядковый знак рисует только
+      сам текст. */}
+  <ol class="steps">
+    {PROCESS_STEPS.map((step) => (
+      <li><strong>{step.title}</strong> {step.text}</li>
+    ))}
+  </ol>
+</Prose>
+
+<style>
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .steps li {
+    padding: 20px 0;
+    border-top: 1px solid var(--border);
+  }
+  .steps li:first-child { border-top: none; padding-top: 0; }
+  .steps li:last-child { padding-bottom: 0; }
+  .steps strong {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--accent);
+  }
+</style>

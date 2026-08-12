@@ -1,0 +1,41 @@
+---
+/* Секция 8 — что я гарантирую. Четыре гарантии, текст утверждён дословно
+ * (`70-workshop/specs/site-v3/02-texts.md`, секция 8). Числа оплаты — «50%»
+ * и «70 000 ₽» — читаются из `data/process.ts`, а не вписаны в разметку:
+ * правка PRICING.md обязана менять текст этой секции сама, а не расходиться
+ * с ним молча (план `02-home-plan.md`, задача 11). Гарантии срока деньгами
+ * нет; договор не упоминается — его не существует (D-019).
+ */
+import Label from '../Label.astro';
+import Card from '../Card.astro';
+import { GUARANTEES } from '../../data/process';
+
+if (GUARANTEES.length !== 4) {
+  throw new Error('home/Guarantees.astro: секция 8 несёт ровно четыре гарантии.');
+}
+---
+<Label>ЧТО Я БЕРУ НА СЕБЯ</Label>
+<h2 class="t-h2">Что я гарантирую</h2>
+
+<div class="grid">
+  {GUARANTEES.map((g) => (
+    <Card>
+      <h3 class="t-h3">{g.title}</h3>
+      <p>{g.text}</p>
+    </Card>
+  ))}
+</div>
+
+<style>
+  .grid {
+    margin: 32px 0 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 700px) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .grid h3 { margin: 0 0 8px; }
+  .grid p { margin: 0; color: var(--text-muted); }
+</style>
