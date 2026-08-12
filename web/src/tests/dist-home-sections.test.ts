@@ -88,4 +88,23 @@ describe('dist/index.html — секции 1–3', () => {
     for (const niche of NICHES) expect(html, niche.text).toContain(niche.text);
     expect(html).toContain('Все услуги');
   });
+
+  it('секция 4: заголовок присутствует, заглушки «Секция 4 — Цены» больше нет', () => {
+    expect(html).toContain('Цены');
+    expect(html).not.toContain('Секция 4 — Цены');
+  });
+
+  it('секция 4: пять групп и все ступени — имя и цена дословно из data/pricing.ts', () => {
+    for (const group of PRICING) {
+      expect(html, `группа «${group.name}»`).toContain(group.name);
+      for (const entry of group.entries) {
+        expect(html, `«${entry.name}»: название ступени`).toContain(entry.name);
+        expect(html, `«${entry.name}»: цена`).toContain(entry.price);
+      }
+    }
+  });
+
+  it('секция 4: часов рядом с ценой нет — заметка «К_риск» из данных на страницу не идёт', () => {
+    expect(html).not.toContain('К_риск');
+  });
 });
