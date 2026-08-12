@@ -1,0 +1,101 @@
+---
+/* Одна карточка-группа секции 3. Анатомия (спека 02-home.md, раздел 6):
+ * иконка → заголовок → описание в две строки → 3–4 пункта с галочками →
+ * ссылки на посадочные → строка стека моношрифтом. Содержимое приходит
+ * целиком из `data/services.ts` — карточка ничего не хранит сама.
+ */
+import Card from '../Card.astro';
+import ServiceIcon from './ServiceIcon.astro';
+import type { ServiceGroup } from '../../data/services';
+
+interface Props { group: ServiceGroup }
+const { group } = Astro.props;
+---
+<Card>
+  <div class="body">
+    <ServiceIcon kind={group.icon} />
+    <h3 class="t-h3">{group.title}</h3>
+    <p class="description">{group.description}</p>
+    <ul class="points" role="list">
+      {group.points.map((p) => (
+        <li>
+          <svg class="check" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path d="M3 8.5 6.2 11.5 13 4.5" fill="none" stroke="currentColor"
+              stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          {p}
+        </li>
+      ))}
+    </ul>
+    <ul class="links" role="list">
+      {group.links.map((l) => (
+        <li><a href={l.href}>{l.text} <span aria-hidden="true">→</span></a></li>
+      ))}
+    </ul>
+  </div>
+  <p class="stack"><code>{group.stack}</code></p>
+</Card>
+
+<style>
+  :global(.card) {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: 100%;
+  }
+  .body { display: flex; flex-direction: column; gap: 4px; }
+  h3 { margin-top: 4px; }
+  .description {
+    margin: 4px 0 4px;
+    color: var(--text-muted);
+    max-width: 42ch;
+  }
+  .points {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .points li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.9375rem;
+  }
+  .check { flex: none; margin-top: 3px; color: var(--accent); }
+
+  .links {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+  .links a {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .links a span { color: var(--accent); transition: transform var(--dur-micro) var(--ease); }
+  .links a:hover { color: var(--accent); }
+  .links a:hover span { transform: translateX(2px); }
+
+  .stack {
+    margin: auto 0 0;
+    padding-top: 4px;
+  }
+  .stack code {
+    font: 400 0.8125rem/1.4 var(--font-mono);
+    color: var(--text-muted);
+    background: none;
+    padding: 0;
+  }
+</style>

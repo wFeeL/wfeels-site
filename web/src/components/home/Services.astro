@@ -1,0 +1,68 @@
+---
+/* Секция 3 — что я делаю. Четыре карточки-группы в сетке 2×2 (спека
+ * 02-home.md, раздел 6). Содержимое карточек и ниш читается из
+ * `data/services.ts` — единственного источника, второй ручной копии текста
+ * здесь нет.
+ */
+import Label from '../Label.astro';
+import ServiceCard from './ServiceCard.astro';
+import { SERVICE_GROUPS, NICHES, SERVICES_CATALOG_HREF } from '../../data/services';
+---
+<Label>УСЛУГИ</Label>
+<h2 class="t-h2">Что я делаю</h2>
+
+<div class="grid">
+  {SERVICE_GROUPS.map((group) => <ServiceCard group={group} />)}
+</div>
+
+<p class="niches">
+  Под вашу отрасль:
+  {NICHES.map((n, i) => (
+    <>
+      {' '}
+      <a href={n.href}>{n.text}</a>
+      {i < NICHES.length - 1 && <span class="sep" aria-hidden="true"> · </span>}
+    </>
+  ))}
+</p>
+
+<p class="all-services">
+  <a href={SERVICES_CATALOG_HREF}>Все услуги <span aria-hidden="true">→</span></a>
+</p>
+
+<style>
+  .grid {
+    margin: 32px 0 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 700px) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  .niches {
+    margin: 32px 0 0;
+    color: var(--text-muted);
+  }
+  .niches a {
+    color: var(--text);
+    text-decoration-color: var(--border);
+    text-underline-offset: 3px;
+  }
+  .niches a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+  .niches .sep { color: var(--text-faint); }
+
+  .all-services {
+    margin: 16px 0 0;
+  }
+  .all-services a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .all-services a:hover { text-decoration: underline; }
+</style>

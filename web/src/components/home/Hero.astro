@@ -1,0 +1,166 @@
+---
+/* Секция 1 — первый экран. Текст утверждён дословно в
+ * `70-workshop/specs/site-v3/02-texts.md`, секция 1, и здесь не переписан ни
+ * в одном слове. Числа таблицы читаются из `data/pricing.ts` и
+ * `data/terms.ts` — ни цены, ни срока в этом файле буквально не стоит
+ * (план, задача 5).
+ */
+import Prose from '../Prose.astro';
+import Label from '../Label.astro';
+import Button from '../Button.astro';
+import { PRICING } from '../../data/pricing';
+import { HERO_TERMS } from '../../data/terms';
+
+/** Достаёт цену «от» по имени группы и ступени из `pricing.ts`. Падает явно,
+ *  а не молчит, если сгенерированный файл когда-нибудь потеряет одну из трёх
+ *  ступеней, на которые опирается таблица первого экрана — лучше красная
+ *  сборка, чем страница с пустой ячейкой. */
+function priceFor(groupName: string, entryName: string): string {
+  const group = PRICING.find((g) => g.name === groupName);
+  const entry = group?.entries.find((e) => e.name === entryName);
+  if (!entry) {
+    throw new Error(
+      `home/Hero.astro: в data/pricing.ts нет ступени «${entryName}» в группе ` +
+      `«${groupName}» — таблица первого экрана ждёт её (спека 02-texts.md, секция 1).`,
+    );
+  }
+  // Источник хранит голое число без слова «от»: это общее правило прайса
+  // (PRICING.md, шапка), а не часть самого числа, и добавляется здесь при
+  // отображении, а не хранится второй раз в данных.
+  if (!/^\d/.test(entry.price)) {
+    throw new Error(
+      `home/Hero.astro: цена «${entry.price}» ступени «${entryName}» не похожа на ` +
+      'число — таблица первого экрана не рассчитана на словесную формулировку.',
+    );
+  }
+  return `от ${entry.price}`;
+}
+
+if (HERO_TERMS.length !== 3) {
+  throw new Error(
+    'home/Hero.astro: таблица первого экрана ждёт ровно три срока в data/terms.ts, ' +
+    `а их ${HERO_TERMS.length}.`,
+  );
+}
+
+const OFFER_ROWS = [
+  { term: HERO_TERMS[0], price: priceFor('Сайты', 'Лендинг из шаблона') },
+  { term: HERO_TERMS[1], price: priceFor('Автоматизация и интеграции', 'Одна интеграция') },
+  { term: HERO_TERMS[2], price: priceFor('ИИ', 'Консультант на готовых материалах') },
+];
+
+/** Строка регалий — ровно пять пунктов (спека, «Строка регалий»). Заведена
+ *  списком, а не одной строкой текста: разделители-точки и раздельные
+ *  `aria-hidden` рисует разметка ниже, а тест ширины меряет каждый пункт по
+ *  отдельности. */
+const REGALIA = [
+  'Санкт-Петербург',
+  'работаю удалённо',
+  'отвечаю в течение дня',
+  'пишу код сам, без подрядчиков',
+  '3 года на Python',
+];
+if (REGALIA.length !== 5) {
+  throw new Error('home/Hero.astro: строка регалий обязана нести ровно пять пунктов.');
+}
+---
+<Label>КОГДА КОНСТРУКТОРА УЖЕ НЕ ХВАТАЕТ</Label>
+<h1 class="t-display">Сайты и автоматизация — дни там, где обычно недели</h1>
+<Prose>
+  <p class="t-body-lg">
+    Один разработчик вместо цепочки подрядчиков. Проектирую и проверяю сам, а
+    ИИ ускоряет написание кода.
+  </p>
+</Prose>
+
+<ul class="offer" role="list">
+  {OFFER_ROWS.map((row) => (
+    <li>
+      <a class="offer-row" href="#services">
+        <span class="offer-group">{row.term.label}</span>
+        <span class="offer-term">{row.term.term}</span>
+        <span class="offer-price">{row.price}</span>
+      </a>
+    </li>
+  ))}
+</ul>
+
+<div class="cta">
+  <Button href="#contact" variant="primary">Обсудить задачу</Button>
+  <Button href="#pricing" variant="secondary">Смотреть цены</Button>
+</div>
+
+<p class="regalia" data-regalia>
+  {REGALIA.map((item, i) => (
+    <>
+      <span class="item">{item}</span>
+      {i < REGALIA.length - 1 && <span class="sep" aria-hidden="true"> · </span>}
+    </>
+  ))}
+</p>
+
+<style>
+  h1 { margin: 0 0 20px; max-width: 20ch; }
+
+  .offer {
+    list-style: none;
+    margin: 32px 0 0;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    max-width: 640px;
+  }
+  .offer li + li { border-top: 1px solid var(--border); }
+
+  .offer-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 12px 20px;
+    padding: 16px 20px;
+    color: inherit;
+    text-decoration: none;
+    transition: background-color var(--dur-micro) var(--ease);
+  }
+  .offer-row:hover { background: var(--accent-soft); }
+
+  .offer-group { font-weight: 600; }
+  .offer-term {
+    font: 500 0.8125rem/1.3 var(--font-mono);
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .offer-price {
+    font: 700 0.9375rem/1.3 var(--font-mono);
+    color: var(--accent);
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  @media (max-width: 479px) {
+    .offer-row { grid-template-columns: 1fr; gap: 4px; }
+    .offer-price { text-align: left; }
+  }
+
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 32px 0 0;
+  }
+
+  /* Мельче и приглушённее, чем метка-эйбраузер над заголовком: та (`Label`,
+     акцентный цвет) зовёт внимание, а регалии — факты для тех, кто уже читает
+     дальше. Тот же типографский класс `label` из шкалы (моно, капслок,
+     трекинг .16em), но приглушённый цвет вместо акцентного — иначе строка из
+     пяти фактов конкурирует с самой меткой сверху. */
+  .regalia {
+    margin: 24px 0 0;
+    font: 500 0.6875rem/1.6 var(--font-mono);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .regalia .sep { color: var(--text-faint); }
+</style>
