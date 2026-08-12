@@ -1,9 +1,25 @@
 ---
-interface Props { href?: string }
-const { href } = Astro.props;
+interface Props {
+  href?: string;
+  /** Карточка несёт нижний блок, который обязан стоять на одной линии у всех
+   *  карточек ряда независимо от длины текста над ним (строка стека кейсов
+   *  и услуг — полировка перед приёмкой, находка 2). При `true` `.card`
+   *  становится flex-колонкой на всю высоту грида, и `margin-top: auto` у
+   *  последнего блока внутри неё прижимает его к низу.
+   *
+   *  Стиль живёт здесь, а не в `:global(.card)` у компонента-потребителя,
+   *  намеренно: у Astro-скоупинга правило этого файла получает атрибут
+   *  `[data-astro-cid-…]`, специфичность которого выше, чем у голого
+   *  `.card` снаружи, — внешний `:global(.card){display:flex}` тихо
+   *  проигрывал этому `display: block` и никогда не применялся (проверено
+   *  вычисленным стилем в браузере при разборе находки 2). Модификатор внутри
+   *  самого `Card.astro` этой войны специфичностей не создаёт. */
+  stack?: boolean;
+}
+const { href, stack = false } = Astro.props;
 const Tag = href ? 'a' : 'div';
 ---
-<Tag class="card" href={href}><slot /></Tag>
+<Tag class={`card${stack ? ' card--stack' : ''}`} href={href}><slot /></Tag>
 
 <style>
   .card {
@@ -14,5 +30,11 @@ const Tag = href ? 'a' : 'div';
     padding: 24px;
     color: inherit;
     text-decoration: none;
+  }
+  .card--stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: 100%;
   }
 </style>

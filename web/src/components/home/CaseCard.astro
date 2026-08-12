@@ -11,7 +11,7 @@ import type { CaseCard as CaseCardData } from '../../data/cases';
 interface Props { item: CaseCardData }
 const { item } = Astro.props;
 ---
-<Card href={`/cases/${item.slug}`}>
+<Card href={`/cases/${item.slug}`} stack={true}>
   <div class="body">
     <h3 class="t-h3">{item.title}</h3>
     {item.description && <p class="description">{item.description}</p>}
@@ -20,11 +20,7 @@ const { item } = Astro.props;
 </Card>
 
 <style>
-  :global(.card) {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    height: 100%;
+  :global(a.card) {
     transition: border-color var(--dur-micro) var(--ease);
   }
   :global(a.card:hover),
