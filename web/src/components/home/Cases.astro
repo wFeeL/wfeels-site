@@ -1,0 +1,50 @@
+---
+/* Секция 5 — кейсы. Три карточки на главной, зеркалящие три строки первого
+ * экрана (спека 02-home.md, раздел 8), плюс тизер фабрики под ними
+ * (`FactoryTeaser.astro`). Содержимое читается из `data/cases.ts` —
+ * единственного источника, второй ручной копии текста здесь нет.
+ */
+import Label from '../Label.astro';
+import CaseCard from './CaseCard.astro';
+import FactoryTeaser from './FactoryTeaser.astro';
+import { homeCases, CASES_CATALOG_HREF } from '../../data/cases';
+
+const cases = homeCases();
+---
+<Label>ЧТО УЖЕ СДЕЛАНО</Label>
+<h2 class="t-h2">Кейсы</h2>
+
+<div class="grid">
+  {cases.map((item) => <CaseCard item={item} />)}
+</div>
+
+<p class="all-cases">
+  <a href={CASES_CATALOG_HREF}>Все кейсы <span aria-hidden="true">→</span></a>
+</p>
+
+<FactoryTeaser />
+
+<style>
+  .grid {
+    margin: 32px 0 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 700px) {
+    .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .all-cases {
+    margin: 16px 0 0;
+  }
+  .all-cases a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .all-cases a:hover { text-decoration: underline; }
+</style>

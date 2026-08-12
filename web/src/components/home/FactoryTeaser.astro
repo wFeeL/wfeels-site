@@ -1,0 +1,63 @@
+---
+/* Тизер фабрики под тремя карточками кейсов (спека 02-home.md, раздел 10;
+ * текст — 02-texts.md, секция 5). Ядро — вычерченный рисунок «Разводка» —
+ * задача 14 плана и отдельный бриф `02-home-core.md`: сюда его кладёт та
+ * задача, эта только резервирует место разметкой. `.core-slot` ниже пуст
+ * намеренно — никакого SVG, никакого рисунка до задачи 14.
+ */
+import { FACTORY_TEASER } from '../../data/cases';
+---
+<div class="teaser">
+  <div class="core-slot" aria-hidden="true" data-factory-core-slot></div>
+  <div class="text">
+    <h3 class="t-h3">{FACTORY_TEASER.title}</h3>
+    <p>{FACTORY_TEASER.text}</p>
+    <p class="link">
+      <a href={FACTORY_TEASER.href}>{FACTORY_TEASER.linkText} <span aria-hidden="true">→</span></a>
+    </p>
+  </div>
+</div>
+
+<style>
+  .teaser {
+    margin: 32px 0 0;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+  @media (min-width: 700px) {
+    .teaser { flex-direction: row; align-items: center; gap: 32px; }
+  }
+
+  /* Пусто до задачи 14 — ни фона, ни рамки: пустая рамка на этом месте
+     читалась бы как сломанная страница (спека 02-home.md, раздел 10,
+     требование к WebGL-ядру распространяется и сюда по духу). Место
+     держится минимальной высотой, чтобы вставка задачи 14 не сдвигала текст
+     рядом рывком. */
+  .core-slot {
+    flex: none;
+    min-height: 96px;
+  }
+  @media (min-width: 700px) {
+    .core-slot { width: 240px; min-height: 120px; }
+  }
+
+  .text { flex: 1; }
+  .text p { margin: 8px 0 0; color: var(--text-muted); }
+  .link { margin-top: 12px !important; }
+  .link a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .link a span { transition: transform var(--dur-micro) var(--ease); }
+  .link a:hover { text-decoration: underline; }
+  .link a:hover span { transform: translateX(2px); }
+</style>

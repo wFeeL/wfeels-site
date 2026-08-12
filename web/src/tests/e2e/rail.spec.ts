@@ -77,6 +77,71 @@ test.describe('рельс — роль и разметка', () => {
   });
 });
 
+/* Два теста ниже закрывают починку коммита 235e752 «Выровнять точки рельса,
+ * подписать все семь и ужать мобильную шапку» тестами — до этой задачи
+ * починка держалась на честном слове (снимок `/tmp/rail-after.png`, не
+ * тест). Дефекты, зафиксированные в комментарии `Rail.astro` над `.label`:
+ *
+ *   дефект 1 — без фиксированной ширины подписи ширина всей группы
+ *   «точка+подпись» зависела от длины слова, и точка гуляла по горизонтали
+ *   вместе с текстом вместо того, чтобы стоять со всеми на одной вертикали;
+ *   дефект 2 — подпись была не видна по умолчанию (`opacity: 0`), видна
+ *   только у наведённой/сфокусированной/активной точки — шесть точек из
+ *   семи не несли имени вовсе.
+ *
+ * Проверяется фактическими координатами (дефект 1) и фактической
+ * вычисленной прозрачностью (дефект 2), а не наличием класса — оба дефекта
+ * были в разметке, у которой класс `.label` уже был на месте. */
+test.describe('рельс — семь точек на одной вертикали, все с подписью', () => {
+  const EXPECTED_LABELS = [
+    'НАЧАЛО', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ОБО МНЕ', 'КОНТАКТ',
+  ];
+
+  test('все семь подписей присутствуют, дословно и в порядке спеки', async ({ page }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    const labels = page.locator('nav.rail .point .label');
+    await expect(labels).toHaveCount(7);
+    expect(await labels.allTextContents()).toEqual(EXPECTED_LABELS);
+  });
+
+  test('все семь подписей видимы без наведения — не opacity: 0 по умолчанию', async ({ page }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+    const labels = page.locator('nav.rail .point .label');
+    const opacities = await labels.evaluateAll(
+      (els) => els.map((el) => getComputedStyle(el).opacity),
+    );
+    for (const [i, opacity] of opacities.entries()) {
+      expect(Number(opacity), `подпись «${EXPECTED_LABELS[i]}»: opacity ${opacity}`)
+        .toBeGreaterThan(0);
+    }
+  });
+
+  test('правый край подписи и центр точки — одна вертикаль у всех семи', async ({ page }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+
+    const points = page.locator('nav.rail .point');
+    await expect(points).toHaveCount(7);
+
+    const geometry = await points.evaluateAll((els) => els.map((el) => {
+      const dot = el.querySelector('.dot')!.getBoundingClientRect();
+      const label = el.querySelector('.label')!.getBoundingClientRect();
+      return { dotCenterX: dot.x + dot.width / 2, labelRightEdge: label.x + label.width };
+    }));
+
+    const dotCenters = geometry.map((g) => g.dotCenterX);
+    const labelRightEdges = geometry.map((g) => g.labelRightEdge);
+
+    // Допуск 0,5 px — под субпиксельный рендеринг, не под расхождение по сути.
+    const spread = (values: number[]) => Math.max(...values) - Math.min(...values);
+    expect(spread(dotCenters), `центры точек: ${dotCenters.join(', ')}`).toBeLessThan(0.5);
+    expect(spread(labelRightEdges), `правые края подписей: ${labelRightEdges.join(', ')}`)
+      .toBeLessThan(0.5);
+  });
+});
+
 test.describe('рельс — подсветка активной точки по прокрутке', () => {
   for (const section of HOME_SECTIONS) {
     test(`секция «${section.id}» подсвечивает точку «${section.railLabel}»`,

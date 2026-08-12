@@ -45,6 +45,16 @@ const NOT_BUILT_YET = [
   '/niches/beauty-salons',
   '/niches/craftsmen',
   '/niches/clinics',
+
+  // Спека 04 «Кейсы»: шаблон страницы кейса. Ссылки на три страницы приносит
+  // секция 5 главной («Кейсы», план `02-home-plan.md`, задача 9) — карточки
+  // указывают на эти адреса уже сегодня, страниц под ними ещё нет.
+  '/cases/site-v3',
+  '/cases/zayavka-hub',
+  '/cases/ai-consultant',
+  // Тизер фабрики той же секции 5 ведёт на страницу кейса фабрики — тоже
+  // спека 04 (`data/cases.ts`, `FACTORY_TEASER.href`).
+  '/cases/bot-factory',
 ];
 
 /** Внутренние ссылки: обход, а не список.

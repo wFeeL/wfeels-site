@@ -1,0 +1,61 @@
+---
+/* Секция 6 — что можно проверить. Сетка, а не три жёстко заданных места
+ * (спека 02-home.md, раздел 9; план, задача 10): `repeat(auto-fit, ...)`
+ * принимает четвёртую и пятую карточку спеки 05 без переделки разметки —
+ * проверено `tests/e2e/proof-grid.spec.ts`. Содержимое читается из
+ * `data/proof.ts`, второй ручной копии текста здесь нет.
+ */
+import Label from '../Label.astro';
+import Card from '../Card.astro';
+import { PROOF_ITEMS } from '../../data/proof';
+---
+<Label>МОЖНО ПРОВЕРИТЬ, А НЕ ПОВЕРИТЬ</Label>
+<h2 class="t-h2">Что можно проверить</h2>
+
+<div class="grid" data-proof-grid>
+  {PROOF_ITEMS.map((item) => (
+    <Card>
+      <div class="body">
+        <h3 class="t-h3">{item.lead}</h3>
+        {item.paragraphs.map((p) => <p>{p}</p>)}
+      </div>
+      {item.linkHref && item.linkText && (
+        <p class="link">
+          <a href={item.linkHref}>{item.linkText} <span aria-hidden="true">→</span></a>
+        </p>
+      )}
+    </Card>
+  ))}
+</div>
+
+<style>
+  /* `auto-fit` + `minmax` — секция растёт данными, не разметкой: три, четыре
+     или пять карточек одинаково перетекают в столько колонок, сколько
+     помещается при 240 px минимальной ширины, без точки перелома, заведённой
+     на число элементов. */
+  .grid {
+    margin: 32px 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    align-items: stretch;
+  }
+  :global(.card) {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: 100%;
+  }
+  .body { display: flex; flex-direction: column; gap: 8px; }
+  .grid p { margin: 0; color: var(--text-muted); }
+  .link { margin-top: auto !important; padding-top: 4px; }
+  .link a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .link a:hover { text-decoration: underline; }
+</style>
