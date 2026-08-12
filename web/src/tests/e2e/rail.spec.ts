@@ -1,11 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { HOME_SECTIONS } from '../../lib/sections';
 
-/* Ширина берётся из общего списка точек перелома в tokens.css — 1100 px,
-   рельс появляется на ней и выше. Проверяются оба края границы: 1099 (рельса
-   ещё нет) и 1101 (полосы уже нет). Плана задача 4: «ни при каком размере не
-   должно быть ни того ни другого». */
-const WIDE = { width: 1280, height: 900 };
+/* Ширина берётся из общего списка точек перелома в tokens.css — 1600 px,
+   рельс появляется на ней и выше. Design-ревью 2026-08-12 подняло порог с
+   1100 до 1400 px, но 1400 — тоже невычисленное число: по формуле границ
+   контейнера (max-width 1180, padding-inline 40) и рельса (200 px + отступ
+   24 px) они физически перестают пересекаться только с 1548 px, что и
+   подтверждает блок «не пересекает панель» ниже прямым измерением
+   `getBoundingClientRect()` — на 1400 px пересечение остаётся 74 px, на
+   1440 px — 54 px. Порог здесь взят 1600 px: круглое число с запасом
+   поверх 1548 px, совпадающее с одной из проверяемых ширин. Плана задача 4:
+   «ни при каком размере не должно быть ни рельса, ни полосы вместе, ни
+   пустоты без обоих». */
+const WIDE = { width: 1600, height: 900 };
 
 /* Секции задачи 2 — заглушки без утверждённого текста (задача 1 плана), и
    каждая заметно короче, чем понесёт настоящий контент задач 5–13. При
@@ -16,31 +23,96 @@ const WIDE = { width: 1280, height: 900 };
    «докрутили до contact». Более низкое окно оставляет достаточно места для
    прокрутки, чтобы каждая секция стала различима, и не имеет отношения к
    самому рельсу — это свойство высоты страницы, а не его логики. */
-const SPY_VIEWPORT = { width: 1280, height: 500 };
+// Скроллспай-тесты держатся на низком окне (см. комментарий выше), но должны
+// видеть рельс — при пороге 1600 px ширина обязана быть не меньше него.
+const SPY_VIEWPORT = { width: 1600, height: 500 };
 
-test.describe('рельс — точка перелома 1100 px (главная)', () => {
-  test('на 1099 px рельса нет, полоса прогресса видна', async ({ page }) => {
-    await page.setViewportSize({ width: 1099, height: 900 });
+test.describe('рельс — точка перелома 1600 px (главная)', () => {
+  test('на 1599 px рельса нет, полоса прогресса видна', async ({ page }) => {
+    await page.setViewportSize({ width: 1599, height: 900 });
     await page.goto('/');
     await expect(page.locator('nav.rail')).toBeHidden();
     await expect(page.locator('#reading-progress')).toBeVisible();
   });
 
-  test('на 1101 px рельс виден, полосы прогресса нет', async ({ page }) => {
-    await page.setViewportSize({ width: 1101, height: 900 });
+  test('на 1601 px рельс виден, полосы прогресса нет', async ({ page }) => {
+    await page.setViewportSize({ width: 1601, height: 900 });
     await page.goto('/');
     await expect(page.locator('nav.rail')).toBeVisible();
     await expect(page.locator('#reading-progress')).toBeHidden();
   });
 
+  // Находка design-ревью 2026-08-12: при прежнем пороге 1100 px рельс
+  // печатался поверх карточек на 1100–1350 px, при названных ревью 1400 px
+  // пересечение ещё оставалось (см. комментарий выше и блок «не пересекает
+  // панель»). На этих трёх ширинах рельса быть не должно вовсе — только
+  // полоса.
+  for (const width of [1280, 1366, 1440]) {
+    test(`на ${width} px (был центр находки или назывался ревью) рельса нет, полоса видна`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/');
+      await expect(page.locator('nav.rail')).toBeHidden();
+      await expect(page.locator('#reading-progress')).toBeVisible();
+    });
+  }
+
   // Другие страницы рельса не несут вовсе (`rail` не передан в `Base`) — на
   // них полоса видна при любой ширине, как до этой задачи.
-  test('на посадочной без рельса полоса видна и на 1280 px', async ({ page }) => {
+  test('на посадочной без рельса полоса видна и на 1600 px', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/contact');
     await expect(page.locator('nav.rail')).toHaveCount(0);
     await expect(page.locator('#reading-progress')).toBeVisible();
   });
+});
+
+/* Требование B2 (design-ревью 2026-08-12): «рельс никому не мешает», а не
+ * только «рельс виден» — прежний тест проверял исключительно видимость, не
+ * пересечение. Проверяется на четырёх ширинах, названных ревью для этой
+ * проверки: 1400, 1440, 1600, 1920. Ни на одной из них панель и рельс не
+ * пересекаются — на 1400 и 1440 px потому, что рельс при пороге 1600 px там
+ * не рисуется вовсе (пересекаться нечему), на 1600 и 1920 px — потому что
+ * рельс виден и физически помещается рядом с панелью. Тест это различает
+ * явно, а не считает отсутствие рельса «неприменимой» проверкой: и то, и
+ * другое состояние обязано означать «панель никто не перекрывает». Измеряется
+ * фактическими `getBoundingClientRect()`, а не рассчитывается заранее —
+ * расчёт от руки уже подвёл однажды с числом 1400 в этой самой задаче. */
+test.describe('рельс — не пересекает панель ни на одной проверенной ширине', () => {
+  for (const width of [1400, 1440, 1600, 1920]) {
+    test(`на ${width} px рельс не пересекает панель (виден и не пересекает, либо не рисуется вовсе)`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/');
+
+      const railVisible = await page.locator('nav.rail').isVisible();
+
+      if (!railVisible) {
+        // Ниже 1600 px рельса нет вовсе — пересекать панель нечему. Полоса
+        // прогресса обязана быть на месте, иначе это не «рельса нет», а
+        // «пропали оба», что тот же дефект в другой форме.
+        await expect(page.locator('#reading-progress')).toBeVisible();
+        return;
+      }
+
+      const geometry = await page.evaluate(() => {
+        // Первый `<section>` внутри `<main>` — панель главной содержимого,
+        // тот же элемент, чей правый край мерило design-ревью.
+        const panel = document.querySelector('main section');
+        const rail = document.querySelector('nav.rail');
+        if (!panel || !rail) return null;
+        return {
+          panelRight: panel.getBoundingClientRect().right,
+          railLeft: rail.getBoundingClientRect().left,
+        };
+      });
+
+      expect(geometry, 'не нашлась панель или рельс в разметке').not.toBeNull();
+      expect(
+        geometry!.panelRight,
+        `на ${width} px панель (правый край ${geometry!.panelRight}) заходит за ` +
+        `рельс (левый край ${geometry!.railLeft})`,
+      ).toBeLessThanOrEqual(geometry!.railLeft);
+    });
+  }
 });
 
 test.describe('рельс — роль и разметка', () => {
