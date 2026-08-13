@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-/** Критерий 10 брифа `02-home-core.md`: «Контраст моно-подписей на --surface
- *  — AA, посчитан, а не оценён.» Моно-подписи внутри ядра (подпись шаблона,
- *  счёт, клеймо, легенда) красятся `--text-muted` (раздел 6 таблицы) на
- *  панели, которая всегда `--surface` (раздел 6: «панель — непрозрачная
- *  `--surface`»). Считаем контраст этой пары в обеих темах. */
+/** Критерий 13 брифа `02-home-core.md` (вариант владельца А «Плита»):
+ *  «Контраст --text-muted на --surface и --text на --surface — AA, посчитан,
+ *  не оценён, в обеих темах». Панель тизера всегда `--surface` (раздел 6).
+ *
+ *  --text-muted красит подписи (`.fp-cap-own`, `.fp-themes`, `.fp-own`,
+ *  метка «ФАБРИКА БОТОВ»); --text красит главный текст плиты — шесть ячеек
+ *  каркаса и подписи типов (`.fp-name`, `.fp-cap-frame`, `.fp-cells li`).
+ *  Раздел 6 брифа прямо запрещает приглушать эти шесть ячеек
+ *  `--text-faint`, потому что именно это убило смысл в прежней схеме. */
 
 const TOKENS = readFileSync(new URL('../styles/tokens.css', import.meta.url), 'utf8');
 
@@ -35,11 +39,13 @@ function contrast(a: [number, number, number], b: [number, number, number]): num
 }
 
 const THEMES = {
-  светлая: { selector: ':root {', surface: '#FFFFFF', textMuted: '#5B6675' },
-  'тёмная по выбору': { selector: ':root[data-theme="dark"]', surface: '#141C2A', textMuted: '#93A0B4' },
+  светлая: { selector: ':root {', surface: '#FFFFFF', textMuted: '#5B6675', text: '#0F1620' },
+  'тёмная по выбору': {
+    selector: ':root[data-theme="dark"]', surface: '#141C2A', textMuted: '#93A0B4', text: '#DCE3EE',
+  },
 } as const;
 
-describe('ядро фабрики — контраст моно-подписей на панели (AA)', () => {
+describe('плита фабрики — контраст текста на панели (AA)', () => {
   for (const [name, t] of Object.entries(THEMES)) {
     it(`тема «${name}»: --text-muted на --surface ≥ AA (4.5:1)`, () => {
       // Токены читаются из tokens.css — не задублированы руками, расхождение
@@ -52,6 +58,18 @@ describe('ядро фабрики — контраст моно-подписей
       const cr = contrast(surface, textMuted);
       // eslint-disable-next-line no-console
       console.log(`${name}: --text-muted ${t.textMuted} на --surface ${t.surface} → ${cr.toFixed(2)}:1`);
+      expect(cr, `контраст ${cr.toFixed(2)}:1 ниже AA`).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it(`тема «${name}»: --text на --surface ≥ AA (4.5:1)`, () => {
+      const surface = hexToRgb(tokenHex(t.selector, '--surface'));
+      const text = hexToRgb(tokenHex(t.selector, '--text'));
+      expect(hexToRgb(t.surface)).toEqual(surface);
+      expect(hexToRgb(t.text)).toEqual(text);
+
+      const cr = contrast(surface, text);
+      // eslint-disable-next-line no-console
+      console.log(`${name}: --text ${t.text} на --surface ${t.surface} → ${cr.toFixed(2)}:1`);
       expect(cr, `контраст ${cr.toFixed(2)}:1 ниже AA`).toBeGreaterThanOrEqual(4.5);
     });
   }
