@@ -12,6 +12,7 @@ import CaseFlowIllustration from './CaseFlowIllustration.astro';
 import CaseDialogueIllustration from './CaseDialogueIllustration.astro';
 import FactoryTeaser from './FactoryTeaser.astro';
 import { homeCases, CASES_CATALOG_HREF } from '../../data/cases';
+import { WEIGHT_CLAIM } from '../../data/pageWeight';
 
 const cases = homeCases();
 const [siteV3, zayavkaHub, aiConsultant] = cases;
@@ -31,9 +32,7 @@ const ILLUSTRATION_HEIGHT: Record<string, number> = {
 <div class="rows">
   <CaseRow item={siteV3} illustrationHeight={ILLUSTRATION_HEIGHT[siteV3.slug]}>
     <CaseWeightIllustration />
-    <p slot="caption" class="t-small weight-caption">
-      Она весит 372 КБ. Типичный сайт в интернете — 2,5 МБ, в семь раз больше.
-    </p>
+    <p slot="caption" class="t-small weight-caption">{WEIGHT_CLAIM}</p>
   </CaseRow>
   <CaseRow item={zayavkaHub} illustrationHeight={ILLUSTRATION_HEIGHT[zayavkaHub.slug]}>
     <CaseFlowIllustration />

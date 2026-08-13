@@ -9,7 +9,6 @@ import Pain from '../components/home/Pain.astro';
 import Services from '../components/home/Services.astro';
 import Pricing from '../components/home/Pricing.astro';
 import Cases from '../components/home/Cases.astro';
-import Proof from '../components/home/Proof.astro';
 import Process from '../components/home/Process.astro';
 import Guarantees from '../components/home/Guarantees.astro';
 import About from '../components/home/About.astro';
@@ -26,7 +25,6 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
   services: Services,
   pricing: Pricing,
   cases: Cases,
-  proof: Proof,
   process: Process,
   guarantees: Guarantees,
   about: About,
@@ -48,12 +46,12 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
       элемента разведены общей точкой перелома 1244 px из `tokens.css`, а не
       двумя независимо подобранными числами. */}
   <LangSwitch slot="lang" />
-  {/* Одиннадцать секций собираются из `lib/sections.ts` — единственного
-      списка, который читают также шапка и (с задачи 4) рельс. Перечислять
-      секции здесь руками нельзя: список путей в этом репозитории уже дважды
-      расходился именно так.
+  {/* Десять секций собираются из `lib/sections.ts` — единственного
+      списка, который читают также шапка и рельс. Перечислять секции здесь
+      руками нельзя: список путей в этом репозитории уже дважды расходился
+      именно так.
 
-      Все одиннадцать секций несут настоящий текст, утверждённый владельцем
+      Все десять секций несут настоящий текст, утверждённый владельцем
       (`70-workshop/specs/site-v3/02-texts.md`) и свёрстанный своим
       компонентом (`components/home/*`, `HOME_COMPONENTS` выше). Заглушка
       ниже (`s.title`) остаётся только страховкой на случай, если якорь

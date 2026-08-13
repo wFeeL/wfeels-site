@@ -16,7 +16,9 @@ describe('railPoints — группировка HOME_SECTIONS в точки ре
   it('каждая точка несёт все секции своей группы, в порядке страницы', () => {
     const byLabel = new Map(railPoints().map((p) => [p.label, p.sectionIds]));
     expect(byLabel.get('НАЧАЛО')).toEqual(['hero', 'pain']);
-    expect(byLabel.get('КЕЙСЫ')).toEqual(['cases', 'proof']);
+    // Точка «КЕЙСЫ» больше не парная — секция «Что можно проверить» снята
+    // (D-030, `02-case-illustrations.md`, раздел 0).
+    expect(byLabel.get('КЕЙСЫ')).toEqual(['cases']);
     expect(byLabel.get('ПРОЦЕСС')).toEqual(['process']);
     expect(byLabel.get('ГАРАНТИИ')).toEqual(['guarantees']);
     expect(byLabel.get('ОБО МНЕ')).toEqual(['about', 'faq']);
@@ -34,20 +36,20 @@ describe('railPoints — группировка HOME_SECTIONS в точки ре
     }
   });
 
-  it('каждая из одиннадцати секций входит ровно в одну точку', () => {
+  it('каждая из десяти секций входит ровно в одну точку', () => {
     const all = railPoints().flatMap((p) => p.sectionIds);
-    expect(all.length).toBe(11);
-    expect(new Set(all).size).toBe(11);
+    expect(all.length).toBe(10);
+    expect(new Set(all).size).toBe(10);
   });
 });
 
 describe('sectionToRailLabel', () => {
-  it('каждый из одиннадцати якорей отображается на ожидаемую метку', () => {
+  it('каждый из десяти якорей отображается на ожидаемую метку', () => {
     const expected: Record<string, string> = {
       hero: 'НАЧАЛО', pain: 'НАЧАЛО',
       services: 'УСЛУГИ',
       pricing: 'ЦЕНЫ',
-      cases: 'КЕЙСЫ', proof: 'КЕЙСЫ',
+      cases: 'КЕЙСЫ',
       process: 'ПРОЦЕСС', guarantees: 'ГАРАНТИИ',
       about: 'ОБО МНЕ', faq: 'ОБО МНЕ',
       contact: 'КОНТАКТ',

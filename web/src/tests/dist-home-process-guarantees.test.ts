@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { PROCESS_STEPS, GUARANTEES, MILESTONE_THRESHOLD } from '../data/process';
 
-/* Тот же паттерн, что `dist-home-cases-proof.test.ts`: читает `dist/index.html`
+/* Тот же паттерн, что `dist-home-cases.test.ts`: читает `dist/index.html`
  * напрямую, без браузера, — доказывает, что текст секций 7 и 8 присутствует
  * в статической сборке без выполнения JavaScript (план `02-home-plan.md`,
  * общее ограничение «Статика прежде всего»). Требует `npm run build` перед
@@ -32,13 +32,24 @@ describe('dist/index.html — секции 7 и 8', () => {
     }
   });
 
-  it('секция 8: метка, заголовок и все четыре гарантии дословно на странице', () => {
+  it('секция 8: метка, заголовок и все пять гарантий дословно на странице', () => {
     expect(html).toContain('ГАРАНТИИ');
     expect(html).toContain('>Что я гарантирую<');
     for (const g of GUARANTEES) {
       expect(html, g.title).toContain(g.title);
+      expect(html, g.text).toContain(g.text);
+      if (g.note) expect(html, g.note).toContain(g.note);
     }
     expect(html).toContain(MILESTONE_THRESHOLD);
+  });
+
+  it('пятая гарантия «Сколько это занимает» — перенос секции 6, числа сроков дословны', () => {
+    expect(html).toContain('Сколько это занимает');
+    expect(html).toContain('2–4 дня');
+    expect(html).toContain('2–3 недели');
+    expect(html).toContain('от одного до четырёх месяцев');
+    // Отменённая формулировка не должна вернуться молча.
+    expect(html).not.toContain('4–6 недель');
   });
 
   it('формулировка оплаты в разметке несёт оговорку про 70 000 ₽', () => {
