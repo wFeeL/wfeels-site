@@ -31,6 +31,36 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
   faq: Faq,
   contact: Contact,
 };
+
+/** Ритм «Три акта» (правка владельца 2026-08-13): проблема («Как обычно
+ *  бывает») → предложение (услуги, цены, кейсы) → доверие (процесс,
+ *  гарантии, обо мне, вопросы). Первый экран и контакт — вход и выход, вне
+ *  актов буквально: у `hero` и `contact` в этой таблице нет ни одной записи,
+ *  оба края (шапка→hero, hero→pain через дефолт `pain`, faq→contact,
+ *  contact→подвал) сохраняют старое симметричное поведение `Section`
+ *  (48/64/96, плюс отдельное правило `main > section:first-child` из
+ *  `base.css` для самой первой секции страницы) — их этот заход не трогает.
+ *
+ *  Каждая ВНУТРИ-актовая секция отдаёт зазор своему верху (`topGap`), низ
+ *  гасится в `'none'`, чтобы 128/96 не удваивались соседним верхом — см.
+ *  комментарий в `Section.astro`. Ровно два края держит `bottomGap:'none'`
+ *  на `pain` — акт 1 состоит из одной секции, и её единственный ВНУТРИ-
+ *  актовый край это переход в акт 2, к «Услугам».
+ *
+ *  `surface` — три подложки, не подряд и не там, где уже стоят карточки на
+ *  `--surface` (услуги, цены, кейсы, гарантии — увидела бы себя внутри
+ *  подложки того же цвета и растворилась): «Как обычно бывает» отмечает
+ *  первый акт, «Как я работаю» и «Частые вопросы» — третий. */
+const GAP: Record<string, { topGap?: 'interior' | 'stitch'; bottomGap?: 'none'; surface?: boolean }> = {
+  pain: { bottomGap: 'none', surface: true },
+  services: { topGap: 'stitch', bottomGap: 'none' },
+  pricing: { topGap: 'interior', bottomGap: 'none' },
+  cases: { topGap: 'interior', bottomGap: 'none' },
+  process: { topGap: 'stitch', bottomGap: 'none', surface: true },
+  guarantees: { topGap: 'interior', bottomGap: 'none' },
+  about: { topGap: 'interior', bottomGap: 'none' },
+  faq: { topGap: 'interior', surface: true },
+};
 ---
 <Base
   title="wfeels — сайты и автоматизация"
@@ -59,8 +89,9 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
   <Container>
     {HOME_SECTIONS.map((s) => {
       const Content = HOME_COMPONENTS[s.id];
+      const gap = GAP[s.id] ?? {};
       return (
-        <Section id={s.id}>
+        <Section id={s.id} topGap={gap.topGap} bottomGap={gap.bottomGap} surface={gap.surface}>
           {Content ? (
             <Content />
           ) : s.order === 1 ? (

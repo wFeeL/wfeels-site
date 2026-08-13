@@ -1,8 +1,31 @@
 ---
-interface Props { id?: string; label?: string }
-const { id, label } = Astro.props;
+interface Props {
+  id?: string;
+  label?: string;
+  /** Верхний зазор до секции — ритм «Три акта» (правка владельца
+   *  2026-08-13). `undefined` — старое симметричное поведение 48/64/96,
+   *  которым по-прежнему живут страницы вне главной. `'stitch'` — стык
+   *  между актами (128 px на столе), `'interior'` — переход внутри одного
+   *  акта (96 px на столе). Секции сами отдают весь зазор своему верху:
+   *  `bottomGap` ниже по умолчанию гасится в ноль, чтобы число не
+   *  складывалось с соседом и не превращалось в 192/224 px, которых нет в
+   *  решении. */
+  topGap?: 'interior' | 'stitch';
+  /** Нижний зазор. `undefined` — старое симметричное поведение. `'none'` —
+   *  секция ничего не добавляет снизу, весь зазор до следующей секции несёт
+   *  её собственный `topGap`. `'interior'` — сохранить обычную полосу перед
+   *  тем, что зазором главной не является (сегодня — подвал после «Контакта»). */
+  bottomGap?: 'interior' | 'none';
+  /** Подложка `--surface` вместо прозрачного фона — акты читаются
+   *  поверхностью, а не только воздухом между ними (правка владельца
+   *  2026-08-13). Секции, где уже стоят карточки на `--surface`
+   *  (услуги/цены/кейсы/гарантии), этот проп не получают — карточка
+   *  растворилась бы в подложке того же цвета. */
+  surface?: boolean;
+}
+const { id, label, topGap, bottomGap, surface = false } = Astro.props;
 ---
-<section id={id}>
+<section id={id} data-top-gap={topGap} data-bottom-gap={bottomGap} class:list={{ surface }}>
   {label && <p class="t-label">{label}</p>}
   <slot />
 </section>
@@ -11,6 +34,31 @@ const { id, label } = Astro.props;
   section { padding-block: 48px; }
   @media (min-width: 480px) { section { padding-block: 64px; } }
   @media (min-width: 900px) { section { padding-block: 96px; } }
+
+  /* Стык и переход внутри акта — та же тройка точек перелома, что и у
+     умолчания выше, сдвинутая по шкале отступов (4·8·12·16·24·32·48·64·96·
+     128): «внутри акта» повторяет прежние 48/64/96 без изменений, «стык»
+     берёт следующую ступень шкалы на каждой точке — 64/96/128. */
+  section[data-top-gap="interior"] { padding-top: 48px; }
+  @media (min-width: 480px) { section[data-top-gap="interior"] { padding-top: 64px; } }
+  @media (min-width: 900px) { section[data-top-gap="interior"] { padding-top: 96px; } }
+
+  section[data-top-gap="stitch"] { padding-top: 64px; }
+  @media (min-width: 480px) { section[data-top-gap="stitch"] { padding-top: 96px; } }
+  @media (min-width: 900px) { section[data-top-gap="stitch"] { padding-top: 128px; } }
+
+  section[data-bottom-gap="none"] { padding-bottom: 0; }
+  section[data-bottom-gap="interior"] { padding-bottom: 48px; }
+  @media (min-width: 480px) { section[data-bottom-gap="interior"] { padding-bottom: 64px; } }
+  @media (min-width: 900px) { section[data-bottom-gap="interior"] { padding-bottom: 96px; } }
+
+  /* Подложка акта. Красится сама секция — она уже вложена в `Container`
+     (главная собирает секции внутри него), поэтому подложка встаёт вровень
+     с содержимым, не во всю ширину вьюпорта; это тот же приём, что у
+     карточек и панели тизера фабрики (`--surface` как замкнутая
+     поверхность, не полноширинная плашка). */
+  section.surface { background: var(--surface); }
+
   .t-label { margin: 0 0 16px; }
 
   /* Липкая шапка (`Header.astro`) не должна закрывать цель якоря при плавной
