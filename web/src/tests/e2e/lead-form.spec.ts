@@ -17,6 +17,30 @@ test('форма отправляется при выключенном JavaScri
   await ctx.close();
 });
 
+test('та же форма в секции 11 главной страницы (две колонки) отправляется без JavaScript', async ({ browser }) => {
+  const ctx = await browser.newContext({ javaScriptEnabled: false });
+  const page = await ctx.newPage();
+  await page.goto('/');
+  await page.fill('input[name="name"]', 'Мария');
+  await page.fill('input[name="contact"]', '@maria');
+  await page.fill('textarea[name="message"]', 'Нужен сайт для груминг-салона с записью');
+  // На главной чекбоксу далеко до верха (секция 11 — последняя на очень
+  // длинной странице), а `html { scroll-behavior: smooth }` (`base.css`, не
+  // моя правка) не даёт стандартному `page.check()` дождаться остановки:
+  // каждая повторная попытка клика заново запускает плавную прокрутку, и
+  // элемент никогда не считается «стабильным». Прокрутка к чекбоксу здесь —
+  // мгновенная (`behavior: 'instant'`), в обход CSS, поэтому `check` бьёт по
+  // уже неподвижной цели.
+  await page.evaluate(() => {
+    document.querySelector<HTMLInputElement>('input[name="consent"]')
+      ?.scrollIntoView({ behavior: 'instant', block: 'center' });
+  });
+  await page.check('input[name="consent"]', { force: true });
+  await page.click('button[type="submit"]');
+  await expect(page).toHaveURL(/\/thanks$/);
+  await ctx.close();
+});
+
 test('с JavaScript результат показывается на месте, без перезагрузки', async ({ page }) => {
   await page.goto('/contact');
   await fill(page);

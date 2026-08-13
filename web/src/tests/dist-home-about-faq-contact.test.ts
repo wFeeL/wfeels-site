@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { ABOUT_LEAD, ABOUT_BLOCKS, ABOUT_CLOSING, ABOUT_CLIENT_LABEL } from '../data/about';
 import { FAQ_ITEMS } from '../data/faq';
-import { telegramHandle } from '../lib/contacts';
+import { telegramHandle, EMAIL } from '../lib/contacts';
 
 /* Тот же паттерн, что `dist-home-process-guarantees.test.ts`: читает
  * `dist/index.html` напрямую, без браузера, — доказывает, что текст секций
@@ -70,6 +70,16 @@ describe('dist/index.html — секции 9, 10 и 11', () => {
     expect(html).toContain('id="lead-form"');
     expect(html).toContain(telegramHandle());
     expect(html).toContain('https://t.me/wfeels');
+  });
+
+  it('секция 11: почта кликабельна, но в исходнике нет буквального адреса', () => {
+    expect(html).toContain('mailto:githubwfeel&#64;gmail&#46;com');
+    // Простой сборщик почты ищет в сыром HTML подстроку вида «адрес@домен» —
+    // такой подстроки в разметке нет вовсе, есть только числовая ссылка.
+    expect(html).not.toContain(EMAIL);
+    // Двойного экранирования нет: `&amp;#64;` значило бы, что ссылка
+    // разворачивается не в «@», а в буквальный текст «&#64;».
+    expect(html).not.toContain('&amp;#64;');
   });
 
   it('заголовок секции 11 дословно совпадает с заголовком /contact', () => {
