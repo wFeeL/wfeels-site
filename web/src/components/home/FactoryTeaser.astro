@@ -1,16 +1,17 @@
 ---
 /* Тизер фабрики под тремя карточками кейсов (спека 02-home.md, раздел 10;
- * текст — 02-texts.md, секция 5; ядро — задача 14 плана и отдельный бриф
- * `02-home-core.md`). Панель непрозрачна (`--surface`) намеренно: линия на
- * фоне (задача 13) проходит позади неё и не выходит на полосу тизера ни в
- * одной теме — обе задачи проверены вместе (бриф, раздел 11).
+ * текст — 02-texts.md, секция 5, переписан брифом `02-home-core.md`, раздел
+ * 12; плита — тот же бриф, вариант владельца А «Плита»). Панель непрозрачна
+ * (`--surface`) намеренно: линия на фоне (задача 13) проходит позади неё и
+ * не выходит на полосу тизера ни в одной теме — обе задачи проверены вместе
+ * (бриф, раздел 11).
  *
  * Порядок сверху вниз — из брифа, раздел 6: метка → заголовок → абзац →
- * рисунок → легенда (внутри `FactoryCore.astro`) → ссылка. Действие стоит
- * под доказательством, а не над ним.
+ * рисунок → ссылка. Легенды в этом порядке больше нет — вариант «Плита» не
+ * использует тики и условные обозначения. Действие стоит под доказательством,
+ * а не над ним.
  */
-import Label from '../Label.astro';
-import FactoryCore from '../FactoryCore.astro';
+import FactoryPlate from '../FactoryPlate.astro';
 import FactoryStamp from '../FactoryStamp.astro';
 import { FACTORY_TEASER } from '../../data/cases';
 ---
@@ -18,7 +19,7 @@ import { FACTORY_TEASER } from '../../data/cases';
   <p class="fabric-label">ФАБРИКА БОТОВ</p>
   <h3 class="t-h3">{FACTORY_TEASER.title}</h3>
   <p class="lead">{FACTORY_TEASER.text}</p>
-  <FactoryCore />
+  <FactoryPlate />
   <p class="link">
     <a href={FACTORY_TEASER.href}>
       <FactoryStamp />
@@ -60,7 +61,7 @@ import { FACTORY_TEASER } from '../../data/cases';
     max-width: 62ch;
   }
 
-  .teaser > :global(.factory-core) {
+  .teaser > :global(.factory-plate) {
     margin-top: 32px;
   }
 

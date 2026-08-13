@@ -1,0 +1,234 @@
+---
+/* Плита в тизере фабрики — вариант владельца А «Плита», бриф
+ * `70-workshop/specs/site-v3/02-home-core.md`. Читать бриф целиком: этот
+ * файл реализует направление, а не выбирает его.
+ *
+ * HTML и CSS, ноль SVG (бриф, раздел 3): плита состоит из прямоугольников и
+ * десяти строк русского текста, которые обязаны переноситься сами — SVG
+ * переносить текст не умеет.
+ *
+ * Счётность идёт из данных, а не из разметки: количество колонок типов,
+ * количество ячеек плиты, число тем и обе метки приходят из `data/factory.ts`
+ * через `.map()`. Добавили тему во `FACTORY` — плита обновится сама;
+ * тест-сторож `data/factory.test.ts` не даст забыть про сумму.
+ *
+ * Клиентского скрипта нет и не появляется — задача не добавляет к странице
+ * ни байта JavaScript.
+ *
+ * Пустые данные: если `FACTORY` или `FACTORY_FRAME` пусты, плита не
+ * рендерится вовсе (см. условие ниже) — пустая плита читается как сломанная
+ * страница (бриф, раздел 10).
+ */
+import { FACTORY, FACTORY_FRAME, FACTORY_CAPTIONS } from '../data/factory';
+
+const hasData = FACTORY.length > 0 && FACTORY_FRAME.length > 0;
+---
+{hasData && (
+  <div class="factory-plate">
+    <p class="fp-cap fp-cap-own" id="fp-cap-own">{FACTORY_CAPTIONS.own}</p>
+    <ul class="fp-types" aria-labelledby="fp-cap-own">
+      {FACTORY.map((t) => (
+        <li class="fp-type">
+          <span class="fp-name">{t.label}</span>
+          <span class="fp-own">{t.own}</span>
+          <span class="fp-themes">{t.themes} {FACTORY_CAPTIONS.themes}</span>
+        </li>
+      ))}
+    </ul>
+    <div class="fp-legs" aria-hidden="true">
+      {FACTORY.map(() => <i></i>)}
+    </div>
+    <div class="fp-frame">
+      <p class="fp-cap fp-cap-frame" id="fp-cap-frame">{FACTORY_CAPTIONS.frame}</p>
+      <ul class="fp-cells" aria-labelledby="fp-cap-frame">
+        {FACTORY_FRAME.map((part) => <li>{part}</li>)}
+      </ul>
+    </div>
+  </div>
+)}
+
+<style>
+  /* Рисунок — иллюстрация блока, не орган управления: не в таб-порядке, без
+     наведения. Текст при этом остаётся выделяемым для скринридера — он
+     берёт его из дерева доступности, а не из событий указателя (бриф,
+     раздел 10). */
+  .factory-plate {
+    display: block;
+    pointer-events: none;
+  }
+
+  /* Общие метки — моно 11, капслок, трекинг .16em (бриф, раздел 4). Регистр
+     в данных читается как обычный текст; капслок — только CSS, чтобы
+     скринридер проговаривал слово целиком, а не по буквам. */
+  .fp-cap {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem; /* 11px */
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .fp-cap-own {
+    margin: 0 0 12px;
+    color: var(--text-muted);
+  }
+
+  /* Четыре типа в ряд. */
+  .fp-types {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .fp-type {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: var(--stroke-hair) solid var(--border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+  }
+  .fp-name {
+    font-family: var(--font-head);
+    font-size: 1rem; /* 16px */
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .fp-own {
+    font-family: var(--font-text);
+    font-size: 1rem; /* 16px */
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+  .fp-themes {
+    margin-top: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem; /* 11px */
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* Ножки — соединительная графика между типами и плитой, декоративны
+     (`aria-hidden`, бриф раздел 4). */
+  .fp-legs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    height: 32px;
+  }
+  .fp-legs i {
+    display: block;
+    width: 0;
+    height: 32px;
+    margin-inline: auto;
+    border-left: var(--stroke-line) solid var(--text);
+  }
+
+  /* Плита — единственный сплошной прямоугольник рисунка, обведён самой
+     толстой линией (бриф, раздел 2: «доказательство держится формой»).
+     Прозрачный фон обязателен: панель тизера уже `--surface`, заливка
+     вложенной рамки дала бы карточку в карточке (бриф, раздел 4). */
+  .fp-frame {
+    border: var(--stroke-bold) solid var(--text);
+    /* Акцент ровно один на весь рисунок — верхняя кромка плиты, кромка, на
+       которую всё встаёт (бриф, раздел 4). Больше `--accent` в этом файле
+       нет нигде. */
+    border-top-color: var(--accent);
+    border-radius: var(--radius-md);
+    /* `clip` вместо буквального `hidden` из брифа: `overflow: hidden`
+       превращает элемент в контейнер прокрутки, и он стал бы ИСТОЧНИКОМ
+       таймлайна для любого потомка на `animation-timeline: view()` —
+       известная ловушка этого репозитория. Здесь она не должна бы сработать
+       (потомки `.fp-frame` не анимируются, анимируется он сам, по именованному
+       таймлайну с ancestor `.factory-plate`), но `clip` даёт тот же визуальный
+       результат (обрезка по скруглённому углу) без риска стать источником
+       чего-либо — безопаснее и не хуже. */
+    overflow: clip;
+    background: transparent;
+  }
+  .fp-cap-frame {
+    padding: 16px;
+    color: var(--text);
+    border-bottom: var(--stroke-hair) solid var(--border);
+  }
+  .fp-cells {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .fp-cells li {
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem; /* 11px */
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text);
+    /* Только внутренние линии: правая — у всех, кроме последней колонки;
+       нижняя — только между рядами (первый ряд), не против внешней рамки
+       плиты (бриф, раздел 4). */
+    border-right: var(--stroke-hair) solid var(--border);
+  }
+  .fp-cells li:nth-child(3n) {
+    border-right: none;
+  }
+  .fp-cells li:nth-child(-n + 3) {
+    border-bottom: var(--stroke-hair) solid var(--border);
+  }
+
+  /* Ниже 900 px — тот же порог, что у навигации ([[01-foundation]]). Одна
+     разметка, сетка перестраивается (бриф, раздел 4). */
+  @media (max-width: 899px) {
+    .fp-types {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .fp-type {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: baseline;
+      gap: 12px;
+      padding: 12px;
+    }
+    .fp-own {
+      min-width: 0;
+    }
+
+    .fp-legs {
+      grid-template-columns: 1fr;
+    }
+    /* Под столбиком строк четыре ножки соединяли бы не то, что нужно —
+       остаётся одна по центру (бриф, раздел 4). В разметке ножки не
+       дублируются: избыточные три просто скрыты. */
+    .fp-legs i:not(:first-child) {
+      display: none;
+    }
+
+    .fp-cells {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .fp-cells li {
+      padding: 12px;
+    }
+    /* Раскладка сменилась на две колонки — сбрасываем правило верстки для
+       трёх колонок и объявляем заново под две (бриф, раздел 4). */
+    .fp-cells li:nth-child(3n) {
+      border-right: var(--stroke-hair) solid var(--border);
+    }
+    .fp-cells li:nth-child(2n) {
+      border-right: none;
+    }
+    .fp-cells li:nth-child(-n + 3) {
+      border-bottom: none;
+    }
+    .fp-cells li:nth-child(-n + 4) {
+      border-bottom: var(--stroke-hair) solid var(--border);
+    }
+  }
+</style>

@@ -84,16 +84,14 @@ describe('dist/index.html — секция 5', () => {
     expect(forbidden.test(casesSectionHtml)).toBe(false);
   });
 
-  it('тизер фабрики: текст, метка и ядро на месте (задача 14)', () => {
+  it('тизер фабрики: текст, метка и плита на месте (вариант владельца А «Плита»)', () => {
     expect(html).toContain('ФАБРИКА БОТОВ');
     expect(html).toContain(FACTORY_TEASER.title);
     expect(html).toContain(FACTORY_TEASER.text);
     expect(html).toContain(FACTORY_TEASER.linkText);
     expect(html).toContain(FACTORY_TEASER.href);
-    // Рисунок ядра — оба раскроя, в разметке без выполнения JavaScript.
-    expect(html).toContain('class="core-svg core-a"');
-    expect(html).toContain('class="core-svg core-b"');
-    expect(html).toContain('BOT_FACTORY');
-    expect(html).toContain('Закрашенный тик — снятое демо · полый — тема без демо');
+    // Плита — в разметке без выполнения JavaScript. Подробный разбор её
+    // содержимого и байтового веса — `tests/dist-factory-plate.test.ts`.
+    expect(html).toContain('class="factory-plate"');
   });
 });
