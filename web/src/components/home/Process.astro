@@ -5,10 +5,17 @@
  * (`Guarantees.astro`), чтобы один факт не стоял дважды на расстоянии
  * экрана (02-texts.md, «Что здесь нельзя менять при правке»). Содержимое
  * читается из `data/process.ts`, второй ручной копии текста здесь нет.
+ *
+ * Раскрой — вариант П2-Б «Размерная выноска» из
+ * `70-workshop/specs/site-v3/02-process-options.md`, выбран владельцем
+ * 2026-08-13: пять шагов — узлы-квадраты на вертикальной оси, номер шага
+ * рисует узел, а не текст заголовка (число ушло из `data/process.ts` этим
+ * же заходом). Заголовки шагов красятся `--text`, не `--accent` — закрывает
+ * находку ревью №9 («пять синих заголовков читаются как ссылками, хотя
+ * некликабельны»).
  */
 import Label from '../Label.astro';
-import Prose from '../Prose.astro';
-import { PROCESS_STEPS } from '../../data/process';
+import { PROCESS_STEPS, WARRANTY_DAYS } from '../../data/process';
 
 if (PROCESS_STEPS.length !== 5) {
   throw new Error('home/Process.astro: секция 7 несёт ровно пять шагов.');
@@ -16,39 +23,192 @@ if (PROCESS_STEPS.length !== 5) {
 ---
 <Label>КАК ЭТО БУДЕТ</Label>
 <h2 class="t-h2">Как я работаю</h2>
-<Prose>
-  {/* `<ol>` без CSS-счётчика: утверждённый заголовок каждого шага уже несёт
-      свой номер («1. Разбор задачи») — счётчик поверх него задвоил бы
-      нумерацию, показав «01» и «1.» рядом. Список остаётся семантическим
-      `<ol>` ради структуры для скринридера, а порядковый знак рисует только
-      сам текст. */}
-  <ol class="steps">
-    {PROCESS_STEPS.map((step) => (
-      <li><strong>{step.title}</strong> {step.text}</li>
+<div class="process">
+  {/* `<ol>` без CSS-счётчика: номер рисует узел (`.node`, реальный текст
+      «01»…«05», не генерируемый контент) — сам узел помечен `aria-hidden`,
+      чтобы скринридер не объявлял число дважды поверх порядка, который уже
+      даёт семантика `<ol>`. */}
+  <ol class="axis">
+    {PROCESS_STEPS.map((step, i) => (
+      <li class="step reveal">
+        <span class="node" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+        <strong class="t-h3 step-title">{step.title}</strong>
+        <p class="step-text">{step.text}</p>
+      </li>
     ))}
   </ol>
-</Prose>
+
+  {/* Размерная выноска — единственная крупная цифра секции, и единственное
+      число, у которого есть источник (`data/process.ts`, `WARRANTY_DAYS`,
+      SERVICES.md:151). Разложить срок по пяти шагам нельзя — календарных
+      сроков по шагам процесса не существует, они привязаны к ступеням услуг
+      в PRICING.md (02-process-options.md, раздел 1). Акцент секции остаётся
+      только здесь: узлы и заголовки шагов выше набраны `--text`/`--text-
+      muted`, не `--accent`. */}
+  <div class="dimension reveal">
+    <span class="dimension-line" aria-hidden="true"></span>
+    <span class="dimension-value">{WARRANTY_DAYS}&nbsp;дней</span>
+  </div>
+</div>
 
 <style>
   /* Отбивка заголовка до первого содержимого — 32 px, одна величина на все
-     десять секций главной (правка владельца 2026-08-13, «Три акта»): было
-     0 — заголовок стоял вплотную к списку шагов. */
+     десять секций главной (правка владельца 2026-08-13, «Три акта»). */
   h2 { margin: 0 0 32px; }
 
-  .steps {
+  /* Два блока: ось с шагами (пружинит до 614px = колонка узла 32 + отступ
+     24 + колонка текста 558) и выноска «30 дней» (растёт на оставшееся
+     место). Без жёсткой точки перелома: когда обоим не хватает ширины
+     панели, выноска сама переносится на новую строку и растягивается на
+     всю ширину — это и есть раскрой 390px из брифа, тем же правилом, без
+     отдельного `@media`. `align-items: flex-end` ставит выноску вровень с
+     низом оси — «справа от пятого шага», как в 02-process-options.md. */
+  .process {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    column-gap: 32px;
+    row-gap: 32px;
+  }
+
+  .axis {
+    position: relative;
     list-style: none;
     margin: 0;
     padding: 0;
+    flex: 0 1 614px;
   }
-  .steps li {
-    padding: 20px 0;
-    border-top: 1px solid var(--border);
+
+  /* Ось — 1 px `--border` по левому краю колонки узлов. Начало на середине
+     первого узла (16px = половина 32px квадрата), конец уходит на 32 px
+     (один шаг сетки) НИЖЕ последнего шага — «ось не обрывается», последний
+     отрезок тянется в поле панели, к следующей секции «Что я гарантирую»
+     (00-overview, D-031 — соседние точки рельса). Дальше в саму соседнюю
+     секцию линия не заходит: `Guarantees.astro` этим заходом не трогается
+     (граница мандата). */
+  .axis::before {
+    content: '';
+    position: absolute;
+    top: 16px;
+    bottom: -32px;
+    left: 15px; /* центр 32px квадрата минус половина 1px линии */
+    width: 1px;
+    background: var(--border);
   }
-  .steps li:first-child { border-top: none; padding-top: 0; }
-  .steps li:last-child { padding-bottom: 0; }
-  .steps strong {
+
+  /* Ось прочерчивается по прокрутке (02-process-options.md, «Движение»
+     варианта П2-Б). Базовое правило выше не объявляет ни `scale`, ни
+     `animation-*` — конечное состояние остаётся состоянием по умолчанию:
+     линия нарисована целиком без поддержки `animation-timeline` и при
+     `prefers-reduced-motion: reduce`. Раздельные свойства, не шорткод
+     `animation:` — сборка сводит его с `animation-timeline` в один CSS-
+     шорткод, который собранный Chromium не разбирает и молча роняет
+     анимацию целиком (комментарий `BackgroundLine.astro:124-129`, сторож
+     `tests/css-no-animation-shorthand-with-timeline.test.ts`). */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .axis::before {
+        transform-origin: top;
+        animation-name: process-axis-draw;
+        animation-duration: 1ms; /* реальную длительность задаёт таймлайн */
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range-start: entry 0%;
+        animation-range-end: entry 100%;
+      }
+    }
+  }
+
+  @keyframes process-axis-draw {
+    from { scale: 1 0; }
+    to { scale: 1 1; }
+  }
+
+  .step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    column-gap: 24px;
+    padding-bottom: 32px; /* расстояние между шагами держит сама ось — кратно шагу сетки 32px, не волосяные линейки */
+  }
+  .step:last-child { padding-bottom: 0; }
+
+  /* Узел — квадрат ровно в клетку сетки, сидит на оси и перекрывает линию
+     своим фоном `--surface` (тот же цвет, что у панели секции) — это и даёт
+     вид «ось проходит сквозь узел», без второго слоя разметки. */
+  .node {
+    grid-column: 1;
+    grid-row: 1;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font: 500 0.6875rem/1 var(--font-mono);
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .step-title {
+    grid-column: 2;
+    grid-row: 1;
     display: block;
-    margin-bottom: 2px;
+    color: var(--text);
+    margin: 2px 0 4px;
+    max-width: 558px;
+  }
+  .step-text {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 0;
+    max-width: 558px;
+  }
+
+  /* Размерная выноска — как размер на чертеже: линия с двумя выносными
+     засечками сверху, число снизу (02-process-options.md, раздел «П2-Б»,
+     ASCII-раскрой). Растёт минимум до 220px, а когда переносится на
+     отдельную строку (см. `.process` выше) — на всю ширину панели, и линия
+     с засечками растягивается вместе с ней (`width: 100%` через блочный
+     элемент, без числа). */
+  .dimension {
+    flex: 1 1 220px;
+  }
+
+  .dimension-line {
+    display: block;
+    height: 1px;
+    background: var(--accent);
+    position: relative;
+  }
+  .dimension-line::before,
+  .dimension-line::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    width: 1px;
+    height: 16px;
+    background: var(--accent);
+  }
+  .dimension-line::before { left: 0; }
+  .dimension-line::after { right: 0; }
+
+  /* Единственная крупная цифра секции: ступень `.t-h1` (36→60px) —
+     объявлена в шкале, но на главной сегодня не занята ни одним элементом
+     (00-overview, раздел 4, «Открытый долг» — теперь занята здесь). Кегль
+     скопирован из `styles/base.css` `.t-h1` буквально (clamp 2.25rem →
+     3.75rem), а не унаследован классом `.t-h1`: тот класс тянет за собой
+     общий заголовочный набор (`h1, h2, h3, .t-display, .t-h1, .t-h2, .t-h3`
+     — Manrope 800, трекинг −0.02em), а выноске нужен другой голос — моно
+     500, без трекинга, тот же приём, что `Prose.astro` уже применяет к
+     `:global(h2)`/`:global(h3)`, дублируя кегль вместо наследования класса. */
+  .dimension-value {
+    display: block;
+    margin-top: 16px;
+    font: 500 clamp(2.25rem, 5.6vw, 3.75rem)/1.1 var(--font-mono);
     color: var(--accent);
+    font-variant-numeric: tabular-nums;
   }
 </style>
