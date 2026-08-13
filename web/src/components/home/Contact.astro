@@ -6,41 +6,107 @@
  *
  * `LeadForm` — тот же компонент, что на `/contact`, вторым экземпляром: на
  * каждой странице своя копия разметки, но код один (план `02-home-plan.md`,
- * задача 12). Адрес Telegram — из `lib/contacts.ts`, третьего места с ним
+ * задача 12). Оба адреса — из `lib/contacts.ts`, третьего места с ними
  * здесь не заводится.
+ *
+ * Две колонки — правка владельца 2026-08-13 («секция в одну колонку, форма
+ * шириной 543 px внутри 980 — правые 45% последнего экрана пусты»). Слева
+ * подводка, прямые контакты и строка про срок; справа форма, той же ширины,
+ * что и раньше (34rem, `LeadForm.astro`), поэтому пустого поля справа от
+ * неё больше нет — колонка под форму подогнана под ту же ширину.
+ *
+ * «Отвечу в течение дня.» вынесена из первого абзаца подводки отдельной
+ * строкой в конец левой колонки. Слова не менялись ни на одну букву —
+ * сдвинулась только граница между двумя предложениями абзаца, была точка
+ * между ними и раньше («…не работает. Отвечу в течение дня.»). Порядок
+ * «подводка → контакты → срок» — решение владельца: сначала способ связаться,
+ * потом обещание про срок ответа.
  */
 import Label from '../Label.astro';
 import Prose from '../Prose.astro';
 import LeadForm from '../LeadForm.astro';
-import { TELEGRAM_URL, telegramHandle } from '../../lib/contacts';
+import { TELEGRAM_URL, telegramHandle, emailLinkHtml } from '../../lib/contacts';
 ---
 <Label>ПОСЛЕДНИЙ ШАГ</Label>
 <h2 class="t-h2">Расскажите о задаче</h2>
-<Prose>
-  <p>
-    Напишите пару строк: что нужно — или что сейчас не работает. Отвечу в
-    течение дня.
-  </p>
-  <p>
-    Дальше несколько вопросов и вилка срока и цены. Ни к чему не обязывает:
-    если задача окажется не моя, скажу сразу.
-  </p>
-</Prose>
 
-<LeadForm />
+<div class="layout">
+  <div class="intro">
+    <Prose>
+      <p>Напишите пару строк: что нужно — или что сейчас не работает.</p>
+      <p>
+        Дальше несколько вопросов и вилка срока и цены. Ни к чему не обязывает:
+        если задача окажется не моя, скажу сразу.
+      </p>
+    </Prose>
 
-<p class="alt">
-  Не любите формы — напишите сразу в Telegram: <a href={TELEGRAM_URL} rel="me"><strong>{telegramHandle()}</strong></a>
-</p>
+    <div class="channels">
+      <p class="channels-label">Не любите формы — напишите сразу:</p>
+      <ul>
+        <li>
+          <a href={TELEGRAM_URL} rel="me">Telegram · <strong>{telegramHandle()}</strong></a>
+        </li>
+        <li set:html={emailLinkHtml('Почта')} />
+      </ul>
+    </div>
+
+    <p class="reply">Отвечу в течение дня.</p>
+  </div>
+
+  <div class="form-col">
+    <LeadForm />
+  </div>
+</div>
 
 <style>
-  .alt {
-    margin: 24px 0 0;
+  /* Столбик на телефоне: подводка, контакты, срок ответа, форма — в порядке
+     чтения. С 900 px (та же точка, на которой разворачивается навигация
+     шапки, `tokens.css`) — две колонки: левая тянется, правая держит ширину
+     формы и не отдаёт лишнего места пустотой рядом с полями. */
+  .layout {
+    display: grid;
+    gap: 40px;
+    margin-top: 24px;
+  }
+  @media (min-width: 900px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 34rem);
+      gap: 56px;
+      align-items: start;
+    }
+  }
+
+  .channels {
+    margin-top: 32px;
+  }
+  .channels-label {
+    margin: 0 0 12px;
     color: var(--text-muted);
   }
-  .alt a {
+  .channels ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 4px;
+  }
+  .channels a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     color: var(--accent);
     text-decoration: underline;
     text-underline-offset: 2px;
+  }
+
+  .reply {
+    margin: 24px 0 0;
+    color: var(--text-muted);
+  }
+
+  /* Форма держит свою собственную ширину (34rem, `LeadForm.astro`) — колонка
+     здесь только даёт ей место и не растягивает её дальше. */
+  .form-col :global(form) {
+    margin-top: 0;
   }
 </style>
