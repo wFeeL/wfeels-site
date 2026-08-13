@@ -32,14 +32,23 @@
 interface Props {
   /** Высота поля в px, кратная 32, в коридоре 288…448 (раздел 2.1 брифа). */
   height: number;
+  /** Высота поля ниже 899 px, если отличается от десктопной — нужна только
+   *  иллюстрации 2 «Заявка-Хаб»: её раскрой Б (виджет 288×480, вертикальный)
+   *  не помещается в десктопную высоту 352 (бриф, раздел 4.4). Иллюстрации 1
+   *  и 3 — обычный HTML, перетекают сами внутри одной и той же высоты
+   *  (бриф, раздел 2.2), поэтому проп у них не задаётся. */
+  mobileHeight?: number;
 }
-const { height } = Astro.props;
+const { height, mobileHeight } = Astro.props;
 const hasContent = Astro.slots.has('default')
   ? (await Astro.slots.render('default')).trim().length > 0
   : false;
+const style = mobileHeight
+  ? `--field-height: ${height}px; --field-height-mobile: ${mobileHeight}px`
+  : `--field-height: ${height}px`;
 ---
 {hasContent && (
-  <div class="field" style={`--field-height: ${height}px`}>
+  <div class="field" style={style}>
     <slot />
   </div>
 )}
@@ -55,5 +64,8 @@ const hasContent = Astro.slots.has('default')
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+  @media (max-width: 899px) {
+    .field { height: var(--field-height-mobile, var(--field-height)); }
   }
 </style>

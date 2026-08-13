@@ -1,9 +1,127 @@
 ---
-/* Заглушка задачи 1 — плана. Иллюстрация «Пример диалога» строится задачей 5
- * (`70-workshop/specs/site-v3/02-case-illustrations.md`, раздел 5). Компонент
- * намеренно ничего не рендерит, пока содержимого нет: `CaseIllustrationField
- * .astro` (правка ревью 2026-08-13, часть 2) рисует рамку поля только когда
- * слот отдаёт непустой вывод — пустая заглушка оставляет на странице пустое
- * место, а не пустую рамку с бордюром.
+/* Иллюстрация «Пример диалога» (кейс «ИИ-консультант»), бриф
+ * `70-workshop/specs/site-v3/02-case-illustrations.md`, раздел 5. Читать
+ * бриф целиком.
+ *
+ * Настоящий текст в HTML, не картинка и не `aria-hidden` (раздел 2.5): он
+ * весит около нуля, читается программой чтения и работает без JavaScript.
+ * Сценарий клиента, решение владельца (D-030, пункт 3): бот отвечает
+ * покупателю груминг-салона, а не рассказывает о наших услугах. Салон
+ * безымянный — выдуманные названия организаций запрещены наравне с
+ * выдуманным заказчиком (00-overview, раздел 7; `40-portfolio/CLAUDE.md`).
+ *
+ * Реплики и метка поля читаются из `data/case-illustrations.ts` —
+ * единственного источника; модуль падает на сборке, если реплик не ровно
+ * четыре, они не чередуются посетитель/бот, содержат цифру или ₽, или вторая
+ * реплика бота перестала быть честным отказом (раздел 5.3).
+ *
+ * Классы короткие (`.v`/`.bt`, `.p1`…`.p4`) — тот же бюджетный приём, что у
+ * `CaseFlowIllustration.astro`: секция кейсов тесно ограничена по байтам
+ * (бриф, раздел 6), а имена длиной в слово повторялись бы четыре раза.
  */
+import { DIALOGUE_FIELD_LABEL, DIALOGUE_LINES, type DialogueRole } from '../../data/case-illustrations';
+
+const ROLE_LABEL: Record<DialogueRole, string> = {
+  visitor: 'ПОСЕТИТЕЛЬ',
+  bot: 'БОТ',
+};
+const ROLE_CLASS: Record<DialogueRole, string> = { visitor: 'v', bot: 'bt' };
 ---
+<div class="dialogue">
+  <p id="dialogue-field-label" class="lbl">{DIALOGUE_FIELD_LABEL}</p>
+  <ol class="lines" aria-labelledby="dialogue-field-label">
+    {DIALOGUE_LINES.map((line, i) => (
+      <li class={`${ROLE_CLASS[line.role]} p${i + 1}`}>
+        <p class="role">{ROLE_LABEL[line.role]}</p>
+        <p class="msg">
+          {line.text}
+          {line.source && <span class="chip">ИСТОЧНИК: {line.source}</span>}
+        </p>
+      </li>
+    ))}
+  </ol>
+</div>
+
+<style>
+  .dialogue { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+  /* Единственная метка-заголовок поля — 11 px допустим только здесь (бриф,
+     раздел 2.3), не для содержательных подписей ниже. */
+  .lbl {
+    margin: 0 0 20px;
+    font: 500 0.6875rem/1.3 var(--font-mono);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .lines { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; }
+  .lines > li { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .v { align-items: flex-start; }
+  .bt { align-items: flex-end; }
+
+  /* Метки ролей — моно small (16 px, шкала `base.css`), --text-muted: это
+     информация (кто говорит), не декор, значит не --text-faint (бриф,
+     раздел 5.4). Две вертикали меток (слева/справа) отличают блок от
+     «пометок на полях». */
+  .role { margin: 0; font: 500 1rem/1.3 var(--font-mono); color: var(--text-muted); }
+
+  /* Реплики — не пузыри мессенджера: прямоугольники с волосяной рамкой,
+     заливка --surface, радиус 8, ни одной тени (бриф, раздел 5.4). */
+  .msg {
+    margin: 0;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font: 400 1rem/1.4 var(--font-text);
+    color: var(--text);
+    box-sizing: border-box;
+  }
+  .v .msg { max-width: 384px; }
+  .bt .msg { margin-left: 32px; width: calc(100% - 32px); }
+  /* Сдвиг реплики бота (32 px) остаётся на всех ширинах; ниже 900 px
+     реплика посетителя тоже растягивается до края поля (бриф, раздел 5.4). */
+  @media (max-width: 899px) {
+    .v .msg { max-width: none; }
+  }
+
+  /* Чип источника — единственный акцент рисунка (бриф, раздел 5.4). Кегль
+     не мельче small (раздел 2.3) — «label» здесь означает стиль (моно,
+     капслок, трекинг), не буквальные 11 px: чип несёт содержательную
+     информацию, а не декор. */
+  .chip {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 10px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-pill);
+    font: 600 0.6875rem/1.4 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  /* Запасное состояние — состояние ПО УМОЛЧАНИЮ (бриф, раздел 5.6): все
+     четыре реплики видны сразу, целиком, статично. Анимация — только
+     непрозрачность и сдвиг на 8 px вверх, никакой имитации набора текста. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .lines > li {
+        animation-timeline: view();
+        animation-range: entry 15% cover 65%;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-name: dlg-in;
+        opacity: 0;
+        translate: 0 8px;
+      }
+      .p1 { animation-duration: 1ms; }
+      .p2 { animation-duration: 100ms; }
+      .p3 { animation-duration: 200ms; }
+      .p4 { animation-duration: 300ms; }
+    }
+  }
+
+  @keyframes dlg-in { to { opacity: 1; translate: 0 0; } }
+</style>

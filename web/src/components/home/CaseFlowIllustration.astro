@@ -1,9 +1,231 @@
 ---
-/* Заглушка задачи 1 — плана. Иллюстрация «Одна труба, четыре отвода»
- * строится задачей 4 (`70-workshop/specs/site-v3/02-case-illustrations.md`,
- * раздел 4). Компонент намеренно ничего не рендерит, пока содержимого нет:
- * `CaseIllustrationField.astro` (правка ревью 2026-08-13, часть 2) рисует
- * рамку поля только когда слот отдаёт непустой вывод — пустая заглушка
- * оставляет на странице пустое место, а не пустую рамку с бордюром.
+/* Иллюстрация «Одна труба, четыре отвода» (кейс «Заявка-Хаб»), бриф
+ * `70-workshop/specs/site-v3/02-case-illustrations.md`, раздел 4. Читать
+ * бриф целиком: этот файл реализует заданную геометрию, а не выбирает её.
+ *
+ * Тот же язык, что `FactoryCore.astro`: оба раскроя лежат в разметке
+ * одновременно, невидимый скрыт `display:none` на пороге 899/900 px; три
+ * толщины обводки из токенов (`--stroke-bold/--stroke-line/--stroke-hair`).
+ * Геометрия — константы компонента (структура рисунка, не бизнес-данные);
+ * СОДЕРЖИМОЕ (подписи источников, каналов, число каналов) читается из
+ * `data/case-illustrations.ts` — единственного источника; ни одна подпись
+ * не написана здесь строкой. Модуль данных падает на сборке, если каналов
+ * не ровно четыре, поэтому пустого рисунка не бывает.
+ *
+ * Несколько отрезков одной роли/фазы собраны в ОДИН `<path>` через
+ * повторный `M` внутри `d` (несколько несвязанных подпутей одним элементом) —
+ * бюджет секции (бриф, раздел 6) тесный, а роль/цвет/анимация у них общие;
+ * визуально и по правилу ортогонали (только H/V, дуги фиксированного
+ * радиуса 16 — здесь не потребовались вовсе) это тот же рисунок, что при
+ * отдельных элементах. Цвет и кегль вынесены на класс, а не повторены
+ * атрибутами (комментарий `FactoryCore.astro:20-23` — та же причина).
  */
+import { FLOW_SOURCES, DELIVERY_CHANNELS, FLOW_RETRY_LABEL } from '../../data/case-illustrations';
+
+// ---------------------------------------------------------------------
+// Раскрой А (от 900 px) — viewBox 0 0 576 288 (бриф, раздел 4.3).
+// ---------------------------------------------------------------------
+const SOURCE_Y = [64, 128, 192]; // ФОРМА · БОТ · ЛЕНДИНГ, из README (11–12, 17, 30)
+const TRUNK_X = 112;
+const NODE_X = 160;
+const NODE_W = 128;
+const NODE_Y = 104;
+const NODE_H = 48;
+const NODE_CY = NODE_Y + NODE_H / 2; // 128
+const TRUNK_END_X = 544;
+
+const CHANNEL_X0 = 320;
+const CHANNEL_STEP = 64; // две клетки — шаг 32×2 (бриф, раздел 4.3)
+const CHANNEL_XS = DELIVERY_CHANNELS.map((_, i) => CHANNEL_X0 + i * CHANNEL_STEP);
+const CHANNEL_NODE_Y = 192;
+const CHANNEL_NODE_SIZE = 24;
+const CHANNEL_LABEL_Y = CHANNEL_NODE_Y + CHANNEL_NODE_SIZE + 18;
+
+const RETURN_BUS_Y = 256;
+const RETURN_X = 224; // «нижняя кромка узла» (224,152), бриф раздел 4.3
+const RETURN_LABEL_Y = RETURN_BUS_Y + 20;
+const LAST_CHANNEL_X = CHANNEL_XS[CHANNEL_XS.length - 1];
+
+function vSegments(xs: number[], y1: number, y2: number): string {
+  return xs.map((x) => `M${x},${y1}V${y2}`).join('');
+}
+function rectSegments(xs: number[], y: number, size: number): string {
+  const h = size / 2;
+  return xs.map((x) => `M${x - h},${y}H${x + h}V${y + size}H${x - h}Z`).join('');
+}
+
+const aPathSources = `M96,${SOURCE_Y[0]}H${TRUNK_X}M96,${SOURCE_Y[1]}H${TRUNK_X}M96,${SOURCE_Y[2]}H${TRUNK_X}`;
+const aPathTrunkIn = `M${TRUNK_X},${SOURCE_Y[0]}V${SOURCE_Y[2]}M${TRUNK_X},${SOURCE_Y[1]}H${NODE_X}`;
+const aPathTrunkOut =
+  `M${NODE_X + NODE_W},${NODE_CY}H${TRUNK_END_X}` +
+  `M${TRUNK_END_X - 8},${NODE_CY - 8}L${TRUNK_END_X},${NODE_CY}L${TRUNK_END_X - 8},${NODE_CY + 8}`;
+const aPathBranches = vSegments(CHANNEL_XS, NODE_CY, CHANNEL_NODE_Y);
+const aPathChannelNodes = rectSegments(CHANNEL_XS, CHANNEL_NODE_Y, CHANNEL_NODE_SIZE);
+const aPathReturn =
+  vSegments(CHANNEL_XS, CHANNEL_NODE_Y + CHANNEL_NODE_SIZE, RETURN_BUS_Y) +
+  `M${LAST_CHANNEL_X},${RETURN_BUS_Y}H${RETURN_X}M${RETURN_X},${RETURN_BUS_Y}V${NODE_Y + NODE_H}` +
+  `M${RETURN_X - 6},${NODE_Y + NODE_H + 8}L${RETURN_X},${NODE_Y + NODE_H}L${RETURN_X + 6},${NODE_Y + NODE_H + 8}`;
+
+// ---------------------------------------------------------------------
+// Раскрой Б (ниже 900 px) — viewBox 0 0 288 480 (бриф, раздел 4.4).
+// ---------------------------------------------------------------------
+const B_NODE_X = 64;
+const B_NODE_Y = 96;
+const B_NODE_W = 160;
+const B_NODE_H = 48;
+const B_NODE_CX = B_NODE_X + B_NODE_W / 2; // 144
+const B_TRUNK_START_Y = B_NODE_Y + B_NODE_H; // 144
+const B_BRANCH_X = B_NODE_CX; // 144
+const B_NODE_LEFT = 188;
+const B_LABEL_X = 224;
+const B_RETURN_X = 104;
+const B_RETURN_ARROW_TOP = B_NODE_Y + B_NODE_H + 6; // 150
+const B_LABEL_Y = 436;
+
+const B_BRANCH_YS = DELIVERY_CHANNELS.map((_, i) => 208 + i * 64);
+const B_LAST_BRANCH_Y = B_BRANCH_YS[B_BRANCH_YS.length - 1];
+
+function hSegments(y: number[], x1: number, x2: number): string {
+  return y.map((v) => `M${x1},${v}H${x2}`).join('');
+}
+function rectSegmentsRow(ys: number[], x: number, size: number): string {
+  const h = size / 2;
+  return ys.map((y) => `M${x},${y - h}H${x + size}V${y + h}H${x}Z`).join('');
+}
+
+const bPathEntry = `M${B_NODE_CX},48V${B_NODE_Y}`;
+const bPathTrunk = `M${B_BRANCH_X},${B_TRUNK_START_Y}V${B_LAST_BRANCH_Y}`;
+const bPathBranches = hSegments(B_BRANCH_YS, B_BRANCH_X, B_NODE_LEFT);
+const bPathChannelNodes = rectSegmentsRow(B_BRANCH_YS, B_NODE_LEFT, CHANNEL_NODE_SIZE);
+const bPathReturn =
+  `M${B_RETURN_X},${B_LAST_BRANCH_Y}V${B_RETURN_ARROW_TOP}` +
+  `M${B_RETURN_X - 6},${B_RETURN_ARROW_TOP}L${B_RETURN_X},${B_TRUNK_START_Y}L${B_RETURN_X + 6},${B_RETURN_ARROW_TOP}`;
+
+// ---------------------------------------------------------------------
+// Общее — сворачивается для программы чтения в одно описание (бриф,
+// раздел 2.5: «читать 20 фигур по одной — шум»).
+// ---------------------------------------------------------------------
+const sourceWords = FLOW_SOURCES.map((s) => s.label.toLowerCase()).join(', ');
+const channelWords = DELIVERY_CHANNELS.map((c) => c.label.toLowerCase()).join(', ');
+const ariaLabel =
+  `Схема пути заявки. Источники: ${sourceWords} — сходятся в узле «Заявка» и ` +
+  `расходятся по ${DELIVERY_CHANNELS.length} каналам: ${channelWords}. ` +
+  `При сбое доставки: ${FLOW_RETRY_LABEL.toLowerCase()}.`;
 ---
+<div class="flow">
+  <svg class="svg ra" viewBox="0 0 576 288" width="576" height="288" role="img" aria-label={ariaLabel} focusable="false">
+    <g class="lm f p1" text-anchor="end">
+      {FLOW_SOURCES.map((s, i) => <text x="88" y={SOURCE_Y[i] + 5}>{s.label}</text>)}
+    </g>
+    <path class="h d p1" d={aPathSources} pathLength="1" />
+    <path class="l d p1" d={aPathTrunkIn} pathLength="1" />
+
+    <rect class="b d p2" x={NODE_X} y={NODE_Y} width={NODE_W} height={NODE_H} pathLength="1" />
+    <g class="f p2">
+      <text class="lx" x={NODE_X + NODE_W / 2} y={NODE_CY + 5} text-anchor="middle">ЗАЯВКА</text>
+      <circle class="dot" cx={NODE_X} cy={NODE_CY} r="3.5" />
+    </g>
+
+    <path class="l d p3" d={aPathTrunkOut} pathLength="1" />
+
+    <path class="l d p4" d={aPathBranches} pathLength="1" />
+    <path class="n f p4" d={aPathChannelNodes} />
+
+    <g class="lm f p5" text-anchor="middle">
+      {DELIVERY_CHANNELS.map((c, i) => <text x={CHANNEL_XS[i]} y={CHANNEL_LABEL_Y}>{c.label}</text>)}
+    </g>
+
+    <path class="h d p6" d={aPathReturn} pathLength="1" />
+    <text class="lm f p6" x={(RETURN_X + LAST_CHANNEL_X) / 2} y={RETURN_LABEL_Y} text-anchor="middle">{FLOW_RETRY_LABEL}</text>
+  </svg>
+
+  <svg class="svg rb" viewBox="0 0 288 480" width="288" height="480" role="img" aria-label={ariaLabel} focusable="false">
+    {/* Три источника — в одну строку через «·»: на 288 px раздельно не
+        помещаются, не мельча (бриф, раздел 4.4). */}
+    <text class="lm f p1" x={B_NODE_CX} y="37" text-anchor="middle">{FLOW_SOURCES.map((s) => s.label).join(' · ')}</text>
+    <path class="l d p1" d={bPathEntry} pathLength="1" />
+
+    <rect class="b d p2" x={B_NODE_X} y={B_NODE_Y} width={B_NODE_W} height={B_NODE_H} pathLength="1" />
+    <g class="f p2">
+      <text class="lx" x={B_NODE_CX} y={B_NODE_Y + B_NODE_H / 2 + 5} text-anchor="middle">ЗАЯВКА</text>
+      <circle class="dot" cx={B_NODE_CX} cy={B_NODE_Y} r="3.5" />
+    </g>
+
+    <path class="l d p3" d={bPathTrunk} pathLength="1" />
+
+    <path class="l d p4" d={bPathBranches} pathLength="1" />
+    <path class="n f p4" d={bPathChannelNodes} />
+
+    <g class="lm f p5">
+      {DELIVERY_CHANNELS.map((c, i) => <text x={B_LABEL_X} y={B_BRANCH_YS[i] + 5}>{c.label}</text>)}
+    </g>
+
+    <path class="h d p6" d={bPathReturn} pathLength="1" />
+    <text class="lm f p6" x={B_NODE_CX} y={B_LABEL_Y} text-anchor="middle">{FLOW_RETRY_LABEL}</text>
+  </svg>
+</div>
+
+<style>
+  .flow {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .svg { display: block; max-width: 100%; height: auto; }
+
+  /* Раскрой А — от 900 px. Раскрой Б — ниже. Тот же порог, что у навигации
+     и у ядра фабрики (`FactoryCore.astro:234-242`). Классы `.ra`/`.rb`, не
+     `.a`/`.b` — короткая `.b` уже занята ролью «жирная обводка узла» ниже,
+     и на одном элементе (например, узле в раскрое Б) оба класса встречаются
+     вместе: пересечение имён включило бы узел в переключатель раскроя. */
+  .ra { display: block; }
+  .rb { display: none; }
+  @media (max-width: 899px) {
+    .ra { display: none; }
+    .rb { display: block; }
+  }
+
+  /* Три ширины обводки (бриф, раздел 2.3): главное / несущее / вспомогательное.
+     Общая база + переопределения — короче, чем четыре независимых правила. */
+  .h, .l, .b, .n { fill: none; stroke: var(--text); stroke-width: var(--stroke-line); }
+  .h { stroke: var(--text-muted); stroke-width: var(--stroke-hair); opacity: var(--stroke-hair-opacity); }
+  .b { stroke-width: var(--stroke-bold); }
+  .n { fill: var(--bg); }
+  .dot { fill: var(--accent); } /* единственный акцент рисунка (бриф, раздел 4.3) */
+
+  .lm, .lx { font-family: var(--font-mono); font-size: 1rem; } /* small — не мельче 14px, раздел 2.3 */
+  .lm { fill: var(--text-muted); }
+  .lx { fill: var(--text); } /* подпись ЗАЯВКА — исключение раздела 4.3 */
+
+  /* Запасное состояние — состояние ПО УМОЛЧАНИЮ (бриф, раздел 2.4): без
+     этого блока рисунок и так уже полностью виден. Анимация — только внутри
+     `@supports`, поверх статичного состояния, никогда наоборот. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .d, .f {
+        animation-timeline: view();
+        animation-range: entry 15% cover 65%;
+        animation: linear both;
+      }
+      .d { stroke-dasharray: 1; stroke-dashoffset: 1; animation-name: fdraw; }
+      .f { opacity: 0; animation-name: ffade; }
+
+      /* Шесть фаз (бриф, раздел 4.5): источники → узел и точка входа →
+         ствол → отводы и узлы → подписи каналов → возврат и его подпись.
+         Возврат оживает последним намеренно — сначала видно, что заявка
+         ушла, и только потом, что при сбое она уйдёт снова. */
+      .p1 { animation-duration: 1ms; }
+      .p2 { animation-duration: 70ms; }
+      .p3 { animation-duration: 150ms; }
+      .p4 { animation-duration: 220ms; }
+      .p5 { animation-duration: 280ms; }
+      .p6 { animation-duration: 340ms; }
+    }
+  }
+
+  @keyframes fdraw { to { stroke-dashoffset: 0; } }
+  @keyframes ffade { to { opacity: 1; } }
+</style>

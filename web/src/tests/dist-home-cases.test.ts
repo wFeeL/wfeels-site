@@ -54,10 +54,11 @@ describe('dist/index.html — секция 5', () => {
     const start = html.indexOf('id="cases"');
     const end = html.indexOf('id="process"');
     const section = html.slice(start, end);
+    // Задачи 4–5 плана (`02-case-illustrations.md`) построили «Одну трубу» и
+    // «Пример диалога» — с этой правки наполнены все три поля секции 5.
     expect((section.match(/class="field"/g) || []).length,
-      'в секции кейсов сегодня ровно одно наполненное поле иллюстрации — ' +
-      '«Заявка-Хаб» и «ИИ-консультант» ещё пустые заглушки')
-      .toBe(1);
+      'в секции кейсов сегодня три наполненных поля иллюстрации')
+      .toBe(3);
     expect(section, 'вес страницы не найден внутри поля «Замер»')
       .toContain(String(PAGE_WEIGHT_KB));
   });

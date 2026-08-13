@@ -25,6 +25,11 @@ const ILLUSTRATION_HEIGHT: Record<string, number> = {
   'zayavka-hub': 352,
   'ai-consultant': 416,
 };
+
+/* Раскрой Б «Заявки-Хаба» (ниже 899 px) — вертикальная схема 288×480 (бриф,
+ * раздел 4.4), а не десктопные 576×288: 480 + 64 паспарту = 544, кратно 32.
+ * Иллюстрации 1 и 3 перетекают внутри одной и той же высоты (раздел 2.2). */
+const ZAYAVKA_HUB_MOBILE_HEIGHT = 544;
 ---
 <Label>ЧТО УЖЕ СДЕЛАНО</Label>
 <h2 class="t-h2">Кейсы</h2>
@@ -34,7 +39,11 @@ const ILLUSTRATION_HEIGHT: Record<string, number> = {
     <CaseWeightIllustration />
     <p slot="caption" class="t-small weight-caption">{WEIGHT_CLAIM}</p>
   </CaseRow>
-  <CaseRow item={zayavkaHub} illustrationHeight={ILLUSTRATION_HEIGHT[zayavkaHub.slug]}>
+  <CaseRow
+    item={zayavkaHub}
+    illustrationHeight={ILLUSTRATION_HEIGHT[zayavkaHub.slug]}
+    illustrationMobileHeight={ZAYAVKA_HUB_MOBILE_HEIGHT}
+  >
     <CaseFlowIllustration />
   </CaseRow>
   <CaseRow item={aiConsultant} illustrationHeight={ILLUSTRATION_HEIGHT[aiConsultant.slug]}>

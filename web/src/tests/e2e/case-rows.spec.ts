@@ -30,26 +30,22 @@ test.describe('секция 5 — три полноширинных блока �
       expect(textBox, `блок ${slug}: текстовая колонка`).not.toBeNull();
     }
 
-    // Поле иллюстрации: сегодня наполнено только у «Этот сайт» (правка
-    // ревью 2026-08-13, часть 2, «Замер»). У «Заявка-Хаб» и «ИИ-консультанта»
-    // иллюстрации ещё не построены (задачи 4–5 плана
-    // `70-workshop/specs/site-v3/02-case-illustrations.md`), и рамка пустого
-    // поля намеренно не рисуется (`CaseIllustrationField.astro`) — проверка
-    // геометрии поля ждёт наполнения остальных двух блоков.
-    const firstRow = rows.nth(0);
-    const textBox = await firstRow.locator('.text').boundingBox();
-    const fieldBox = await firstRow.locator('.field').boundingBox();
-    expect(fieldBox, 'блок site-v3: поле иллюстрации').not.toBeNull();
-    // Поле иллюстрации стоит правее текстовой колонки — рисунок всегда
-    // справа во всех трёх блоках (бриф, раздел 2.1).
-    expect(fieldBox!.x, 'блок site-v3: поле правее текста').toBeGreaterThan(textBox!.x);
-
-    // «Заявка-Хаб» и «ИИ-консультант» пока без содержимого — рамка не
-    // рисуется вовсе, а не рисуется пустой.
-    for (const slug of ['zayavka-hub', 'ai-consultant']) {
-      const idx = slugs.indexOf(slug);
-      const count = await rows.nth(idx).locator('.field').count();
-      expect(count, `блок ${slug}: пустое поле не рисует рамку`).toBe(0);
+    // Все три поля иллюстрации наполнены (задачи 3–5 плана
+    // `70-workshop/specs/site-v3/02-case-illustrations.md`): «Замер»,
+    // «Одна труба, четыре отвода», «Пример диалога» — рамка `.field`
+    // рисуется только при непустом содержимом (`CaseIllustrationField.astro`).
+    for (const [i, slug] of slugs.entries()) {
+      const row = rows.nth(i);
+      const textBox = await row.locator('.text').boundingBox();
+      const fieldBox = await row.locator('.field').boundingBox();
+      expect(fieldBox, `блок ${slug}: поле иллюстрации`).not.toBeNull();
+      // Поле иллюстрации стоит правее текстовой колонки — рисунок всегда
+      // справа во всех трёх блоках (бриф, раздел 2.1).
+      expect(fieldBox!.x, `блок ${slug}: поле правее текста`).toBeGreaterThan(textBox!.x);
+      // Содержимое поля не пусто — та самая проверка, ради которой снят
+      // блокер («childCount: 0», замер ревью 2026-08-13).
+      const childCount = await row.locator('.field').evaluate((el) => el.childElementCount);
+      expect(childCount, `блок ${slug}: поле иллюстрации не пусто`).toBeGreaterThan(0);
     }
   });
 
@@ -100,8 +96,15 @@ test.describe('секция 5 — три полноширинных блока �
 
       expect(m.whiteSpace, `описание ${i}: nowrap возвращает усечение в одну строку`)
         .not.toBe('nowrap');
-      expect(lines, `описание ${i}: занимает ${lines} строк, ожидалось 1–2`)
-        .toBeLessThanOrEqual(2);
+      /* Потолок 6 строк, а не 2. Требование «две строки» было следствием
+         `line-clamp: 2`, который дизайн-ревью 2026-08-13 отменило: обрыв
+         посреди слова читался как битая вёрстка. Теперь описание видно
+         целиком, и его высота — свойство текста, а не рамки. Потолок нужен
+         только чтобы поймать случай, когда в описание однажды впишут абзац:
+         шесть строк — это высота, при которой полоса кейса ещё читается
+         рядом со своей иллюстрацией. */
+      expect(lines, `описание ${i}: занимает ${lines} строк, потолок 6`)
+        .toBeLessThanOrEqual(6);
       expect(
         m.scrollWidth,
         `описание ${i}: текст шире своей колонки на ${m.scrollWidth - m.clientWidth} px — ` +

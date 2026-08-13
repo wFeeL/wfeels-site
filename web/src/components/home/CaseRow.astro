@@ -16,8 +16,10 @@ interface Props {
   item: CaseCardData;
   /** Высота поля иллюстрации, кратная 32 (бриф, раздел 2.1). */
   illustrationHeight: number;
+  /** Высота поля ниже 899 px, если отличается — см. `CaseIllustrationField`. */
+  illustrationMobileHeight?: number;
 }
-const { item, illustrationHeight } = Astro.props;
+const { item, illustrationHeight, illustrationMobileHeight } = Astro.props;
 ---
 <div class="row">
   <div class="text">
@@ -29,7 +31,7 @@ const { item, illustrationHeight } = Astro.props;
     </p>
   </div>
   <div class="illustration">
-    <CaseIllustrationField height={illustrationHeight}>
+    <CaseIllustrationField height={illustrationHeight} mobileHeight={illustrationMobileHeight}>
       <slot />
     </CaseIllustrationField>
     <slot name="caption" />
@@ -50,17 +52,14 @@ const { item, illustrationHeight } = Astro.props;
 
   .text { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 
-  /* Две строки — усечение многоточием после второй строки, а не переписанный
-     текст (раздел разработки выше). Полный абзац остаётся в DOM, читается
-     программой чтения целиком; визуально видны первые две строки: одна
-     обрезала предложение до 22–29% на замере ревью 2026-08-13. */
+  /* Обрезка `-webkit-line-clamp: 2` снята дизайн-ревью 2026-08-13: обрыв
+     предложения посреди слова читался как битая вёрстка, хотя полный текст
+     уже был в HTML. Описание переносится свободно — текст утверждён
+     `02-texts.md` и подобран так, чтобы укладываться в одну-две строки при
+     ширине текстовой колонки. */
   .description {
     margin: 0;
     color: var(--text-muted);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
   }
 
   .stack {
