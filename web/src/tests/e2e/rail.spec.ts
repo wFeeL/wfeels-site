@@ -122,7 +122,7 @@ test.describe('рельс — роль и разметка', () => {
     const nav = page.locator('nav.rail');
     await expect(nav).toHaveAttribute('aria-label', /.+/);
     const points = nav.locator('button.point');
-    await expect(points).toHaveCount(7);
+    await expect(points).toHaveCount(8);
     for (const btn of await points.all()) {
       await expect(btn).toHaveAttribute('aria-label', /.+/);
     }
@@ -163,21 +163,25 @@ test.describe('рельс — роль и разметка', () => {
  *
  * Проверяется фактическими координатами (дефект 1) и фактической
  * вычисленной прозрачностью (дефект 2), а не наличием класса — оба дефекта
- * были в разметке, у которой класс `.label` уже был на месте. */
-test.describe('рельс — семь точек на одной вертикали, все с подписью', () => {
+ * были в разметке, у которой класс `.label` уже был на месте.
+ *
+ * Точек стало восемь, не семь: правка владельца 2026-08-13 расцепила
+ * «ПРОЦЕСС» и «ГАРАНТИИ» (`lib/sections.ts`) — у секции 8 «Что я гарантирую»
+ * появилась своя точка рельса. */
+test.describe('рельс — восемь точек на одной вертикали, все с подписью', () => {
   const EXPECTED_LABELS = [
-    'НАЧАЛО', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ОБО МНЕ', 'КОНТАКТ',
+    'НАЧАЛО', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ГАРАНТИИ', 'ОБО МНЕ', 'КОНТАКТ',
   ];
 
-  test('все семь подписей присутствуют, дословно и в порядке спеки', async ({ page }) => {
+  test('все восемь подписей присутствуют, дословно и в порядке спеки', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
     const labels = page.locator('nav.rail .point .label');
-    await expect(labels).toHaveCount(7);
+    await expect(labels).toHaveCount(8);
     expect(await labels.allTextContents()).toEqual(EXPECTED_LABELS);
   });
 
-  test('все семь подписей видимы без наведения — не opacity: 0 по умолчанию', async ({ page }) => {
+  test('все восемь подписей видимы без наведения — не opacity: 0 по умолчанию', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
     const labels = page.locator('nav.rail .point .label');
@@ -190,12 +194,12 @@ test.describe('рельс — семь точек на одной вертика
     }
   });
 
-  test('правый край подписи и центр точки — одна вертикаль у всех семи', async ({ page }) => {
+  test('правый край подписи и центр точки — одна вертикаль у всех восьми', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
 
     const points = page.locator('nav.rail .point');
-    await expect(points).toHaveCount(7);
+    await expect(points).toHaveCount(8);
 
     const geometry = await points.evaluateAll((els) => els.map((el) => {
       const dot = el.querySelector('.dot')!.getBoundingClientRect();
@@ -288,8 +292,16 @@ test.describe('рельс — линия отсчёта на трети высо
   });
 });
 
+/* Клик по точке рельса зовёт `target.scrollIntoView({ block: 'start' })`
+   (`Rail.astro`) — браузер сам вычитает `scroll-margin-top` цели
+   (`Section.astro`, правка владельца 2026-08-13, задача 1: липкая шапка не
+   должна закрывать секцию при прокрутке к якорю). Раньше `scroll-margin-top`
+   не было, и клик доводил `scrollY` ровно до `target.offsetTop` — то есть
+   секция вставала верхним краем точно под шапку, не под неё. Ожидание теста
+   читает `scroll-margin-top` цели из вычисленных стилей вместо того, чтобы
+   хранить число второй раз здесь. */
 test.describe('рельс — клик по точке', () => {
-  test('доводит прокрутку до первой секции точки', async ({ page }) => {
+  test('доводит прокрутку до первой секции точки, с запасом под липкую шапку', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
     await page.locator('.rail .point[aria-label="ПРОЦЕСС"]').click();
@@ -297,12 +309,14 @@ test.describe('рельс — клик по точке', () => {
     await expect
       .poll(() => page.evaluate(() => {
         const target = document.getElementById('process');
-        return target ? Math.abs(window.scrollY - target.offsetTop) : null;
+        if (!target) return null;
+        const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+        return Math.abs(window.scrollY - (target.offsetTop - margin));
       }), { timeout: 3000 })
       .toBeLessThan(4);
   });
 
-  test('при уменьшенном движении прокрутка всё равно доходит до цели',
+  test('при уменьшенном движении прокрутка всё равно доходит до цели, с тем же запасом',
     async ({ browser }) => {
       const ctx = await browser.newContext({ reducedMotion: 'reduce' });
       const page = await ctx.newPage();
@@ -313,7 +327,9 @@ test.describe('рельс — клик по точке', () => {
       await expect
         .poll(() => page.evaluate(() => {
           const target = document.getElementById('about');
-          return target ? Math.abs(window.scrollY - target.offsetTop) : null;
+          if (!target) return null;
+          const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+          return Math.abs(window.scrollY - (target.offsetTop - margin));
         }), { timeout: 3000 })
         .toBeLessThan(4);
 

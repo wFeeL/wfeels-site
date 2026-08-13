@@ -13,13 +13,18 @@ test('на 320 px страница не прокручивается вбок', 
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
+// `header .btn` не входит в список: кнопка «Обсудить задачу» скрыта в
+// мобильной шапке правкой владельца 2026-08-13, пункт 4 (`.cta-slot`,
+// `Header.astro`) — на этой ширине органа нет вовсе, и цель для пальца ему
+// подтверждать нечем. Первый экран несёт ту же кнопку отдельно — её цель
+// нажатия проверяет другой тест.
 test('на 375 px все органы управления в шапке пригодны для пальца',
   async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     await page.goto('/');
 
     const controls = page.locator(
-      'header a.lang, header #theme-toggle, header a.telegram, header .btn, header summary'
+      'header a.lang, header #theme-toggle, header a.telegram, header summary'
     );
     const count = await controls.count();
     expect(count).toBeGreaterThan(0);

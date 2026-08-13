@@ -11,7 +11,8 @@ const RAIL_MAP: Record<string, number[]> = {
   'УСЛУГИ': [3],
   'ЦЕНЫ': [4],
   'КЕЙСЫ': [5, 6],
-  'ПРОЦЕСС': [7, 8],
+  'ПРОЦЕСС': [7],
+  'ГАРАНТИИ': [8],
   'ОБО МНЕ': [9, 10],
   'КОНТАКТ': [11],
 };
@@ -59,8 +60,8 @@ describe('HOME_SECTIONS — целостность списка', () => {
     }
   });
 
-  it('пять якорей навигации присутствуют в списке секций', () => {
-    for (const id of ['services', 'pricing', 'cases', 'about', 'contact']) {
+  it('шесть якорей навигации присутствуют в списке секций', () => {
+    for (const id of ['services', 'pricing', 'cases', 'guarantees', 'about', 'contact']) {
       expect(hasHomeSection(id), `${id} — нет такой секции в sections.ts`).toBe(true);
     }
   });

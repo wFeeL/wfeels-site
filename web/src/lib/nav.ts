@@ -46,8 +46,9 @@ function anchor(id: string, text: string): NavItem {
 const SECTIONS: Record<Locale, NavItem[]> = {
   ru: [
     anchor('services', 'Услуги'),
-    anchor('cases', 'Кейсы'),
     anchor('pricing', 'Цены'),
+    anchor('cases', 'Кейсы'),
+    anchor('guarantees', 'Гарантии'),
     anchor('about', 'Обо мне'),
   ],
   /* Английских разделов не существует: их приносит спека 02 вместе с английским

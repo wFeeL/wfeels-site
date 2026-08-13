@@ -3,13 +3,13 @@ import { railPoints, sectionToRailLabel } from './rail';
 import { HOME_SECTIONS } from './sections';
 
 describe('railPoints — группировка HOME_SECTIONS в точки рельса', () => {
-  it('ровно семь точек', () => {
-    expect(railPoints().length).toBe(7);
+  it('ровно восемь точек', () => {
+    expect(railPoints().length).toBe(8);
   });
 
-  it('метки точек и их порядок — дословно по спеке 02-home.md, раздел 3', () => {
+  it('метки точек и их порядок — дословно по sections.ts (правка владельца 2026-08-13: «Процесс» и «Гарантии» расцеплены)', () => {
     expect(railPoints().map((p) => p.label)).toEqual([
-      'НАЧАЛО', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ОБО МНЕ', 'КОНТАКТ',
+      'НАЧАЛО', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ГАРАНТИИ', 'ОБО МНЕ', 'КОНТАКТ',
     ]);
   });
 
@@ -17,7 +17,8 @@ describe('railPoints — группировка HOME_SECTIONS в точки ре
     const byLabel = new Map(railPoints().map((p) => [p.label, p.sectionIds]));
     expect(byLabel.get('НАЧАЛО')).toEqual(['hero', 'pain']);
     expect(byLabel.get('КЕЙСЫ')).toEqual(['cases', 'proof']);
-    expect(byLabel.get('ПРОЦЕСС')).toEqual(['process', 'guarantees']);
+    expect(byLabel.get('ПРОЦЕСС')).toEqual(['process']);
+    expect(byLabel.get('ГАРАНТИИ')).toEqual(['guarantees']);
     expect(byLabel.get('ОБО МНЕ')).toEqual(['about', 'faq']);
     expect(byLabel.get('КОНТАКТ')).toEqual(['contact']);
   });
@@ -47,7 +48,7 @@ describe('sectionToRailLabel', () => {
       services: 'УСЛУГИ',
       pricing: 'ЦЕНЫ',
       cases: 'КЕЙСЫ', proof: 'КЕЙСЫ',
-      process: 'ПРОЦЕСС', guarantees: 'ПРОЦЕСС',
+      process: 'ПРОЦЕСС', guarantees: 'ГАРАНТИИ',
       about: 'ОБО МНЕ', faq: 'ОБО МНЕ',
       contact: 'КОНТАКТ',
     };
