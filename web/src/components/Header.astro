@@ -4,6 +4,7 @@ import ThemeToggle from './ThemeToggle.astro';
 import Button from './Button.astro';
 import NavLinks from './NavLinks.astro';
 import ReadingProgress from './ReadingProgress.astro';
+import TelegramMark from './TelegramMark.astro';
 import { dict, hasTranslation } from '../i18n/locales';
 import { headerCtaHref, sections, showHeaderCta } from '../lib/nav';
 import { TELEGRAM_URL } from '../lib/contacts';
@@ -69,12 +70,7 @@ const NAV = sections(lang);
             подвале (`Footer.astro`): на телефоне ссылку перехватывает
             приложение, а на десктопе возврат — одна кнопка «назад». */}
         <a class="telegram" href={TELEGRAM_URL} rel="me" aria-label={t.footerTelegram}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
-            stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
+          <TelegramMark size={20} />
         </a>
         {/* Место кнопки занято всегда, даже когда самой кнопки нет (на
             десктопе). Шапка липкая: без резерва переключатели темы, языка и
