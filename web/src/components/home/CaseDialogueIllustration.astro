@@ -18,6 +18,21 @@
  * Классы короткие (`.v`/`.bt`, `.p1`…`.p4`) — тот же бюджетный приём, что у
  * `CaseFlowIllustration.astro`: секция кейсов тесно ограничена по байтам
  * (бриф, раздел 6), а имена длиной в слово повторялись бы четыре раза.
+ *
+ * ДВИЖЕНИЕ (решение владельца 2026-08-13, заменяет раздел 5.6 брифа для
+ * этого компонента — частное позже общего): владелец попросил зациклённую
+ * анимацию «пользователь пишет сообщение и получает ответ от бота», а не
+ * однократное появление по прокрутке. Четыре реплики физически не помещались
+ * в поле одновременно — это была одна и та же задача с обрезкой поля, а не
+ * два разных требования: цикл показывает **одну пару** (вопрос-ответ) за
+ * раз, и обрезаться нечему. Полный оборот 12 с (в коридоре 10–14 с),
+ * `animation-timeline` не используется вовсе — это обычный, не привязанный к
+ * прокрутке, повтор, поэтому шорткод `animation:` здесь безопасен (не
+ * соседствует с `animation-timeline`, которая его бы обнулила).
+ *
+ * Запасное состояние при `prefers-reduced-motion: reduce` — оно же состояние
+ * ПО УМОЛЧАНИЮ (не обёрнутые в медиазапрос стили ниже): все четыре реплики
+ * видны сразу и статично, без цикла.
  */
 import { DIALOGUE_FIELD_LABEL, DIALOGUE_LINES, type DialogueRole } from '../../data/case-illustrations';
 
@@ -34,7 +49,7 @@ const ROLE_CLASS: Record<DialogueRole, string> = { visitor: 'v', bot: 'bt' };
       <li class={`${ROLE_CLASS[line.role]} p${i + 1}`}>
         <p class="role">{ROLE_LABEL[line.role]}</p>
         <p class="msg">
-          {line.text}
+          <span class="txt">{line.text}</span>
           {line.source && <span class="chip">ИСТОЧНИК: {line.source}</span>}
         </p>
       </li>
@@ -55,8 +70,12 @@ const ROLE_CLASS: Record<DialogueRole, string> = { visitor: 'v', bot: 'bt' };
     color: var(--text-muted);
   }
 
+  /* База = запасное состояние = состояние по умолчанию: все четыре реплики
+     друг под другом, статично, ритм 14/4/12/8 нетронут. Цикл ниже только
+     ДОБАВЛЯЕТ повторяющееся движение поверх этой раскладки — никогда
+     наоборот. */
   .lines { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; }
-  .lines > li { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .lines > li { display: flex; flex-direction: column; gap: 4px; min-width: 0; opacity: 1; translate: 0 0; }
   .v { align-items: flex-start; }
   .bt { align-items: flex-end; }
 
@@ -78,6 +97,7 @@ const ROLE_CLASS: Record<DialogueRole, string> = { visitor: 'v', bot: 'bt' };
     color: var(--text);
     box-sizing: border-box;
   }
+  .txt { opacity: 1; }
   .v .msg { max-width: 384px; }
   .bt .msg { margin-left: 32px; width: calc(100% - 32px); }
   /* Сдвиг реплики бота (32 px) остаётся на всех ширинах; ниже 900 px
@@ -100,28 +120,83 @@ const ROLE_CLASS: Record<DialogueRole, string> = { visitor: 'v', bot: 'bt' };
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--accent);
+    opacity: 1;
   }
 
-  /* Запасное состояние — состояние ПО УМОЛЧАНИЮ (бриф, раздел 5.6): все
-     четыре реплики видны сразу, целиком, статично. Анимация — только
-     непрозрачность и сдвиг на 8 px вверх, никакой имитации набора текста. */
-  @supports (animation-timeline: view()) {
-    @media (prefers-reduced-motion: no-preference) {
-      .lines > li {
-        animation-timeline: view();
-        animation-range: entry 15% cover 65%;
-        animation-timing-function: linear;
-        animation-fill-mode: both;
-        animation-name: dlg-in;
-        opacity: 0;
-        translate: 0 8px;
-      }
-      .p1 { animation-duration: 1ms; }
-      .p2 { animation-duration: 100ms; }
-      .p3 { animation-duration: 200ms; }
-      .p4 { animation-duration: 300ms; }
+  /* Цикл — только под `no-preference`: одна пара реплик на экране за раз,
+     остальные три ждут своей очереди (бриф движения владельца, см. верх
+     файла). Обе пары стоят друг на друге через CSS grid (вопрос — строка 1,
+     ответ — строка 2), поэтому поле никогда не несёт больше двух строк
+     одновременно и обрезать нечего. */
+  @media (prefers-reduced-motion: no-preference) {
+    .lines {
+      display: grid;
+      grid-template-columns: 1fr;
+      row-gap: 14px;
     }
+    .p1, .p3 { grid-row: 1; grid-column: 1; }
+    .p2, .p4 { grid-row: 2; grid-column: 1; }
+
+    .lines > li { opacity: 0; translate: 0 8px; }
+
+    /* Реплика посетителя: появляется, держится вместе с ответом бота, уходит
+       вместе с парой. Общая раскладка на обе пары — 12 с цикл, у второй пары
+       фаза сдвинута на половину цикла отрицательной задержкой (та же кривая,
+       без второго набора кадров). */
+    .p1 { animation: dlg-q 12s infinite; }
+    .p3 { animation: dlg-q 12s infinite; animation-delay: -6s; }
+
+    /* Реплика бота: сам пузырь (рамка + заливка + метка «БОТ») появляется
+       раньше текста — это и есть окно «бот печатает». */
+    .p2 { animation: dlg-a-box 12s infinite; }
+    .p4 { animation: dlg-a-box 12s infinite; animation-delay: -6s; }
+
+    /* Индикатор набора — три точки псевдоэлементом: он не в разметке, значит
+       не в `<ol>`, и `aria-hidden` ему не нужен вовсе (список остаётся
+       честным текстом для программы чтения независимо от анимации). */
+    .bt .msg { position: relative; }
+    .bt .msg::before {
+      content: '•••';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      font: 600 1rem/1 var(--font-mono);
+      letter-spacing: 0.2em;
+      color: var(--text-muted);
+      opacity: 0;
+    }
+    .p2 .msg::before { animation: dlg-typing 12s infinite; }
+    .p4 .msg::before { animation: dlg-typing 12s infinite; animation-delay: -6s; }
+
+    /* Текст ответа и чип источника проступают, когда точки набора гаснут. */
+    .bt .txt, .bt .chip { opacity: 0; }
+    .p2 .txt, .p2 .chip { animation: dlg-a-text 12s infinite; }
+    .p4 .txt, .p4 .chip { animation: dlg-a-text 12s infinite; animation-delay: -6s; }
   }
 
-  @keyframes dlg-in { to { opacity: 1; translate: 0 0; } }
+  /* Только opacity и сдвиг 8 px (тот же ритм, что в статике) — ни мигания,
+     ни подпрыгивания, ни горизонтальной езды. */
+  @keyframes dlg-q {
+    0% { opacity: 0; translate: 0 8px; }
+    3% { opacity: 1; translate: 0 0; }
+    44% { opacity: 1; translate: 0 0; }
+    50%, 100% { opacity: 0; translate: 0 8px; }
+  }
+  @keyframes dlg-a-box {
+    0%, 14% { opacity: 0; translate: 0 8px; }
+    16% { opacity: 1; translate: 0 0; }
+    44% { opacity: 1; translate: 0 0; }
+    50%, 100% { opacity: 0; translate: 0 8px; }
+  }
+  @keyframes dlg-typing {
+    0%, 16% { opacity: 0; }
+    18%, 24% { opacity: 1; }
+    26%, 100% { opacity: 0; }
+  }
+  @keyframes dlg-a-text {
+    0%, 24% { opacity: 0; }
+    26%, 44% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
 </style>
