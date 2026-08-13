@@ -237,13 +237,22 @@ const points = railPoints();
       }
     }
 
+    /* Позиция секции в документе. НЕ `offsetTop`: он отсчитывается от
+       ближайшего ПОЗИЦИОНИРОВАННОГО предка, а не от документа. Пока секции
+       лежали плоско, разницы не было; после перестройки разметки
+       (`HomeSection`, 2026-08-13) такой предок появился, и рельс начал
+       подсвечивать не ту секцию — промах достигал 877 px. Сборка, юнит-тесты
+       и бюджет молчали: ошибка видна только на живой прокрутке.
+       `getBoundingClientRect().top + scrollY` абсолютен при любой вложенности. */
+    const docTop = (el: HTMLElement) => el.getBoundingClientRect().top + window.scrollY;
+
     const sections = Array.from(sectionToButton.keys())
       .map((id) => document.getElementById(id))
       .filter((el): el is HTMLElement => el !== null)
       // `data-sections` перечисляет якоря в порядке страницы (Map держит
       // порядок вставки), так что пересортировка не нужна — но проверяем
       // явно, а не полагаемся молча на порядок Map.
-      .sort((a, b) => a.offsetTop - b.offsetTop);
+      .sort((a, b) => docTop(a) - docTop(b));
 
     const setActive = (id: string | null) => {
       const active = id ? sectionToButton.get(id) ?? null : null;
@@ -277,7 +286,7 @@ const points = railPoints();
       const line = window.scrollY + window.innerHeight * ACTIVATION_LINE_RATIO;
       let current: HTMLElement | null = null;
       for (const el of sections) {
-        if (el.offsetTop <= line + 1) current = el;
+        if (docTop(el) <= line + 1) current = el;
         else break;
       }
       return (current ?? sections[0])?.id ?? null;

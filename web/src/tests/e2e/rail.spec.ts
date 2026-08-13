@@ -1,3 +1,9 @@
+/* Позиции считаются `getBoundingClientRect().top + scrollY`, а не `offsetTop`:
+   последний отсчитывается от ближайшего ПОЗИЦИОНИРОВАННОГО предка, а не от
+   документа. Пока секции лежали плоско, разницы не было; после перестройки
+   разметки (`HomeSection`, 2026-08-13) такой предок появился, и тесты показали
+   промах в 877 px там, где прокрутка приезжала точно. Ломалась система
+   отсчёта, а не поведение. */
 import { test, expect } from '@playwright/test';
 import { HOME_SECTIONS } from '../../lib/sections';
 
@@ -340,7 +346,8 @@ test.describe('рельс — линия отсчёта на трети высо
     await page.goto('/');
 
     const casesTop = await page.evaluate(
-      () => document.getElementById('cases')!.offsetTop,
+      () => { const el = document.getElementById('cases')!;
+              return el.getBoundingClientRect().top + window.scrollY; },
     );
     const line = SPY_VIEWPORT.height / 3;
 
@@ -382,7 +389,8 @@ test.describe('рельс — клик по точке', () => {
         const target = document.getElementById('process');
         if (!target) return null;
         const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
-        return Math.abs(window.scrollY - (target.offsetTop - margin));
+        const top = target.getBoundingClientRect().top + window.scrollY;
+        return Math.abs(window.scrollY - (top - margin));
       }), { timeout: 3000 })
       .toBeLessThan(4);
   });
@@ -400,7 +408,8 @@ test.describe('рельс — клик по точке', () => {
           const target = document.getElementById('about');
           if (!target) return null;
           const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
-          return Math.abs(window.scrollY - (target.offsetTop - margin));
+          const top = target.getBoundingClientRect().top + window.scrollY;
+        return Math.abs(window.scrollY - (top - margin));
         }), { timeout: 3000 })
         .toBeLessThan(4);
 
