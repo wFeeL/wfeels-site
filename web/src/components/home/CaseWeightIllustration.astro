@@ -1,47 +1,116 @@
 ---
-/* Правка ревью 2026-08-13 (часть 2): полная иллюстрация «Замер» (две
- * размерные линии, сравнение с медианой) — по-прежнему задача 3 плана
- * (`70-workshop/specs/site-v3/02-case-illustrations.md`, раздел 3), она
- * здесь не строится. Эта правка закрывает только дефект пустой рамки:
- * подпись под полем (`WEIGHT_CLAIM`, `Cases.astro`) уже несёт доказательство
- * словами — число просто стояло подписью под пустотой вместо того, чтобы
- * быть содержимым поля. Число берётся из того же источника, что и подпись
- * (`data/pageWeight.ts`), второй копии веса здесь не заводится.
+/* Иллюстрация «Замер» (кейс «Этот сайт»), секция кейсов главной. Композиция
+ * утверждена владельцем 2026-08-13 (диспетч задачи «Иллюстрация кейса «Этот
+ * сайт»»): полоса сравнения «эта страница / медиана рынка» — главный
+ * элемент, строка мелких метрик под ней — второстепенный (задача 2 этого
+ * захода). Раньше здесь стояла одна голая цифра (правка ревью 2026-08-13,
+ * часть 2) — обещание «сравнение с медианой» несла только подпись под
+ * полем словами, само поле его не показывало.
+ *
+ * Каждое число здесь читается из `data/pageWeight.ts` через
+ * `data/case-illustrations.ts:WEIGHT_ILLUSTRATION` — единственный источник,
+ * второй ручной копии нет. Длина полосы «этот сайт» — точная доля
+ * `ourKb / typicalKb`, посчитанная здесь же из тех же чисел: полоса не может
+ * соврать пропорцией, потому что не несёт собственного литерала длины.
+ *
+ * ВНИМАНИЕ будущему редактору: эта композиция (залитые полосы) отличается
+ * от «волосяной размерной линии с засечками», которую предписывал
+ * `70-workshop/specs/site-v3/02-case-illustrations.md`, раздел 3.3, — решение
+ * владельца сменилось в тот же день. Спека не переписана этим заходом (не
+ * моя область правок) — см. отчёт задачи, раздел «Влияние на базу».
  */
-import { PAGE_WEIGHT_KB } from '../../data/pageWeight';
+import { WEIGHT_ILLUSTRATION } from '../../data/case-illustrations';
+
+const { ourKb, typicalKb, typicalMbText } = WEIGHT_ILLUSTRATION;
+
+// Доля полосы «этот сайт» от полосы медианы — не второй литерал длины, а
+// вычисление из тех же двух чисел, что стоят рядом текстом.
+const ourPct = (ourKb / typicalKb) * 100;
 ---
 <div class="weight">
-  <span class="weight-label">Вес страницы</span>
-  <p class="weight-value">{PAGE_WEIGHT_KB}</p>
-  <span class="weight-unit">КБ</span>
+  <p id="weight-lbl" class="lbl">СКОЛЬКО ВЕСИТ ЭТА СТРАНИЦА</p>
+  <div class="bars" aria-labelledby="weight-lbl">
+    <div class="bar-row ours">
+      <span class="bar-label">ЭТОТ САЙТ</span>
+      <span class="track">
+        <span class="fill accent" style={`--target:${ourPct.toFixed(2)}%`} />
+      </span>
+      <span class="bar-value">{ourKb} КБ</span>
+    </div>
+    <div class="bar-row typical">
+      <span class="bar-label">СРЕДНИЙ</span>
+      <span class="track">
+        <span class="fill" style="--target:100%" />
+      </span>
+      <span class="bar-value">{typicalMbText} МБ</span>
+    </div>
+  </div>
 </div>
 
 <style>
   .weight {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: center;
-    text-align: center;
-    gap: 4px;
+    gap: 24px;
   }
-  .weight-label {
-    font: 600 0.6875rem/1.3 var(--font-mono);
+
+  /* Единственная метка-заголовок поля — 11 px допустим только здесь (бриф
+     `02-case-illustrations.md`, раздел 2.3), не для содержательных подписей
+     ниже. */
+  .lbl {
+    margin: 0;
+    font: 500 0.6875rem/1.3 var(--font-mono);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--text-muted);
-    margin-bottom: 4px;
   }
-  .weight-value {
-    margin: 0;
-    font: 800 clamp(3rem, 9vw, 4.75rem)/1 var(--font-head);
-    color: var(--accent);
+
+  .bars { display: flex; flex-direction: column; gap: 20px; }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 104px 1fr auto;
+    align-items: center;
+    gap: 16px;
   }
-  .weight-unit {
-    font: 600 0.6875rem/1.3 var(--font-mono);
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+
+  .bar-label {
+    font: 500 1rem/1.3 var(--font-mono);
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+
+  .track {
+    display: block;
+    height: 16px;
+    background: var(--grid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .fill {
+    display: block;
+    height: 100%;
+    width: var(--target);
+    background: var(--border);
+  }
+  /* Акцент — только на своей полосе (бриф, раздел 2.3: «одна роль на
+     рисунок»): доказательство, а не украшение. */
+  .fill.accent { background: var(--accent); }
+
+  .bar-value {
+    font: 700 1.75rem/1.3 var(--font-mono);
     color: var(--text);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 899px) {
+    .bar-row { grid-template-columns: 1fr; row-gap: 8px; }
+    .bar-value { text-align: left; }
   }
 </style>
