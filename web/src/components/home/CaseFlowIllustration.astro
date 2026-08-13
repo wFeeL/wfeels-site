@@ -208,7 +208,12 @@ const ariaLabel =
       .d, .f {
         animation-timeline: view();
         animation-range: entry 15% cover 65%;
-        animation: linear both;
+        /* Раздельные свойства, не сокращение `animation:` — сборка сводит
+           `animation` + `animation-timeline` в один шорткод, а собранный
+           Chromium такую форму не разбирает и молча роняет анимацию целиком
+           (тот же приём и та же причина, что `BackgroundLine.astro:124-129`). */
+        animation-timing-function: linear;
+        animation-fill-mode: both;
       }
       .d { stroke-dasharray: 1; stroke-dashoffset: 1; animation-name: fdraw; }
       .f { opacity: 0; animation-name: ffade; }
