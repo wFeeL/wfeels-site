@@ -26,7 +26,12 @@ interface Props {
 const { href, stack = false, accent = false } = Astro.props;
 const Tag = href ? 'a' : 'div';
 ---
-<Tag class={`card${stack ? ' card--stack' : ''}${accent ? ' card--accent' : ''}`} href={href}><slot /></Tag>
+{/* `reveal` — появление по прокрутке, одна утилита в `styles/base.css`
+    (`70-workshop/specs/site-v3/02-card-motion.md`). Секции снаружи задают
+    только `--reveal-i` через `:nth-child` в своих `<style>` — сама карточка
+    не объявляет ни `opacity`, ни `animation-*`, войны специфичности со
+    скоупингом Astro тут нет (см. комментарий к пропу `stack` выше). */}
+<Tag class={`card reveal${stack ? ' card--stack' : ''}${accent ? ' card--accent' : ''}`} href={href}><slot /></Tag>
 
 <style>
   .card {

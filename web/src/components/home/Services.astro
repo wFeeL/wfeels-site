@@ -50,6 +50,11 @@ import { SERVICE_GROUPS, NICHES, SERVICES_CATALOG_HREF } from '../../data/servic
   @media (min-width: 700px) {
     .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
+  /* Каскад появления по столбцу — правило общее с `Guarantees.astro`
+     (буквально то же значение для той же чётной колонки), заведено один
+     раз в `styles/base.css` как `.grid > :nth-child(2n)`, а не дважды здесь
+     и там: класс `.grid` в разметке уникален для этих двух секций,
+     дублировать правило — платить весом за копию. */
 
   .niches {
     margin: 32px 0 0;

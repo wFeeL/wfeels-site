@@ -87,7 +87,7 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
 
 <div class="shelf">
   {SHELF_CARDS.map((item) => (
-    <a class="shelf-card" href={item.href}>
+    <a class="shelf-card reveal" href={item.href}>
       <span class="shelf-label">{item.label}</span>
       <span class="shelf-price"><span class="from">от</span> <code>{item.price}</code></span>
     </a>
@@ -125,6 +125,16 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
   }
   @media (min-width: 700px) {
     .top-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    /* Ряд раскрывается от центра наружу, рекомендуемая (2-я, чётная) ведёт
+       (02-card-motion.md, раздел 7) — ровно одно отличие, которое у неё
+       есть; крайние получают --reveal-i:1, средняя остаётся на умолчании 0.
+       Порядок движения расходится с порядком чтения намеренно: взгляд
+       приводится туда, куда ведёт предложение. Переключение на «слева
+       направо» — три явных :nth-child(1..3){--reveal-i:0/1/2} вместо этой
+       строки. `:global` — вес: без него Astro дублирует атрибут скоупинга на
+       обеих сторонах `>`, комбинатор почти вдвое дороже; класс `.top-grid`
+       уникален для этой секции, второй охват не нужен. */
+    :global(.top-grid > :nth-child(odd)) { --reveal-i: 1; }
   }
 
   .top-body {
@@ -161,6 +171,34 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
      `label` объявленной шкалы), только чуть уже строки для визуального
      баланса со звёздочкой рядом с текстом. */
   .badge-star { line-height: 1; }
+
+  /* Ярлык появляется на одну фазу позже своей карточки — единственная
+     двухфазность на странице (02-card-motion.md, раздел 7): своя `view()`,
+     не утилита `.reveal` — только `opacity`, без сдвига (ярлык наезжает на
+     границу карточки, любой сдвиг читался бы как съехавшая вёрстка), и без
+     `--reveal-i` (фаза фиксированная, не зависит от столбца). Тот же порядок
+     вложения и те же длинные свойства, что у `.reveal`. Второй `@keyframes`
+     не заводится: переиспользуется `reveal-card` из `styles/base.css`
+     (`to{opacity:1;translate:0 0}`) — `.badge` не объявляет `translate`
+     вовсе, браузер интерполирует его между умолчанием `none` и `0 0`, а это
+     один и тот же нулевой сдвиг на любом кадре: движения нет, платить за
+     вторую анимацию весом незачем. `animation-range` — сокращение только
+     `-start`/`-end` в одно свойство, это НЕ шорткод `animation:` + `timeline`
+     из ловушки 1 (раздел 3) — тот же приём, что и в `FactoryCore.astro`
+     (`.core-draw,.core-fade`). `:global` — вес, класс `.badge` уникален. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      :global(.badge) {
+        opacity: 0;
+        animation-name: reveal-card;
+        animation-duration: 1ms;
+        animation-timing-function: var(--ease);
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range: entry 12% entry 48%;
+      }
+    }
+  }
 
   /* Заголовок карточки — фиксированная высота в две строки (правка владельца
      2026-08-13, часть 4): «Лендинг» умещается в одну строку, «Корпоративный
@@ -258,6 +296,29 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
   }
   @media (min-width: 900px) {
     .shelf { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  }
+
+  /* Каскад полки — протяжка слева направо по столбцу (02-card-motion.md,
+     раздел 5). Полка всегда несёт ровно шесть карточек (сторож в
+     `data/pricingShowcase.ts`). Двухколоночная раскладка (< 560px) — цикл
+     0,1 (позиция по модулю 2). Трёхколоночная (560…899px) — цикл 0,1,2 на
+     две строки (позиция по модулю 3), задаёт все шесть карточек разом, а не
+     довешивает поверх двухколоночного состояния. Шестиколоночная (≥ 900px)
+     — по одному индексу на карточку; первые три столбца уже совпадают с
+     циклом 0,1,2 из трёхколоночного уровня, довешиваются только 4–6.
+     `:global` — вес: без него Astro дублирует атрибут скоупинга на обеих
+     сторонах `>`, комбинатор почти вдвое дороже; класс `.shelf` уникален для
+     этой секции, второй охват не нужен. */
+  :global(.shelf > :nth-child(2n)) { --reveal-i: 1; }
+  @media (min-width: 560px) {
+    :global(.shelf > :nth-child(3n+1)) { --reveal-i: 0; }
+    :global(.shelf > :nth-child(3n+2)) { --reveal-i: 1; }
+    :global(.shelf > :nth-child(3n)) { --reveal-i: 2; }
+  }
+  @media (min-width: 900px) {
+    :global(.shelf > :nth-child(4)) { --reveal-i: 3; }
+    :global(.shelf > :nth-child(5)) { --reveal-i: 4; }
+    :global(.shelf > :nth-child(6)) { --reveal-i: 5; }
   }
 
   .shelf-card {
