@@ -75,6 +75,10 @@ import { FACTORY_TEASER } from '../../data/cases';
     display: inline-flex;
     align-items: center;
     gap: 12px;
+    /* Цель нажатия пальцем — тот же приём, что у прочих ссылок-переходов
+       главной: было 32 px. В список дизайн-ревью не попала, найдена
+       собственным замером при приёмке правки. */
+    min-height: 44px;
   }
   .link-text { display: inline-flex; align-items: center; gap: 4px; }
   .link-text span { transition: transform var(--dur-micro) var(--ease); }

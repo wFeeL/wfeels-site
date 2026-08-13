@@ -37,6 +37,43 @@ test('на 375 px все органы управления в шапке при�
     }
   });
 
+// Дизайн-ревью (мобильные дефекты, часть 2): четыре семейства ссылок были
+// меньше цели нажатия — ссылки услуг и «Разобрать кейс» стояли без
+// `min-height` (30 px, высота строки текста), ссылки ниш были голым
+// `inline`-элементом без коробки вовсе (22 px, `min-height` игнорируется
+// не-блочными элементами), а почтовая ссылка контакта приходит через
+// `set:html` и не попадает под скоупленный CSS-селектор Astro (тоже 22 px,
+// без единого локального правила). Все четыре — на разных секциях и разных
+// механизмах поломки, поэтому проверяются одним тестом, а не заново
+// растащены по существующим спекам секций.
+test('на 390 px ссылки услуг, кейсов, ниш и контакта пригодны для пальца',
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+
+    const groups: Record<string, string> = {
+      'услуги': '#services .links a',
+      // `.rows`, не весь `#cases`: тизер фабрики под кейсами (`FactoryTeaser.
+      // astro`) совпадает по классу `.link a`, но это не одна из трёх ссылок
+      // «Разобрать кейс →» из замера ревью — отдельный дефект, вне бюджета
+      // этого захода (см. отчёт, «Оставшиеся риски»).
+      'кейсы': '#cases .rows .link a',
+      'ниши': '#services .niches a',
+      'контакт (почта)': '#contact .channels li:last-child a',
+    };
+
+    for (const [label, selector] of Object.entries(groups)) {
+      const links = page.locator(selector);
+      const count = await links.count();
+      expect(count, `${label}: ссылок не найдено`).toBeGreaterThan(0);
+      for (let i = 0; i < count; i++) {
+        const box = await links.nth(i).boundingBox();
+        expect(box, `${label} #${i} не отрисована`).not.toBeNull();
+        expect(box!.height, `${label} #${i}: высота`).toBeGreaterThanOrEqual(TAP);
+      }
+    }
+  });
+
 test('поля контейнера меняются на трёх ступенях', async ({ page }) => {
   const pad = () =>
     page.locator('main .container').first()

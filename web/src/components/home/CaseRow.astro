@@ -80,6 +80,11 @@ const { item, illustrationHeight, illustrationMobileHeight } = Astro.props;
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    /* Цель нажатия пальцем — дизайн-ревью (мобильные дефекты, часть 2):
+       было 30 px (высота строки текста, замер ревью), не цель нажатия.
+       `align-items: center` уже стоял выше — коробка выросла, текст
+       остался на середине. */
+    min-height: 44px;
   }
   .link a:hover { text-decoration: underline; }
 

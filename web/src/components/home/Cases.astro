@@ -107,6 +107,11 @@ const AI_CONSULTANT_MOBILE_HEIGHT = 640;
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    /* Цель нажатия пальцем — тот же приём и та же причина, что у ссылок
+       строк кейсов (`CaseRow.astro`): было 30 px, то есть высота строки
+       текста, а не цель. В список дизайн-ревью эта ссылка не попала —
+       найдена собственным замером при приёмке правки. */
+    min-height: 44px;
   }
   .all-cases a:hover { text-decoration: underline; }
 </style>

@@ -80,6 +80,13 @@ const { group } = Astro.props;
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    /* Цель нажатия пальцем — дизайн-ревью (мобильные дефекты, часть 2):
+       ссылка без своего `min-height` была высотой строки текста (30 px на
+       390 px, замер ревью), не целью нажатия — общее правило `a[class]`
+       (`base.css`) сюда не достаёт, ссылка без атрибута `class`.
+       `align-items: center` уже стоял выше — коробка выросла, текст
+       остался на середине. */
+    min-height: 44px;
   }
   .links a span { color: var(--accent); transition: transform var(--dur-micro) var(--ease); }
   .links a:hover { color: var(--accent); }
