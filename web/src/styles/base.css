@@ -193,3 +193,53 @@ h1, h2, h3, .t-display, .t-h1, .t-h2, .t-h3 {
     scroll-behavior: auto !important;
   }
 }
+
+/* Появление карточек и блоков по прокрутке (70-workshop/specs/site-v3/
+   02-card-motion.md). Одна утилита на пять семейств вместо пяти копий: секции
+   задают только пользовательское свойство `--reveal-i` (номер столбца),
+   карточка сама ничего не объявляет — `Card.astro` скоупит свои правила
+   атрибутом `[data-astro-cid-…]`, и внешнее `:global(.card){…}` тихо
+   проигрывает ему по специфичности (уже случалось, см. шапку `Card.astro`).
+   Пользовательское свойство наследуется и в эту войну не вступает.
+
+   Конечное состояние — состояние по умолчанию: `.reveal` без вложенных условий
+   не объявляет ни `opacity`, ни `translate`. Браузер без `animation-timeline`
+   (`@supports`) и читатель с `prefers-reduced-motion: reduce` (`@media`)
+   просто не доходят до вложенного блока — карточки остаются видимыми на своих
+   местах. Наоборот делать нельзя никогда. */
+.reveal {
+  /* по умолчанию — ничего: карточка видна, стоит на месте */
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      opacity: 0;
+      /* `translate`, не `transform`: отдельное свойство не конфликтует с
+         будущими `transform` на тех же элементах и так же композитится.
+         16px — половина шага сетки «Чертежа» (`--step: 32px`): карточка
+         приходит снизу из полушага и садится на линию. */
+      translate: 0 16px;
+      /* Длинные свойства, не сокращение `animation:` — сборка сводит
+         `animation` + `animation-timeline` в один шорткод, который собранный
+         Chromium не разбирает и молча роняет анимацию целиком (см. комментарий
+         в `BackgroundLine.astro`). `will-change` не ставится: `opacity` и
+         `translate` в прокруточной анимации Chromium и так уводит на
+         композитор — двадцать четыре принудительно поднятых слоя не нужны. */
+      animation-name: reveal-card;
+      animation-duration: 1ms; /* реальную длительность задаёт таймлайн ниже */
+      animation-timing-function: var(--ease);
+      animation-fill-mode: both;
+      animation-timeline: view();
+      /* Доля СОБСТВЕННОЙ высоты карточки, не пикселей экрана: одно правило
+         честно и для карточки услуги (558px), и для карточки полки (154px) —
+         крупное приходит степенно, мелкое щёлкает. `--reveal-i` — номер
+         столбца, задаётся секциями через media-запросы; вне их —
+         `var(--reveal-i, 0)`, нулевой столбец. */
+      animation-range-start: entry calc(4% + var(--reveal-i, 0) * 10%);
+      animation-range-end: entry calc(40% + var(--reveal-i, 0) * 10%);
+    }
+  }
+}
+
+@keyframes reveal-card { to { opacity: 1; translate: 0 0; } }
