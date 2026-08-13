@@ -92,9 +92,12 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
   .chevron::after { width: 2px; height: 12px; }
   details[open] .chevron::after { transform: scaleY(0); }
 
+  /* 50ch — та же узкая колонка прозы, что и `Prose.astro` (часть 3 задания
+     «Контейнер обратно к 1180», замер ревью 2026-08-13): 68ch на 18px тексте
+     давал ≈60 высот прописной в строке, вдвое больше цели 42–45. */
   .answer p {
     margin: 0 0 20px;
-    max-width: 68ch;
+    max-width: 50ch;
     color: var(--text-muted);
     line-height: 1.65;
   }
