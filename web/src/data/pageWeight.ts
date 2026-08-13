@@ -14,7 +14,7 @@
 /** Вес `index.html` в КБ — измерено `node scripts/check-budget.mjs` на
  *  готовой сборке. Подставляется вручную последним шагом задачи (раздел 3.2
  *  брифа, пункт 3): после подстановки гейт прогоняется ещё раз. */
-export const PAGE_WEIGHT_KB = 388;
+export const PAGE_WEIGHT_KB = 397;
 
 /** Медиана HTTP Archive — 2,5 МБ, в КБ (`02-texts.md`, секция 6; та же
  *  константа зашита в `scripts/check-budget.mjs:371`). */
