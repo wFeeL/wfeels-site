@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { PRICING } from '../data/pricing';
 import { HERO_TERMS } from '../data/terms';
 import { SERVICE_GROUPS, NICHES } from '../data/services';
+import { TOP_CARDS, SHELF_ROWS, SUPPORT_AUDIT_ROW } from '../data/pricingShowcase';
 
 /* Проверяет две вещи разом, требуемые планом (задачи 5–7, «Приёмка»):
  *
@@ -94,17 +95,52 @@ describe('dist/index.html — секции 1–3', () => {
     expect(html).not.toContain('Секция 4 — Цены');
   });
 
-  it('секция 4: пять групп и все ступени — имя и цена дословно из data/pricing.ts', () => {
-    for (const group of PRICING) {
-      expect(html, `группа «${group.name}»`).toContain(group.name);
-      for (const entry of group.entries) {
-        expect(html, `«${entry.name}»: название ступени`).toContain(entry.name);
-        expect(html, `«${entry.name}»: цена`).toContain(entry.price);
-      }
+  it('секция 4: три верхние карточки «Сайты» — витринное имя и цена дословно из pricingShowcase', () => {
+    for (const card of TOP_CARDS) {
+      expect(html, `карточка «${card.showcaseName}»: имя`).toContain(card.showcaseName);
+      expect(html, `карточка «${card.showcaseName}»: цена`).toContain(card.price);
+    }
+  });
+
+  it('секция 4: ступень 70 000 ₽ («Сайт до 10 страниц») не показана как карточка/цена в разметке', () => {
+    // Внутри самой секции цен «70 000 ₽» законно встречается только один
+    // раз — в сноске про раунды правок («три для работ от…»), которая
+    // ссылается на ступень как на порог, а не показывает её отдельной
+    // карточкой. Секция вырезана по своим `id="pricing"…id="cases"`: та же
+    // строка легитимно встречается и вне секции цен (условие рассрочки в
+    // «Гарантиях»), и это не то, что проверяет этот тест.
+    const start = html.indexOf('id="pricing"');
+    const end = html.indexOf('id="cases"');
+    expect(start, 'секция «pricing» не найдена в dist/index.html').toBeGreaterThan(-1);
+    expect(end, 'секция «cases» не найдена в dist/index.html').toBeGreaterThan(start);
+    const pricingSectionHtml = html.slice(start, end);
+    const occurrences = pricingSectionHtml.split('70 000 ₽').length - 1;
+    expect(occurrences, 'ступень 70 000 ₽ не должна повторяться карточкой внутри секции цен').toBe(1);
+  });
+
+  it('секция 4: ярлык «Советую этот вариант» стоит ровно один раз', () => {
+    const occurrences = html.split('Советую этот вариант').length - 1;
+    expect(occurrences).toBe(1);
+  });
+
+  it('секция 4: полка — три строки остальных групп и строка поддержки/аудита', () => {
+    for (const row of SHELF_ROWS) {
+      expect(html, `строка «${row.label}»: подпись`).toContain(row.label);
+      expect(html, `строка «${row.label}»: цена`).toContain(row.price);
+    }
+    for (const row of SUPPORT_AUDIT_ROW) {
+      expect(html, `строка «${row.label}»: подпись`).toContain(row.label);
+      expect(html, `строка «${row.label}»: цена`).toContain(row.price);
     }
   });
 
   it('секция 4: часов рядом с ценой нет — заметка «К_риск» из данных на страницу не идёт', () => {
     expect(html).not.toContain('К_риск');
+  });
+
+  it('секция 4: ни одной метки спроса в готовой сборке (D-029)', () => {
+    for (const word of ['хит продаж', 'популярное', 'выбор клиентов', 'чаще всего заказывают']) {
+      expect(html.toLowerCase(), `метка спроса «${word}»`).not.toContain(word);
+    }
   });
 });
