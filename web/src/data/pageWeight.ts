@@ -99,7 +99,7 @@ export const WEIGHT_CLAIM =
  *  гейт → число сюда → гейт ещё раз. Гейт сверяет утверждение на странице
  *  с фактическим сжатым весом JS (округлённое значение, не проценты — 5% от
  *  ~2 КБ уже меньше точности округления до одного знака). */
-export const PAGE_JS_GZIP_KB = 2.2;
+export const PAGE_JS_GZIP_KB = 2.4;
 
 /** Текст числа для страницы — запятая, не точка: «2,2», не «2.2». */
 export const PAGE_JS_GZIP_KB_TEXT = PAGE_JS_GZIP_KB.toFixed(1).replace('.', ',');

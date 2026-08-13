@@ -132,6 +132,61 @@ const BRAND = 'wfeels';
   {progress && <ReadingProgress mobileOnly={rail} />}
 </header>
 
+{NAV.length > 0 && (
+  <script>
+    /* Дефект дизайн-ревью 2026-08-14 (САМОЕ ВАЖНОЕ): раскрывашка «Меню»
+     * (`details.nav-narrow`) закрывалась только повторным тапом по
+     * заголовку. На 390 px панель едет вместе с липкой шапкой поверх
+     * содержимого — на экране формы закрывала подпись и поле «Как вас
+     * зовут», а под ней всплывала нативная подсказка валидации. Читатель,
+     * заглянувший в меню и вернувшийся к форме, заполнял её из-под панели.
+     *
+     * Разметка остаётся `<details>` и без единой строки этого скрипта
+     * продолжает открываться/закрываться тапом по своему заголовку — три
+     * закрытия ниже ДОБАВЛЕНЫ поверх нативного поведения, а не заменяют его:
+     * `Escape`, клик/тап вне панели, переход по своей же ссылке (пункты
+     * шапки — якоря главной, `lib/nav.ts`, страница не перезагружается, и
+     * без явного закрытия панель осталась бы висеть поверх контента после
+     * прокрутки к якорю).
+     *
+     * Фокус после закрытия по `Escape` возвращается на кнопку «Меню» —
+     * иначе человек с клавиатуры теряет место на странице. После клика/тапа
+     * вне панели фокус не переносится: сам клик уже указал, куда он идёт. */
+    const menus = Array.from(
+      document.querySelectorAll<HTMLDetailsElement>('details.nav-narrow'),
+    );
+
+    function closeMenu(menu: HTMLDetailsElement, opts: { refocus?: boolean } = {}) {
+      if (!menu.open) return;
+      menu.open = false;
+      if (opts.refocus) menu.querySelector('summary')?.focus();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      for (const menu of menus) {
+        if (menu.open) {
+          e.preventDefault();
+          closeMenu(menu, { refocus: true });
+        }
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      const target = e.target as Node;
+      for (const menu of menus) {
+        if (menu.open && !menu.contains(target)) closeMenu(menu);
+      }
+    });
+
+    for (const menu of menus) {
+      menu.querySelectorAll('nav a').forEach((a) => {
+        a.addEventListener('click', () => closeMenu(menu));
+      });
+    }
+  </script>
+)}
+
 <style>
   header {
     position: sticky;
