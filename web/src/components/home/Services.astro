@@ -5,6 +5,7 @@
  * здесь нет.
  */
 import Label from '../Label.astro';
+import Button from '../Button.astro';
 import ServiceCard from './ServiceCard.astro';
 import { SERVICE_GROUPS, NICHES, SERVICES_CATALOG_HREF } from '../../data/services';
 ---
@@ -26,8 +27,17 @@ import { SERVICE_GROUPS, NICHES, SERVICES_CATALOG_HREF } from '../../data/servic
   ))}
 </p>
 
+{/* Правка владельца 2026-08-13, пункт 4: текстовой ссылкой под сеткой она
+    терялась («выглядит странно и отстранённо… совсем непримечательно»).
+    Собственный элемент — кнопка `Button`, но `variant="secondary"` (контур
+    токеном `--border`, без заливки акцентом): на странице уже три залитые
+    акцентные кнопки (находка ревью №7), четвёртой становиться нельзя. Тот же
+    контурный вариант, что у «Смотреть цены» в первом экране — не спорит
+    весом с главным действием страницы. */}
 <p class="all-services">
-  <a href={SERVICES_CATALOG_HREF}>Все услуги <span aria-hidden="true">→</span></a>
+  <Button href={SERVICES_CATALOG_HREF} variant="secondary">
+    Все услуги <span aria-hidden="true">→</span>
+  </Button>
 </p>
 
 <style>
@@ -54,15 +64,6 @@ import { SERVICE_GROUPS, NICHES, SERVICES_CATALOG_HREF } from '../../data/servic
   .niches .sep { color: var(--text-faint); }
 
   .all-services {
-    margin: 16px 0 0;
+    margin: 24px 0 0;
   }
-  .all-services a {
-    color: var(--accent);
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .all-services a:hover { text-decoration: underline; }
 </style>
