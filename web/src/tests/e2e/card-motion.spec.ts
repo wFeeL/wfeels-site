@@ -72,7 +72,11 @@ test.describe('появление карточек — ни одна не ост
     const height = await page.evaluate(() => document.documentElement.scrollHeight);
     let seenMidFlight = 0;
 
-    for (let y = 0; y <= height; y += 200) {
+    /* Шаг 80 px, а не 200: окно появления крупной карточки — около 240 px
+       хода, и шаг в 200 через него перешагивает через раз. Тест на этом
+       краснел при исправном коде — брак был в замере, не в анимации.
+       Уменьшать шаг дальше незачем, увеличивать нельзя. */
+    for (let y = 0; y <= height; y += 80) {
       await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' as ScrollBehavior }), y);
       seenMidFlight += await page.locator(CARD_SELECTOR).evaluateAll((els) =>
         els.filter((el) => {

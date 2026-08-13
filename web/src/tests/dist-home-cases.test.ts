@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { homeCases, FACTORY_TEASER, CASES_CATALOG_HREF } from '../data/cases';
-import { WEIGHT_CLAIM } from '../data/pageWeight';
+import { WEIGHT_CLAIM, PAGE_WEIGHT_KB } from '../data/pageWeight';
 
 /* Тот же паттерн, что `dist-home-sections.test.ts`: читает `dist/index.html`
  * напрямую, без браузера, — доказывает, что текст секции 5 присутствует
@@ -45,6 +45,21 @@ describe('dist/index.html — секция 5', () => {
 
   it('блок «Этот сайт»: подпись о весе страницы — дословно, вместе с рисунком «Замер»', () => {
     expect(html, WEIGHT_CLAIM).toContain(WEIGHT_CLAIM);
+  });
+
+  it('блок «Этот сайт»: число внутри поля иллюстрации — тот же вес, что в подписи', () => {
+    // Правка ревью 2026-08-13, часть 2: подпись под полем несёт вес словами
+    // (`WEIGHT_CLAIM`), а само поле — тем же числом крупно, из того же
+    // источника (`data/pageWeight.ts`), без второй ручной копии.
+    const start = html.indexOf('id="cases"');
+    const end = html.indexOf('id="process"');
+    const section = html.slice(start, end);
+    expect((section.match(/class="field"/g) || []).length,
+      'в секции кейсов сегодня ровно одно наполненное поле иллюстрации — ' +
+      '«Заявка-Хаб» и «ИИ-консультант» ещё пустые заглушки')
+      .toBe(1);
+    expect(section, 'вес страницы не найден внутри поля «Замер»')
+      .toContain(String(PAGE_WEIGHT_KB));
   });
 
   it('секция 5: ни слова «клиент», «заказчик», «для компании» рядом с кейсами', () => {
