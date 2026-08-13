@@ -86,10 +86,19 @@ function attrValue(attrs, name) {
 // Строку запроса НЕ отбрасываем: `style.css?v=2` должен упасть с именем файла, а
 // не тихо исчезнуть из веса — ровно так однажды поведёт себя новая версия Astro
 // или плагин, и молчаливый пропуск превратил бы 179 КБ в 5 КБ с галочкой.
+// Тот же критерий «внешний адрес», что использует `resolveRef` при выборе
+// файла на диске (протокол или `//` в начале) — вынесен отдельной функцией,
+// потому что здесь он не решает, читать ли файл, а СЧИТАЕТ адреса, ничего не
+// открывая на диске.
+function isExternalRef(ref) {
+  const clean = ref.trim().replace(/#.*$/, '');
+  return /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(clean);
+}
+
 function resolveRef(ref, baseDir) {
   const clean = ref.trim().replace(/#.*$/, ''); // фрагмент — не часть файла
   if (clean === '') return null;
-  if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(clean)) return null; // внешний адрес, data:, mailto:
+  if (isExternalRef(clean)) return null; // внешний адрес, data:, mailto:
   return clean.startsWith('/') ? join(DIST, clean) : join(baseDir, clean);
 }
 
@@ -342,16 +351,61 @@ for (const page of PAGES) {
 
   const jsGzip = gzipTotal(collectPageJs(html, page, pageDir));
 
+  // Сколько скриптов страница подключает с ЧУЖОГO домена. Считается заново
+  // отдельным проходом по разметке (не переиспользует `queue` выше — та уже
+  // опустошена `shift()`): `markupRefs` дешёвый регулярочный разбор, второй
+  // проход не стоит усложнения.
+  const thirdPartyScripts = markupRefs(html).filter(
+    (r) => r.where === '<script src>' && isExternalRef(r.ref)
+  ).length;
+
   const kb = (n) => `${(n / 1024).toFixed(1)} КБ`;
   const pageOk = total <= MAX_PAGE_BYTES;
   const jsOk = jsGzip <= MAX_JS_GZIP_BYTES;
 
   console.log(
     `${pageOk && jsOk ? '✓' : '✗'} ${page} — всего ${kb(total)} (предел ${kb(MAX_PAGE_BYTES)}), ` +
-    `из них шрифты ${kb(fontBytes)}, JS сжатый ${kb(jsGzip)} (предел ${kb(MAX_JS_GZIP_BYTES)})`
+    `из них шрифты ${kb(fontBytes)}, JS сжатый ${kb(jsGzip)} (предел ${kb(MAX_JS_GZIP_BYTES)}), ` +
+    `сторонних скриптов ${thirdPartyScripts}`
   );
 
   if (!pageOk || !jsOk) failed = true;
+
+  /* Иллюстрация «Замер» (`CaseWeightIllustration.astro`, секция кейсов
+     главной) с 2026-08-13 печатает сжатый вес JS и число сторонних скриптов
+     строкой мелких метрик — оба числа обязаны иметь сторожа на тех же
+     основаниях, что вес страницы и кратность выше (раздел 3.2 брифа
+     `02-case-illustrations.md`, «число без сторожа на рисунок не попадает»).
+
+     Допуск не в процентах, как у веса страницы: 5% от ~2 КБ — это ~0,1 КБ,
+     уже меньше точности округления до одного знака после запятой, которым
+     печатается число. Сверяется поэтому не разница в проценте, а СОВПАДЕНИЕ
+     округлённого до 0,1 КБ значения. */
+  const jsClaim = html.match(/(\d+),(\d+)\s*КБ\s*JS\b/);
+  if (jsClaim) {
+    const claimedJsKb = Number(jsClaim[1]) + Number(jsClaim[2]) / 10;
+    const actualJsKb = Math.round((jsGzip / 1024) * 10) / 10;
+    if (Math.abs(claimedJsKb - actualJsKb) > 0.05) {
+      console.error(
+        `✗ ${page} — страница утверждает JS ${jsClaim[1]},${jsClaim[2]} КБ, а фактический ` +
+        `сжатый JS — ${actualJsKb.toFixed(1)} КБ. Подставить новое число в data/pageWeight.ts ` +
+        '(PAGE_JS_GZIP_KB).'
+      );
+      failed = true;
+    }
+  }
+
+  const thirdPartyClaim = html.match(/(\d+)\s*сторонних\s*скрипт/i);
+  if (thirdPartyClaim) {
+    const claimedThirdParty = Number(thirdPartyClaim[1]);
+    if (claimedThirdParty !== thirdPartyScripts) {
+      console.error(
+        `✗ ${page} — страница утверждает ${claimedThirdParty} сторонних скриптов, а по факту ` +
+        `${thirdPartyScripts}. Подставить новое число в data/pageWeight.ts (THIRD_PARTY_SCRIPTS_COUNT).`
+      );
+      failed = true;
+    }
+  }
 
   /* Секция «Что можно проверить» называет вес этой самой страницы и во
      сколько раз она легче типичного сайта. Числа статические — их подставляет

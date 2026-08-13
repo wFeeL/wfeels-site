@@ -15,6 +15,8 @@ import {
   TYPICAL_PAGE_MB_TEXT,
   WEIGHT_MULTIPLIER,
   WEIGHT_MULTIPLIER_WORD,
+  PAGE_JS_GZIP_KB_TEXT,
+  THIRD_PARTY_SCRIPTS_COUNT,
 } from './pageWeight';
 
 // ---------------------------------------------------------------------
@@ -36,6 +38,12 @@ export const WEIGHT_ILLUSTRATION = {
   typicalMbText: TYPICAL_PAGE_MB_TEXT,
   multiplier: WEIGHT_MULTIPLIER,
   multiplierWord: WEIGHT_MULTIPLIER_WORD,
+  /* Строка мелких метрик под полосой сравнения — только числа с готовым
+     сторожем в `check-budget.mjs` (задача 2 захода 2026-08-13). Число
+     тестов сюда НЕ идёт: у него нет и не может быть сторожа, оно протухает
+     каждым коммитом. */
+  jsGzipKbText: PAGE_JS_GZIP_KB_TEXT,
+  thirdPartyScriptsCount: THIRD_PARTY_SCRIPTS_COUNT,
 } as const;
 
 // ---------------------------------------------------------------------

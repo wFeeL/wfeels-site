@@ -21,7 +21,7 @@
  */
 import { WEIGHT_ILLUSTRATION } from '../../data/case-illustrations';
 
-const { ourKb, typicalKb, typicalMbText } = WEIGHT_ILLUSTRATION;
+const { ourKb, typicalKb, typicalMbText, jsGzipKbText, thirdPartyScriptsCount } = WEIGHT_ILLUSTRATION;
 
 // Доля полосы «этот сайт» от полосы медианы — не второй литерал длины, а
 // вычисление из тех же двух чисел, что стоят рядом текстом.
@@ -45,6 +45,14 @@ const ourPct = (ourKb / typicalKb) * 100;
       <span class="bar-value">{typicalMbText} МБ</span>
     </div>
   </div>
+  {/* Мелкие метрики — только числа, у которых есть сторож (`check-budget
+      .mjs`, гейт задачи 2 захода 2026-08-13): без сторожа число сюда не
+      попадает, число тестов сюда не попадает никогда. */}
+  <p class="metrics">
+    <span>{jsGzipKbText} КБ JS</span>
+    <span class="dot" aria-hidden="true">·</span>
+    <span>{thirdPartyScriptsCount} сторонних скриптов</span>
+  </p>
 </div>
 
 <style>
@@ -113,4 +121,20 @@ const ourPct = (ourKb / typicalKb) * 100;
     .bar-row { grid-template-columns: 1fr; row-gap: 8px; }
     .bar-value { text-align: left; }
   }
+
+  /* Мелкие метрики — второстепенные по отношению к полосе сравнения,
+     поэтому мельче подписей полос, но не мельче small (бриф раздела 2.3:
+     кегль подписи внутри рисунка — не меньше 14 px). */
+  .metrics {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+    font: 500 1rem/1.4 var(--font-mono);
+    color: var(--text-muted);
+  }
+  /* `--text-faint` не используется ни в одном из трёх рисунков секции
+     кейсов (бриф `02-case-illustrations.md`, раздел 2.3) — разделитель
+     остаётся на `--text-muted`, как и сами метрики рядом. */
 </style>
