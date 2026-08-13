@@ -27,7 +27,7 @@ const id = `f-${name}`;
 
 <style>
   .field { display: flex; flex-direction: column; gap: 6px; margin: 0 0 20px; }
-  label { font-size: 1.0625rem; color: var(--text-muted); }
+  label { font-size: 1rem; color: var(--text-muted); }
   /* Звёздочка обязательного поля. `--danger` — служебный цвет состояния, а не
      второй акцент бренда: тем же цветом будут показаны ошибки полей. Смысл на
      цвете не держится — сама звёздочка видна и без него, а поле обязательно по
@@ -36,7 +36,7 @@ const id = `f-${name}`;
      значит сказать одно и то же дважды. */
   .req { color: var(--danger); }
   input, textarea {
-    font: 400 1.25rem/1.5 var(--font-text);
+    font: 400 1.125rem/1.5 var(--font-text);
     color: var(--text);
     background: var(--surface);
     border: 1px solid var(--border);
@@ -57,5 +57,5 @@ const id = `f-${name}`;
   /* Было 13 px — самовольный кегль, вне шкалы. Подсказка — обычный
      приглушённый текст, ступень `small` (14 px), правка 2026-08-13, свод к
      семи объявленным ([[02-redesign-options]], предусловие пункта 8). */
-  small { font-size: 1.0625rem; color: var(--text-muted); }
+  small { font-size: 1rem; color: var(--text-muted); }
 </style>
