@@ -1,143 +1,234 @@
 ---
-/* Линия на фоне — спека `02-home.md`, раздел 15; геометрия по D-020 (кривые
- * разрешены), механика по D-024 (родная CSS-анимация по прокрутке, без
- * GSAP). Сегодня подключена только на главной (`pages/index.astro`) — это
- * первая страница, где линия появляется по-настоящему; на посадочных она
- * тоньше и бледнее (спека 03, вне этого плана).
+/* Линия на фоне главной — бриф '70-workshop/specs/site-v3/
+ * 02-background-line.md'. Разметку и атрибуты (data-line-side,
+ * data-line-cross, data-line-cross-top, элемент .bg-line) несёт
+ * Section.astro (раздел 7.1) — этот файл подключается один раз (Base.astro,
+ * проп line) и несёт ТОЛЬКО глобальные правила: он не рендерит видимой
+ * разметки сам, потому что рисовать теперь нечего — каждая секция несёт
+ * свой собственный отрезок и свой собственный таймлайн view() (раздел 2), а
+ * не общий на всю страницу путь.
  *
- * Геометрия считается на сборке, а не пишется руками: анкерные точки — на
- * узлах сетки 32 px (`--step`), период и амплитуда заданы один раз и
- * повторяются весь путь вниз — «один язык кривой на весь сайт» (00-overview,
- * раздел 4). Путь сделан заведомо длиннее любой реальной длины страницы —
- * тогда его нижний край всегда обрезается краем страницы (SVG обрезает
- * содержимое по границе элемента по умолчанию), и линия «уходит за нижний
- * край», а не заканчивается видимой точкой в воздухе.
+ * Раздел 2 «Механика»: animation-timeline: view() + animation-range: entry
+ * даёт «фронт рисования всегда стоит на нижней кромке вьюпорта» —
+ * арифметическое следствие формулы p = (s + V − T) / H, не подобранное
+ * число. Три детали реализации из раздела 2, каждая обязательна:
+ *   - animation-fill-mode: both — без него секции ниже окна показали бы
+ *     базовое состояние (линия видна целиком), то есть ровно тот дефект,
+ *     который чинится;
+ *   - animation-timing-function: linear — иначе фронт отвязывается от
+ *     кромки окна;
+ *   - РАЗДЕЛЬНЫЕ longhand-свойства, не сокращение animation: — сборка
+ *     сводит animation + animation-timeline в один шорткод, и собранный
+ *     Chromium этой формы не понимает: animationName молча уходит в none.
+ *     Проверено на прежней версии этого файла (git-история) и тестом
+ *     background-line.spec.ts.
  *
- * SVG не несёт viewBox: без него единица координат `d` равна 1 CSS-px
- * собственного бокса SVG-элемента, поэтому числа ниже — это буквально
- * пиксели в готовой странице, а не абстрактные единицы, растянутые
- * `preserveAspectRatio`. Ширина полосы качания фиксирована в реальных
- * пикселях и не зависит от ширины окна — на любой ширине это один и тот же
- * рисунок, прибитый к левому краю страницы.
+ * Раздел 7.3 «Запасное состояние»: приём FactoryCore.astro (строки 283–294
+ * на момент брифа) — состояние ПО УМОЛЧАНИЮ уже целиком видимо (clip-path
+ * не задан), анимация навешивается СВЕРХУ внутри @supports, никогда
+ * наоборот. Это закрывает оба случая одним и тем же состоянием:
+ * prefers-reduced-motion: reduce и браузер без animation-timeline.
+ *
+ * УПРОЩЕНИЕ ПРОТИВ РАЗДЕЛА 7.2, названное прямо (см. отчёт исполнителя,
+ * «Допущения»): бриф делит плитку перехода на верхнюю и нижнюю половины
+ * поровну (H/2 каждой секции) — формула верна, ПОКА обе секции стыка
+ * отдают одинаковый отступ. Действующий ритм «Три акта» (index.astro, GAP,
+ * коммит edc7e47) в шести переходах из семи отдаёт верхней секции
+ * bottomGap:'none' (0 px) и всю полосу — нижней (topGap:'stitch'/
+ * 'interior', 96…128 px); симметричны только «FAQ → Контакт» (96+96).
+ * Раздел 10 брифа предупреждал ровно об этом («зависит — одно число, высота
+ * перехода») применительно к развилке 2.1, но не знал о «Трёх актах» —
+ * которые тоже меняют это число, уже сегодня и не через развилку 2.1.
+ * Решение: ВЕСЬ переход рисует секция, владеющая верхним стыком
+ * (data-line-cross-top), высотой РОВНО в её собственный измеренный отступ
+ * (data-top-gap, те же 48/64/96/128, что и в Section.astro — второй шкалы
+ * не заводится). Секция сверху (data-line-cross) переход не рисует вовсе —
+ * её прогон идёт прямо до своего нижнего края той же стороной. Непрерывность
+ * (раздел 9, пункт 3/15) от этого не рвётся: обе половины по построению
+ * встречаются в одной и той же точке (сторона верхней секции на её нижней
+ * кромке), нижняя лишь несёт всю кривизну одна. Плата — переход там, где
+ * 96/128 px это ВЕСЬ бюджет высоты (не половина 192/256), чуть круче
+ * заявленных в разделе 3.2 5,5°; на единственном симметричном стыке
+ * (FAQ→Контакт) используется тот же принцип (все 96 px — секции «Контакт»),
+ * то есть тоже площе заявленного. Это стоит того же самого одного токена
+ * --cross-h, о котором предупреждал раздел 10: как только ритм страницы
+ * станет симметричным, разница исчезнет сама.
+ *
+ * URL ПЛИТОК (mask-image ниже) — не написаны руками: это литеральный вывод
+ * lib/backgroundLine.ts → tileUrl(LR_TILE) / tileUrl(RL_TILE), вписанный в
+ * этот <style> как текст. Так, а не через define:vars: у компонента нет
+ * своего рендерящегося элемента (рисовать саму линию тут больше нечего),
+ * define:vars на голом <style> вешать переменную некуда — правило есть,
+ * var(--x) не резолвится нигде, штрих перехода пропадает молча, без единой
+ * ошибки сборки (поймано руками на этом самом файле, см. отчёт). Разошлись
+ * — сторожит `backgroundLine.test.ts`: он пересчитывает tileUrl() заново и
+ * сверяет со строкой ниже, а не доверяет глазу.
+ *
+ * ЧТО В ЭТОМ ПРОХОДЕ НЕ СДЕЛАНО: волна вдоль прогона (раздел 3.1-бис,
+ * правка владельца 2026-08-13); -webkit-mask-* дубли слоя перехода (Safari)
+ * — веса ради, каждый URL плитки 249 байт, дубль на вебкит удвоил бы его без
+ * пользы для целевого Chromium. Прогон сейчас прямой на всех ширинах
+ * ≥ 480 px, а не только ниже 900 (раздел 6.1). Названо в отчёте
+ * исполнителя, не спрятано в код тихо.
  */
-
-const STEP = 32; // --step из tokens.css, продублировать числом нельзя — CSS-переменная в d="" не работает
-
-const X_LOW = STEP * 2;   // 64  — левая граница качания
-const X_HIGH = STEP * 10; // 320 — правая граница качания
-const PERIOD_Y = STEP * 12; // 384 — вертикальный период одной волны
-
-// Генерируем путь заведомо длиннее любой реальной высоты страницы (11 секций
-// плюс шапка с подвалом). PERIOD_COUNT подобран с запасом и округлён к
-// периоду волны, чтобы конец пути гарантированно оказался ниже подвала на
-// любой ширине и любой высоте шрифта.
-const PERIOD_COUNT = 60; // 60 × 384 = 23 040 px
-const TOTAL_HEIGHT = PERIOD_COUNT * PERIOD_Y;
-
-function buildPath(): string {
-  const half = PERIOD_Y / 2;
-  let x = X_LOW;
-  let y = 0;
-  const parts = [`M ${x} ${y}`];
-  for (let i = 0; i < PERIOD_COUNT; i++) {
-    const nextX = x === X_LOW ? X_HIGH : X_LOW;
-    const nextY = y + PERIOD_Y;
-    // S-образная кривая: управляющие точки смещены на половину периода по
-    // вертикали от каждого конца — тот же приём повторяется на каждом шаге,
-    // отсюда «один язык кривой».
-    parts.push(`C ${x} ${y + half}, ${nextX} ${nextY - half}, ${nextX} ${nextY}`);
-    x = nextX;
-    y = nextY;
-  }
-  return parts.join(' ');
-}
-
-const d = buildPath();
-// Нормализованная длина пути для stroke-dasharray/-dashoffset: браузер сам
-// пересчитывает реальную геометрическую длину в это число, без getTotalLength()
-// в рантайме (это был бы JS, а его здесь ноль).
-const PATH_LENGTH = 1000;
 ---
-<div class="bg-line" aria-hidden="true">
-  <svg width={X_LOW + X_HIGH} height={TOTAL_HEIGHT} focusable="false">
-    <path class="line-path" d={d} pathLength={PATH_LENGTH} />
-  </svg>
-</div>
-
-<style define:vars={{ pathLength: PATH_LENGTH }}>
-  /* Обёртка растягивается на всю высоту страницы, а не только видимого окна.
-     `isolation: isolate` на body (base.css) создаёт локальный контекст
-     наложения — отрицательный z-index здесь прячет линию за фоном шапки,
-     секций и подвала, но не проваливается за собственный фон body: без
-     изоляции элемент с z-index:-1 в auto-height родителе рискует уйти под
-     фон body целиком и стать невидимым, это и есть та самая ловушка.
-
-     Ниже 900 px линия не рисуется ВОВСЕ (`display: none`, не просто
-     `opacity: 0`) — находка design-ревью 2026-08-12: на 390 px колонка
-     текста занимает всю ширину экрана, линии (полоса качания зафиксирована
-     в 64…320 px от левого края, `X_LOW`/`X_HIGH` во фронтматтере) негде
-     идти, кроме как под абзацами «Как обычно бывает», подписью поля формы и
-     строкой про Telegram в подвале — контраст текста поверх штриха падал до
-     ≈1,9:1 при пороге AA 4.5:1. 900 px — тот же порог, на котором ядро
-     переключается на второй раскрой (00-overview, раздел 4: «на телефоне
-     фоновая графика не имеет места»), а не отдельно подобранное число. */
-  .bg-line {
-    display: none;
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    overflow: hidden;
-    pointer-events: none;
+<style is:global>
+  /* Точка отсчёта: только секции, у которых Section.astro насчитал данные
+     линии (lib/backgroundLine.ts), получают точку отсчёта для position:
+     absolute слоя — раздел 7.2, «секции нужен position: relative». Другие
+     страницы (Section без id из HOME_SECTIONS) этот блок не задевает вовсе
+     — у них нет [data-line-side]. */
+  section[data-line-side] {
+    position: relative;
+    /* Раздел 3.4 — вынос наружу от кромки контейнера. Формула ссылается на
+       var(--container) живьём, поэтому не завязана на число из раздела 0
+       брифа (контейнер там взят устаревшим — 1060 вместо действующих
+       1180 px, см. отчёт). Медиазапрос-надбавка на волну (раздел 3.4,
+       правка 2026-08-13, минимум 32 вместо 16) в этом проходе не введена —
+       волны здесь нет. */
+    --line-out: clamp(16px, calc((100vw - var(--container)) / 4), 120px);
+    --line-out-right: var(--line-out);
   }
-  @media (min-width: 900px) {
-    .bg-line { display: block; }
-  }
-
-  svg {
-    display: block;
-    position: absolute;
-    top: 0;
-    left: 16px;
-  }
-
-  .line-path {
-    fill: none;
-    stroke: var(--accent);
-    stroke-width: var(--stroke-line, 1.5px);
-    /* Низкая непрозрачность акцента — измерено `styles/tokens.test.ts` и
-       отчётом задачи 13: контраст текста над линией даже прямо на штрихе
-       держится ≥ 11:1 в обеих темах, запас далеко за пределами AA (4.5:1). */
-    opacity: 0.16;
-  }
-
-  /* Состояние ПО УМОЛЧАНИЮ — линия прорисована целиком (нет ни dasharray,
-     ни dashoffset). Это одно и то же состояние покрывает оба случая:
-     `prefers-reduced-motion: reduce` и браузер без поддержки
-     `animation-timeline` (Firefox держит её за флагом на 2026-08). Анимация
-     навешивается СВЕРХУ, только если оба условия — поддержка и разрешение
-     на движение — выполнены одновременно. */
-  @supports (animation-timeline: scroll()) {
-    @media (prefers-reduced-motion: no-preference) {
-      .line-path {
-        stroke-dasharray: var(--pathLength);
-        stroke-dashoffset: var(--pathLength);
-        /* Раздельные свойства, не сокращение `animation:` — сборка сводит
-           `animation` + `animation-timeline` в один шорткод
-           (`animation: … scroll(root)`), а собранный Chromium 151 такую
-           форму не разбирает и молча роняет анимацию целиком: `animationName`
-           уходит в `none`, хотя dasharray стоит. Проверено сборкой и
-           автоматическим тестом (`background-line.spec.ts`, «обычный путь»). */
-        animation-name: bg-line-draw;
-        animation-duration: 1ms; /* реальную длительность задаёт таймлайн ниже */
-        animation-timing-function: linear;
-        animation-fill-mode: forwards;
-        animation-timeline: scroll(root);
-        animation-range: 0% 100%;
-      }
+  /* Развод с рельсом (раздел 3.4, «Правое поле делится с рельсом») — порог
+     измерен по факту (Rail.astro, @media (min-width: 1324px)), а не взят
+     из брифа: там записано 1220 px для контейнера 1060, действующий
+     контейнер 1180 сдвигает порог рельса на 1324 (см. отчёт). */
+  @media (min-width: 1324px) {
+    section[data-line-side] {
+      --line-out-right: min(
+        var(--line-out),
+        calc((100vw - var(--container)) / 2 - var(--rail) - 16px)
+      );
     }
   }
 
+  .bg-line {
+    display: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(-1 * var(--line-out));
+    right: calc(-1 * var(--line-out-right));
+    z-index: -1;
+    pointer-events: none;
+  }
+  /* Порог 480 px (раздел 6) — заменяет D-026 (900 px). Шкала полей страницы
+     перестаёт вмещать штрих с просветом ≥ 12 px ниже 480, не выше. */
+  @media (min-width: 480px) {
+    .bg-line { display: block; }
+  }
+  @media print, (forced-colors: active) {
+    .bg-line { display: none; }
+  }
+
+  /* Слой 1 — прогон: прямой штрих (волна — отдельный проход, не в этой
+     версии). Ширина — своя переменная --stroke-bg-line (раздел 11: не
+     трогать --stroke-line, которым несёт ядро тизера фабрики). */
+  .bg-line::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: var(--stroke-bg-line);
+    background-color: color-mix(in srgb, var(--accent) 36%, transparent);
+  }
+  section[data-line-side="left"] .bg-line::before { left: 0; }
+  section[data-line-side="right"] .bg-line::before { right: 0; }
+
+  /* Отступы прогона — это определение L (раздел 7.2): секция, владеющая
+     верхним переходом, отдаёт ему свой верх целиком (padding-top прогона =
+     её собственный измеренный отступ, data-top-gap). Секция, владеющая
+     нижним переходом (data-line-cross), НИЧЕГО не отдаёт снизу — упрощение
+     против раздела 7.2, обоснование во фронтматтере выше. */
+  section[data-line-cross-top="lr"] .bg-line::before,
+  section[data-line-cross-top="rl"] .bg-line::before {
+    top: 48px;
+  }
+  @media (min-width: 480px) {
+    section[data-line-cross-top="lr"] .bg-line::before,
+    section[data-line-cross-top="rl"] .bg-line::before { top: 64px; }
+  }
+  @media (min-width: 900px) {
+    section[data-line-cross-top="lr"] .bg-line::before,
+    section[data-line-cross-top="rl"] .bg-line::before { top: 96px; }
+  }
+  section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::before,
+  section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::before {
+    top: 64px;
+  }
+  @media (min-width: 480px) {
+    section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::before,
+    section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::before { top: 96px; }
+  }
+  @media (min-width: 900px) {
+    section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::before,
+    section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::before { top: 128px; }
+  }
+
+  /* Слой 2 — переход: одна плитка (раздел 3.2, кубическая S-кривая,
+     вертикальная касательная на обоих концах), растянутая маской на всю
+     ширину .bg-line (= от левого поля до правого — «во всю ширину экрана»,
+     раздел 4.1) и на измеренную высоту стыка. mask-size: 100% 100% — то
+     самое место, где ОДНА плитка обслуживает любую высоту стыка без
+     второго файла на каждую комбинацию. */
+  .bg-line::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    background-color: color-mix(in srgb, var(--accent) 36%, transparent);
+    mask-repeat: no-repeat;
+    mask-size: 100% 100%;
+    mask-mode: alpha;
+  }
+  section[data-line-cross-top="lr"] .bg-line::after {
+    height: 48px;
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%201000%20192'%3E%3Cpath%20d%3D'M0%2C0%20C0%2C96%201000%2C96%201000%2C192'%20stroke%3D'%23000'%20stroke-width%3D'2'%20fill%3D'none'%2F%3E%3C%2Fsvg%3E");
+  }
+  section[data-line-cross-top="rl"] .bg-line::after {
+    height: 48px;
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%201000%20192'%3E%3Cpath%20d%3D'M1000%2C0%20C1000%2C96%200%2C96%200%2C192'%20stroke%3D'%23000'%20stroke-width%3D'2'%20fill%3D'none'%2F%3E%3C%2Fsvg%3E");
+  }
+  @media (min-width: 480px) {
+    section[data-line-cross-top="lr"] .bg-line::after,
+    section[data-line-cross-top="rl"] .bg-line::after { height: 64px; }
+  }
+  @media (min-width: 900px) {
+    section[data-line-cross-top="lr"] .bg-line::after,
+    section[data-line-cross-top="rl"] .bg-line::after { height: 96px; }
+  }
+  section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::after,
+  section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::after {
+    height: 64px;
+  }
+  @media (min-width: 480px) {
+    section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::after,
+    section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::after { height: 96px; }
+  }
+  @media (min-width: 900px) {
+    section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::after,
+    section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::after { height: 128px; }
+  }
+
+  /* Раскрытие — раздел 7.2, одно свойство красит и прогон, и переход разом:
+     clip-path на .bg-line клипует и сам элемент, и оба псевдоэлемента.
+     По умолчанию свойство не задано — линия видна целиком (раздел 7.3). */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .bg-line {
+        clip-path: inset(0 0 100% 0);
+        animation-name: bg-line-draw;
+        animation-duration: 1ms;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range: entry;
+      }
+    }
+  }
   @keyframes bg-line-draw {
-    to { stroke-dashoffset: 0; }
+    to { clip-path: inset(0 0 0 0); }
   }
 </style>
