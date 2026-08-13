@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { TOP_CARDS, SHELF_ROWS, SUPPORT_AUDIT_ROW } from '../../data/pricingShowcase';
+import { TOP_CARDS, SHELF_CARDS } from '../../data/pricingShowcase';
 
 /* Прицельные e2e секции 4 «Цены» — переработка по `70-workshop/specs/
  * site-v3/02-redesign-options.md`, «Принято владельцем», пункт 7: три
@@ -47,8 +47,8 @@ test.describe('секция «Цены» — три верхние карточ�
     for (const card of TOP_CARDS) {
       await expect(section.getByText(card.showcaseName, { exact: true })).toBeVisible();
     }
-    for (const row of SHELF_ROWS) {
-      await expect(section.getByText(row.label, { exact: true })).toBeVisible();
+    for (const card of SHELF_CARDS) {
+      await expect(section.getByText(card.label, { exact: true })).toBeVisible();
     }
 
     const overflow = await page.evaluate(() => {
@@ -63,8 +63,8 @@ test.describe('секция «Цены» — три верхние карточ�
     await page.goto('/#pricing');
     const section = page.locator('#pricing');
 
-    for (const row of [...SHELF_ROWS, ...SUPPORT_AUDIT_ROW]) {
-      const link = section.locator(`a[href="${row.href}"]`);
+    for (const card of SHELF_CARDS) {
+      const link = section.locator(`a[href="${card.href}"]`);
       await expect(link).toHaveCount(1);
     }
   });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { TOP_CARDS, SHELF_ROWS, SUPPORT_AUDIT_ROW } from '../../data/pricingShowcase';
+import { TOP_CARDS, SHELF_CARDS } from '../../data/pricingShowcase';
 
 /* Требование блокера B1 (финальное дизайн-ревью, задача 8 плана): «в разметке
  * секции нет ни одного числа, все приходят из данных». Строже, чем проверка
@@ -56,11 +56,11 @@ describe('Pricing.astro — три верхние карточки и полка
     expect(raw).toContain('TOP_CARDS.map');
   });
 
-  it('на полке — три строки остальных групп плюс строка поддержки/аудита, все через данные', () => {
-    expect(raw).toContain('SHELF_ROWS.map');
-    expect(raw).toContain('SUPPORT_AUDIT_ROW');
-    expect(raw).toContain('SUPPORT_ROW.');
-    expect(raw).toContain('AUDIT_ROW.');
+  it('на полке — шесть карточек из витрины, все через данные', () => {
+    expect(raw).toContain('SHELF_CARDS.map');
+    for (const card of SHELF_CARDS) {
+      expect(raw).not.toContain(`>${card.label}<`); // подпись не вписана литералом — идёт через {item.label}
+    }
   });
 });
 
@@ -101,11 +101,10 @@ describe('Pricing.astro — сторож меток спроса (D-029)', () =>
       expect(findDemandClaim(card.showcaseName), `карточка «${card.showcaseName}»`).toBeNull();
       if (card.recommended) {
         expect(findDemandClaim(card.recommended.label), `ярлык «${card.showcaseName}»`).toBeNull();
-        expect(findDemandClaim(card.recommended.reason), `причина «${card.showcaseName}»`).toBeNull();
       }
     }
-    for (const row of [...SHELF_ROWS, ...SUPPORT_AUDIT_ROW]) {
-      expect(findDemandClaim(row.label), `строка полки «${row.label}»`).toBeNull();
+    for (const card of SHELF_CARDS) {
+      expect(findDemandClaim(card.label), `карточка полки «${card.label}»`).toBeNull();
     }
   });
 

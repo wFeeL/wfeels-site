@@ -1,10 +1,14 @@
 ---
-/* Секция 4 — цены. Текст подводки/сноски утверждён дословно (`70-workshop/
- * specs/site-v3/02-texts.md`, секция 4). Структура таблицы переработана по
- * `70-workshop/specs/site-v3/02-redesign-options.md`, «Принято владельцем»,
- * пункт 7 (частная спека приоритетнее общей при расхождении): три верхние
- * карточки группы «Сайты» + компактная полка по остальным группам, вместо
- * пяти карточек-таблиц из восемнадцати строк.
+/* Секция 4 — цены.
+ *
+ * Правка владельца 2026-08-13 («Секция цен — десять правок владельца»,
+ * части 1–5): три верхние карточки стали направлениями («Лендинг» /
+ * «Корпоративный сайт» / «Telegram-бот»), а не тремя ступенями одной
+ * лестницы «Сайты»; полка внизу стала шестью маленькими карточками. Прежняя
+ * структура («три ступени группы «Сайты» + строки-ссылки полки») была
+ * собрана по `70-workshop/specs/site-v3/02-redesign-options.md`, пункт 7 —
+ * этот заход её не отменяет целиком, только состав и подачу верхней тройки
+ * и полки, по прямому указанию владельца, которое приоритетнее спеки.
  *
  * Ни одна цена не хранится в этом файле — всё читается из
  * `data/pricingShowcase.ts`, который сам читает `data/pricing.ts`
@@ -16,7 +20,7 @@
 import Label from '../Label.astro';
 import Card from '../Card.astro';
 import { PRICING } from '../../data/pricing';
-import { TOP_CARDS, SHELF_ROWS, SUPPORT_AUDIT_ROW } from '../../data/pricingShowcase';
+import { TOP_CARDS, SHELF_CARDS } from '../../data/pricingShowcase';
 
 /** Цена конкретной ступени по имени группы и записи — нужна только для
  *  сноски про раунды правок ниже: порог «работы от N ₽» обязан читаться из
@@ -33,20 +37,12 @@ function priceFor(groupName: string, entryName: string): string {
   return entry.price;
 }
 
-// Порог «три раунда правок — для работ от…» — спека называет его через
-// верхнюю ступень «Сайты» (70 000 ₽), а не отдельным числом: ступень сама на
-// главную не выходит карточкой (пункт 7 спеки), но её цена остаётся законным
-// порогом внутри уже утверждённого текста сноски.
+// Порог «три раунда правок — для работ от…» и порог «оплата по вехам —
+// от…» (PRICING.md, строки 102–103) численно совпадают: оба указывают на
+// верхнюю ступень «Сайты» (70 000 ₽). Ступень сама на главную не выходит
+// отдельной карточкой, но её цена остаётся законным порогом внутри текста
+// подводки и сноски ниже.
 const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 страниц');
-
-// Строка «поддержка и аудит» — ровно две записи (спека, пункт 7), достаются
-// по имени, а не по индексу в шаблоне: тест «ни одной цифры в разметке»
-// строже любого индекса `[0]`/`[1]` в JSX-выражении, поэтому разбор пары
-// сделан здесь, во фронтматтере.
-const [SUPPORT_ROW, AUDIT_ROW] = SUPPORT_AUDIT_ROW;
-if (!SUPPORT_ROW || !AUDIT_ROW) {
-  throw new Error('home/Pricing.astro: строка «поддержка и аудит» ждёт ровно две записи из data/pricingShowcase.ts.');
-}
 ---
 <Label>СКОЛЬКО ЭТО СТОИТ</Label>
 <h2 class="t-h2">Цены</h2>
@@ -68,9 +64,7 @@ if (!SUPPORT_ROW || !AUDIT_ROW) {
         <p class="price">
           <span class="from">от</span> <code>{card.price}</code>
         </p>
-        {card.recommended && (
-          <p class="reason">{card.recommended.reason}</p>
-        )}
+        <p class="timeframe">{card.timeframe}</p>
         <ul class="composition" role="list">
           {card.composition.map((item) => (
             <li>
@@ -88,30 +82,12 @@ if (!SUPPORT_ROW || !AUDIT_ROW) {
 </div>
 
 <div class="shelf">
-  <p class="shelf-heading">И ещё три направления — коротко</p>
-  <ul class="shelf-list" role="list">
-    {SHELF_ROWS.map((row) => (
-      <li>
-        <a class="shelf-row" href={row.href}>
-          <span class="shelf-label">{row.label}</span>
-          <span class="shelf-price"><span class="from">от</span> <code>{row.price}</code></span>
-        </a>
-      </li>
-    ))}
-    <li>
-      <div class="shelf-row shelf-row--pair">
-        <a class="shelf-pair-item" href={SUPPORT_ROW.href}>
-          <span class="shelf-label">{SUPPORT_ROW.label}</span>
-          <span class="shelf-price"><span class="from">от</span> <code>{SUPPORT_ROW.price}</code></span>
-        </a>
-        <span class="shelf-sep" aria-hidden="true"></span>
-        <a class="shelf-pair-item" href={AUDIT_ROW.href}>
-          <span class="shelf-label">{AUDIT_ROW.label}</span>
-          <span class="shelf-price"><span class="from">от</span> <code>{AUDIT_ROW.price}</code></span>
-        </a>
-      </div>
-    </li>
-  </ul>
+  {SHELF_CARDS.map((item) => (
+    <a class="shelf-card" href={item.href}>
+      <span class="shelf-label">{item.label}</span>
+      <span class="shelf-price"><span class="from">от</span> <code>{item.price}</code></span>
+    </a>
+  ))}
 </div>
 
 <p class="footnote">
@@ -190,10 +166,12 @@ if (!SUPPORT_ROW || !AUDIT_ROW) {
     padding: 0;
   }
 
-  .reason {
-    margin: 6px 0 0;
+  /* Временная строка на этот коммит — Часть 4 брифа переносит срок рядом с
+     ценой в одну строку и убирает этот отдельный абзац. */
+  .timeframe {
+    margin: 2px 0 0;
+    font: 500 0.6875rem/1.3 var(--font-mono);
     color: var(--text-muted);
-    max-width: 32ch;
   }
 
   .composition {
@@ -213,57 +191,36 @@ if (!SUPPORT_ROW || !AUDIT_ROW) {
   }
   .composition .check { flex: none; margin-top: 3px; color: var(--accent); }
 
-  /* Полка — компактный список строк-ссылок, а не карточки: три направления
-     плюс поддержка/аудит на одной строке, вместо трёх отдельных таблиц
-     секции до правки (спека, пункт 7: «компактная полка из трёх строк»). */
+  /* Полка — шесть маленьких карточек того же вида, что и верхняя тройка
+     (правка владельца 2026-08-13, часть 1), а не строки-ссылки: два столбца
+     на телефоне, три на планшете, шесть в ряд от 900 px. */
   .shelf {
     margin: 32px 0 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  @media (min-width: 560px) {
+    .shelf { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (min-width: 900px) {
+    .shelf { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  }
+
+  .shelf-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--surface);
-    overflow: hidden;
-  }
-  .shelf-heading {
-    margin: 0;
-    padding: 16px 20px 0;
-    color: var(--text-muted);
-  }
-  .shelf-list {
-    list-style: none;
-    margin: 12px 0 0;
-    padding: 0;
-  }
-  .shelf-list > li + li { border-top: 1px solid var(--border); }
-
-  .shelf-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 14px 20px;
+    padding: 16px;
     color: inherit;
     text-decoration: none;
-    transition: background-color var(--dur-micro) var(--ease);
+    transition: background-color var(--dur-micro) var(--ease),
+                border-color var(--dur-micro) var(--ease);
   }
-  a.shelf-row:hover, .shelf-pair-item:hover { background: var(--accent-soft); }
-
-  .shelf-row--pair {
-    padding: 0;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: stretch;
-  }
-  .shelf-pair-item {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 14px 20px;
-    color: inherit;
-    text-decoration: none;
-    transition: background-color var(--dur-micro) var(--ease);
-  }
-  .shelf-sep { border-left: 1px solid var(--border); }
+  .shelf-card:hover { background: var(--accent-soft); border-color: var(--accent); }
 
   .shelf-label { font-weight: 600; }
   .shelf-price { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
@@ -277,11 +234,6 @@ if (!SUPPORT_ROW || !AUDIT_ROW) {
     color: var(--text);
     background: none;
     padding: 0;
-  }
-
-  @media (max-width: 479px) {
-    .shelf-row--pair { grid-template-columns: 1fr; }
-    .shelf-sep { border-left: none; border-top: 1px solid var(--border); }
   }
 
   .footnote {

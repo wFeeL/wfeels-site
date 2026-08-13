@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { PRICING } from '../data/pricing';
 import { HERO_TERMS } from '../data/terms';
 import { SERVICE_GROUPS, NICHES } from '../data/services';
-import { TOP_CARDS, SHELF_ROWS, SUPPORT_AUDIT_ROW } from '../data/pricingShowcase';
+import { TOP_CARDS, SHELF_CARDS } from '../data/pricingShowcase';
 
 /* Проверяет две вещи разом, требуемые планом (задачи 5–7, «Приёмка»):
  *
@@ -123,14 +123,10 @@ describe('dist/index.html — секции 1–3', () => {
     expect(occurrences).toBe(1);
   });
 
-  it('секция 4: полка — три строки остальных групп и строка поддержки/аудита', () => {
-    for (const row of SHELF_ROWS) {
-      expect(html, `строка «${row.label}»: подпись`).toContain(row.label);
-      expect(html, `строка «${row.label}»: цена`).toContain(row.price);
-    }
-    for (const row of SUPPORT_AUDIT_ROW) {
-      expect(html, `строка «${row.label}»: подпись`).toContain(row.label);
-      expect(html, `строка «${row.label}»: цена`).toContain(row.price);
+  it('секция 4: полка — шесть карточек', () => {
+    for (const card of SHELF_CARDS) {
+      expect(html, `карточка «${card.label}»: подпись`).toContain(card.label);
+      expect(html, `карточка «${card.label}»: цена`).toContain(card.price);
     }
   });
 
