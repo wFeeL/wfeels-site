@@ -32,7 +32,10 @@
  *
  * Запасное состояние при `prefers-reduced-motion: reduce` — оно же состояние
  * ПО УМОЛЧАНИЮ (не обёрнутые в медиазапрос стили ниже): все четыре реплики
- * видны сразу и статично, без цикла.
+ * видны сразу и статично, без цикла. Единственное место, где полю разрешено
+ * менять высоту, — правило `:global(.field:has(.dialogue))` в конце блока
+ * стилей: оно переопределяет фиксированную высоту `CaseIllustrationField`
+ * только у поля, несущего именно этот диалог, только под `reduce`.
  */
 import { DIALOGUE_FIELD_LABEL, DIALOGUE_LINES, type DialogueRole } from '../../data/case-illustrations';
 
@@ -198,5 +201,17 @@ const ROLE_CLASS: Record<DialogueRole, string> = { visitor: 'v', bot: 'bt' };
     0%, 24% { opacity: 0; }
     26%, 44% { opacity: 1; }
     50%, 100% { opacity: 0; }
+  }
+
+  /* Единственное место, где полю разрешено менять высоту (бриф движения
+     владельца, см. верх файла): под `reduce` все четыре реплики стоят
+     статично, и им нужна их настоящая высота, а не фиксированные 416 px
+     `CaseIllustrationField.astro`. `:has()` держит правило точным — оно
+     задевает только то поле, что несёт именно этот диалог, а не поля
+     «Замера» и «Одной трубы» рядом. */
+  @media (prefers-reduced-motion: reduce) {
+    :global(.field:has(.dialogue)) {
+      height: auto;
+    }
   }
 </style>
