@@ -164,6 +164,80 @@ test('под курсором у пункта навигации появляе�
 // выше («в шапке нет отметки текущей страницы...»), повторять её здесь не
 // нужно.
 
+/* Сторож на класс дефекта, который тест выше НЕ ловит: `getComputedStyle`
+ * у самой `<a>` показывает `text-decoration-line: underline` даже когда на
+ * экране нет ни пикселя черты — Chromium не рисует `text-decoration`,
+ * заданный на flex-контейнере (`.nav-link` — `inline-flex`), а свойство при
+ * этом честно взводится в computed style. Ровно так и было до правки
+ * (владелец, дословно: «линии появляются не сразу, а рисуется потихоньку») —
+ * реальную черту в браузере отрисовать не удавалось вовсе, тест выше был
+ * зелёным. Чинит это `.nav-label` — обычный inline-спан внутри `<a>`, на
+ * него и дублируется декорация (`NavLinks.astro`).
+ *
+ * Задача 2 плана `wt/motion` добавила поверх черты «расчерчивание»:
+ * маска-«ластик» (`.nav-link::after`) стартует, полностью закрывая пункт, и
+ * отступает к правому краю за 150–250 мс, обнажая черту слева направо. Ниже
+ * проверяется, что это НЕ мгновенный скачок (значение маски посреди хода —
+ * не 0 и не 1) при `no-preference`, и что маска вовсе не показывается при
+ * `reduce` — черта в этом случае видна сразу целиком. */
+test.describe('расчерчивание акцентной черты под курсором', () => {
+  test('no-preference: маска фактически проходит промежуточные значения', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'no-preference' });
+    const page = await ctx.newPage();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/');
+
+    const link = page.locator('header nav.nav-wide a').first();
+    const box = await link.boundingBox();
+    if (!box) throw new Error('у первого пункта навигации нет геометрии');
+    await page.mouse.move(box.x - 30, box.y - 30);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 3 });
+
+    const midflight = await link.evaluate((el) => new Promise<number[]>((resolve) => {
+      const seen: number[] = [];
+      const start = performance.now();
+      (function tick() {
+        const m = getComputedStyle(el, '::after').transform;
+        const match = /matrix\(([^,]+),/.exec(m);
+        if (match) seen.push(Number(match[1]));
+        if (performance.now() - start < 180) requestAnimationFrame(tick);
+        else resolve(seen);
+      })();
+    }));
+
+    expect(
+      midflight.some((scale) => scale > 0.02 && scale < 0.98),
+      `маска ни разу не была в промежуточном состоянии — расчерчивание не ` +
+      `происходит, черта появляется скачком: ${JSON.stringify(midflight)}`,
+    ).toBe(true);
+    await ctx.close();
+  });
+
+  test('reduce: маска не появляется, черта видна сразу целиком', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/');
+
+    const link = page.locator('header nav.nav-wide a').first();
+    const box = await link.boundingBox();
+    if (!box) throw new Error('у первого пункта навигации нет геометрии');
+    await page.mouse.move(box.x - 30, box.y - 30);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 3 });
+    await page.waitForTimeout(20);
+
+    const deco = await link.evaluate((el) => getComputedStyle(el).textDecorationLine);
+    expect(deco, 'при reduce черта обязана появиться сразу').toContain('underline');
+    const scale = await link.evaluate((el) => {
+      const m = getComputedStyle(el, '::after').transform;
+      const match = /matrix\(([^,]+),/.exec(m);
+      return match ? Number(match[1]) : null;
+    });
+    expect(scale, 'при reduce маска не должна закрывать черту').toBe(0);
+    await ctx.close();
+  });
+});
+
 /** Середина видимого ТЕКСТА, а не коробки вокруг него. Разница здесь и есть
  *  предмет проверки: общее правило `min-height: 44px` растит коробку, а текст
  *  в блоке ложится по её верху. */

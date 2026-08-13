@@ -18,7 +18,17 @@ const here = Astro.url.pathname;
     href={i.href}
     aria-current={samePath(i.href, here) ? 'page' : undefined}
   >
-    {i.text}
+    {/* Обёртка вокруг текста — не разметочный шум: `.nav-link` сам
+        `display: inline-flex` (центрирует 44-пиксельную цель нажатия, см.
+        комментарий ниже), а Chromium физически не рисует `text-decoration` на
+        flex-контейнере — свойство остаётся в computed style («underline» там
+        есть), но на экране черты нет ни пикселя. Обнаружено ЭТИМ заходом при
+        попытке анимировать черту: e2e-тест ниже проверял `textDecorationLine`
+        компьютед-стиля самой ссылки, а не отрисовку, и зелёный прогон об этом
+        молчал — тот же класс дефекта, что уже был у этого компонента
+        (комментарий про «четыре правила `nav a`» ниже). Черту красит спан —
+        обычный inline-элемент, до которого flex-контекст не достаёт. */}
+    <span class="nav-label">{i.text}</span>
   </a>
 ))}
 
@@ -43,6 +53,9 @@ const here = Astro.url.pathname;
        шапки. */
     display: inline-flex;
     align-items: center;
+    /* Точка отсчёта для маски-«ластика» ниже: она стоит абсолютно и мерит
+       себя от коробки самой ссылки, а не от шапки. */
+    position: relative;
     color: var(--text-muted);
     text-decoration: none;
     /* Было 15 px — самовольный кегль, вне шкалы. Пункт навигации второстепенен
@@ -56,13 +69,83 @@ const here = Astro.url.pathname;
   /* Наведение подчёркивает так же, как отметка текущей страницы: одинаковая
      черта — одинаковый смысл «этот пункт сейчас в деле». Цвет от наведения
      тоже меняется, но одного цвета мало: он теряется и в тёмной теме, и у
-     тех, кто различает не все оттенки. */
-  .nav-link:hover {
+     тех, кто различает не все оттенки. `:focus-visible` — то же правило, тем
+     же селектором целиком: с клавиатуры навигация не имеет права выглядеть
+     беднее, чем под курсором (владелец, дословно про черту ниже: «то же
+     поведение на :focus-visible»). */
+  .nav-link:hover,
+  .nav-link:focus-visible {
     color: var(--text);
     text-decoration: underline;
     text-decoration-color: var(--accent);
     text-decoration-thickness: 2px;
     text-underline-offset: 6px;
+  }
+
+  /* Та же черта, ВЗАПРАВДУ нарисованная: `.nav-label` — не flex-контейнер, и
+     на нём `text-decoration` физически проявляется (см. комментарий у обёртки
+     в разметке выше). Правило на `.nav-link` above не удалено — оно остаётся
+     истиной для e2e-теста «под курсором у пункта навигации появляется
+     акцентная черта» (`shell.spec.ts`, читает `textDecorationLine` самой
+     ссылки) и для печати/копирования текста, где стиль расчёта берётся с
+     ближайшего предка со свойством. Дублирование значений — цена того, что
+     тест и экран смотрят на два разных узла; расходиться им некуда, оба
+     набора значений — одна и та же спека черты. */
+  .nav-link:hover .nav-label,
+  .nav-link:focus-visible .nav-label,
+  .nav-link[aria-current='page'] .nav-label {
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
+  }
+
+  /* Черта рисуется взаправду (см. правило выше — она настоящий
+     `text-decoration`, не рисунок) сразу на весь пункт, кадром раньше любой
+     анимации: расчерчивание — отдельный слой поверх неё, а не замена. Слой —
+     плашка цвета подложки шапки, которая в покое ничего не кроет
+     (`scaleX(0)`) и потому не может ничего заклипать молча; на `:hover`/
+     `:focus-visible` ей назначается анимация-«ластик» — она стартует
+     ПОКРЫВАЯ весь пункт и отступает к своему краю, обнажая уже настоящую
+     черту слева направо. `background: var(--surface)` — тот же цвет, что у
+     `<header>` в обеих раскладках навигации (широкой и раскрывашке, замерено
+     — обе в итоге лежат на фоне `header`), так что нет второго места, с
+     которым цвет мог бы разойтись. Раздельные свойства ниже, а не шорткод
+     `animation:` — не потому что рядом стоит `animation-timeline` (не стоит),
+     а по общему правилу репозитория. */
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    /* Черта у native `text-decoration` с текущими `text-underline-offset:
+       6px`/`text-decoration-thickness: 2px` идёт примерно на 6–8px ниже
+       базовой линии текста. Полоса шире и чуть выше/ниже этого диапазона —
+       запас на разницу рендера между движками, не заезжая в спуски букв. */
+    bottom: 3px;
+    height: 7px;
+    background: var(--surface);
+    pointer-events: none;
+    transform: scaleX(0);
+    /* Якорь у правого края: `scaleX` схлопывается ИМЕННО туда, левый край
+       плашки уезжает вправо по мере схлопывания — а значит обнажение идёт
+       слева направо, как чтение, а не наоборот. */
+    transform-origin: right center;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .nav-link:hover::after,
+    .nav-link:focus-visible::after {
+      animation-name: nav-underline-draw;
+      /* 150–250 мс по заданию; 160 мс — уже объявленный `--dur-micro`, второй
+         константы того же смысла не заводим. */
+      animation-duration: var(--dur-micro);
+      animation-timing-function: var(--ease);
+      animation-fill-mode: both;
+    }
+  }
+  @keyframes nav-underline-draw {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
   }
 
   /* Отметка текущей страницы обязана остаться отличимой от наведения, а черта
