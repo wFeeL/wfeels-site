@@ -46,11 +46,25 @@ const ctaForeign = lang === 'en' && !ctaHref.startsWith('#') && !hasTranslation(
    Своего списка у шапки нет намеренно: второй ручной перечень тех же путей
    расходится с первым молча. */
 const NAV = sections(lang);
+
+/* Знак бренда (владелец, дословно: «при наведении на wfeels буквы могут
+   плавно подскакивать»). Буквы разбиты на `<span>` ради покадровой задержки
+   между соседними — иначе подскакивать нечему кроме слова целиком. Разметка
+   слова остаётся одним словом для читалки: `aria-label` на самой ссылке
+   несёт «wfeels», а каждая буква помечена `aria-hidden`, значит имя ссылки
+   вычисляется из атрибута и до букв не доходит вовсе (проверено правилом
+   вычисления доступного имени: `aria-label` перекрывает содержимое, буквы —
+   не единственный источник, а вообще не источник). */
+const BRAND = 'wfeels';
 ---
 <header>
   <Container>
     <div class="bar">
-      <a class="brand" href={lang === 'ru' ? '/' : '/en'}>wfeels</a>
+      <a class="brand" href={lang === 'ru' ? '/' : '/en'} aria-label={BRAND}>
+        {BRAND.split('').map((ch, i) => (
+          <span class="brand-letter" style={`--i:${i}`} aria-hidden="true">{ch}</span>
+        ))}
+      </a>
 
       {NAV.length > 0 && (
         <nav class="nav-wide" aria-label={t.nav}>
@@ -142,6 +156,42 @@ const NAV = sections(lang);
     font: 800 1.375rem/1 var(--font-head);
     color: var(--text);
     text-decoration: none;
+  }
+
+  /* Буква — свой блок, иначе `translate` не имеет коробки, к которой
+     применяться (строчный узел текста transform игнорирует). Внутри
+     `inline-flex` (`.brand`) это в любом случае блокифицируется браузером —
+     `display: inline-block` тут для ясности чтения, не для эффекта. */
+  .brand-letter {
+    display: inline-block;
+  }
+
+  /* Буквы подскакивают по очереди — задержка растёт с позицией буквы
+     (`--i`, прописан в разметке). Один запуск на заход курсора/фокуса, не
+     цикл: `:hover`/`:focus-visible` включают анимацию заново при каждом
+     новом входе, а не крутят её, пока курсор стоит на месте. `var(--ease)` —
+     тот же кубический безье, что и у остальной микро-анимации сайта, не
+     новая кривая: у него пологий выход что вверх, что при возврате, поэтому
+     подскок не обрывается резко (владелец, дословно: «мягко, без резкого
+     возврата»). `var(--dur-reveal)` — тот же токен, что у появления карточек:
+     второй смысловой копии той же длительности не заводим.
+     Целиком внутри `no-preference`: при `reduce` `animation-name` не
+     назначается вовсе — буквы не двигаются НИ НА ПИКСЕЛЬ, а не просто
+     быстро (в отличие от `!important`-переопределения длительности в
+     `base.css`, которое сжало бы анимацию до почти нуля, но не убрало её). */
+  @media (prefers-reduced-motion: no-preference) {
+    .brand:hover .brand-letter,
+    .brand:focus-visible .brand-letter {
+      animation-name: brand-hop;
+      animation-duration: var(--dur-reveal);
+      animation-timing-function: var(--ease);
+      animation-fill-mode: both;
+      animation-delay: calc(var(--i) * 40ms);
+    }
+  }
+  @keyframes brand-hop {
+    0%, 100% { translate: 0 0; }
+    35% { translate: 0 -6px; }
   }
 
   /* Здесь только раскладка навигации. Вид самих ссылок описан в
