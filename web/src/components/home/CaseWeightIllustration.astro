@@ -91,13 +91,22 @@ const ourPct = (ourKb / typicalKb) * 100;
     color: var(--text-muted);
   }
 
+  /* НЕ `overflow: hidden`: скругление полосы обеспечено собственным
+     `border-radius` `.fill`, а не обрезкой родителя. `overflow: hidden` на
+     `.track` делает его «контейнером прокрутки» по спецификации CSS
+     Overflow — а именно ближайший контейнер прокрутки становится ИСТОЧНИКОМ
+     таймлайна для `animation-timeline: view()` у потомка (не окно и не
+     страница). `.track` сам никогда не скроллится, поэтому источник
+     оказывается замороженным, и полоса застревает на одном и том же
+     промежуточном прогрессе независимо от прокрутки страницы — поймано
+     `getAnimations()[0].timeline.source` на живой странице при проверке
+     этой задачи (см. отчёт, `Оставшиеся риски`). */
   .track {
     display: block;
     height: 16px;
     background: var(--grid);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    overflow: hidden;
   }
 
   .fill {
@@ -105,6 +114,7 @@ const ourPct = (ourKb / typicalKb) * 100;
     height: 100%;
     width: var(--target);
     background: var(--border);
+    border-radius: var(--radius-sm);
   }
   /* Акцент — только на своей полосе (бриф, раздел 2.3: «одна роль на
      рисунок»): доказательство, а не украшение. */
@@ -137,4 +147,36 @@ const ourPct = (ourKb / typicalKb) * 100;
   /* `--text-faint` не используется ни в одном из трёх рисунков секции
      кейсов (бриф `02-case-illustrations.md`, раздел 2.3) — разделитель
      остаётся на `--text-muted`, как и сами метрики рядом. */
+
+  /* Запасное состояние — состояние ПО УМОЛЧАНИЮ (бриф раздела 2.4): без
+     этого блока обе полосы уже нарисованы в полную длину (`.fill { width:
+     var(--target); }` выше). Анимация навешивается только внутри
+     `@supports`, поверх готового рисунка, никогда наоборот — закрывает и
+     `prefers-reduced-motion: reduce`, и браузер без поддержки таймлайнов
+     прокрутки одним и тем же блоком. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .fill {
+        width: 0;
+        animation-timeline: view();
+        animation-range: entry 15% cover 65%;
+        /* Раздельные свойства, не сокращение `animation:` — сборка сводит
+           `animation` + `animation-timeline` в один шорткод, а собранный
+           Chromium такую форму не разбирает и молча роняет анимацию целиком
+           (`css-no-animation-shorthand-with-timeline.test.ts`). */
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-name: bar-grow;
+      }
+      /* Полоса медианы растёт первой (контекст), полоса этого сайта —
+         следом (вывод): тот же порядок «сначала контекст, потом
+         доказательство», что и в остальных двух рисунках секции. */
+      .bar-row.typical .fill { animation-duration: 1ms; }
+      .bar-row.ours .fill { animation-duration: 160ms; }
+    }
+  }
+
+  @keyframes bar-grow {
+    to { width: var(--target); }
+  }
 </style>
