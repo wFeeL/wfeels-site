@@ -1,20 +1,24 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-/** Контрольная проверка спеки `02-home.md`, раздел 15: «текст поверх линии
- *  обязан сохранять контраст AA» — измерено, а не оценено на глаз. Считаем
- *  контраст ХУДШЕГО случая: пиксель, где штрих линии рисуется поверх фона
- *  страницы (альфа-смешение акцента с заданной непрозрачностью), против
- *  цвета основного текста той же темы. Это строже, чем усреднённый по
- *  площади контраст — именно то место, где глаз реально встречает штрих. */
+/** Приёмка `02-background-line.md`, раздел 9, пункт 4: «Юнит-тест
+ *  BackgroundLine.contrast.test.ts расширяется: контраст штриха к --bg
+ *  лежит в полосе 1,60…1,80:1 в обеих темах, и --text над штрихом ≥ 4,5:1
+ *  в обеих темах». `--text-muted` НЕ проверяется как допуск (пункт 6) —
+ *  этот случай запрещён правилом «линия не проходит под текстом»
+ *  (раздел 5.2), а не разрешён порогом; машинная форма самого правила —
+ *  отдельный e2e-тест (раздел 9, пункт 5), не этот файл. */
 
 const COMPONENT = readFileSync(new URL('./BackgroundLine.astro', import.meta.url), 'utf8');
 const TOKENS = readFileSync(new URL('../styles/tokens.css', import.meta.url), 'utf8');
 
 function opacityFromComponent(): number {
-  const m = /\.line-path\s*{[^}]*opacity:\s*([\d.]+)/.exec(COMPONENT);
-  expect(m, 'в BackgroundLine.astro не нашлась opacity у .line-path').not.toBeNull();
-  return Number(m![1]);
+  // Раздел 7.2 (правка 2026-08-13): цвет штриха задан не `opacity` на
+  // stroke, а `color-mix(in srgb, var(--accent) N%, transparent)` в
+  // `background-color` — то же самое альфа-смешение, другой синтаксис.
+  const m = /color-mix\(in srgb,\s*var\(--accent\)\s*(\d+(?:\.\d+)?)%/.exec(COMPONENT);
+  expect(m, 'в BackgroundLine.astro не нашёлся color-mix(var(--accent) N%, ...)').not.toBeNull();
+  return Number(m![1]) / 100;
 }
 
 function tokenHex(selector: string, name: string): string {
@@ -53,7 +57,7 @@ const THEMES = {
   'тёмная по выбору': { selector: ':root[data-theme="dark"]', bg: '#0E1420', text: '#DCE3EE', accent: '#5B84FF' },
 } as const;
 
-describe('линия на фоне — контраст текста над штрихом (AA)', () => {
+describe('линия на фоне — контраст (раздел 5, приёмка 9.4)', () => {
   const opacity = opacityFromComponent();
 
   it('непрозрачность штриха читается из компонента и не равна нулю', () => {
@@ -62,21 +66,22 @@ describe('линия на фоне — контраст текста над шт
   });
 
   for (const [name, t] of Object.entries(THEMES)) {
-    it(`тема «${name}»: контраст --text над штрихом ≥ AA (4.5:1)`, () => {
-      // Токены темы читаются из tokens.css — не задублированы здесь руками,
-      // расхождение с токеном упадёт этим же тестом.
-      const bg = hexToRgb(tokenHex(t.selector, '--bg'));
-      const text = hexToRgb(tokenHex(t.selector, '--text'));
-      const accent = hexToRgb(tokenHex(t.selector, '--accent'));
+    const bg = hexToRgb(tokenHex(t.selector, '--bg'));
+    const text = hexToRgb(tokenHex(t.selector, '--text'));
+    const accent = hexToRgb(tokenHex(t.selector, '--accent'));
+    const blended = blendOverBg(accent, bg, opacity);
 
-      const blended = blendOverBg(accent, bg, opacity);
-      const cr = contrast(text, blended);
-
+    it(`тема «${name}»: контраст штриха к --bg лежит в полосе 1,60…1,80:1`, () => {
+      const cr = contrast(bg, blended);
       // eslint-disable-next-line no-console
-      console.log(
-        `${name}: opacity=${opacity} bg=${bg} accent=${accent} → пиксель штриха ` +
-        `${blended.map((v) => Math.round(v))}, контраст текста ${cr.toFixed(2)}:1`,
-      );
+      console.log(`${name}: opacity=${opacity} пиксель штриха ${blended.map((v) => Math.round(v))}, контраст к фону ${cr.toFixed(2)}:1`);
+      expect(cr, `контраст штриха к фону ${cr.toFixed(2)}:1 вне полосы 1,60…1,80`).toBeGreaterThanOrEqual(1.6);
+      expect(cr, `контраст штриха к фону ${cr.toFixed(2)}:1 вне полосы 1,60…1,80`).toBeLessThanOrEqual(1.8);
+    });
+
+    it(`тема «${name}»: контраст --text над штрихом ≥ AA (4.5:1)`, () => {
+      const cr = contrast(text, blended);
+      console.log(`${name}: контраст текста над штрихом ${cr.toFixed(2)}:1`);
       expect(cr, `контраст ${cr.toFixed(2)}:1 ниже AA`).toBeGreaterThanOrEqual(4.5);
     });
   }

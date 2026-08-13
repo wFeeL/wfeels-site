@@ -1,4 +1,6 @@
 ---
+import { lineDataFor } from '../lib/backgroundLine';
+
 interface Props {
   id?: string;
   label?: string;
@@ -30,8 +32,26 @@ interface Props {
   surface?: boolean;
 }
 const { id, label, topGap, bottomGap, surface = false } = Astro.props;
+
+/* Линия на фоне — бриф `70-workshop/specs/site-v3/02-background-line.md`,
+ * раздел 7.1. `lineDataFor` возвращает `null` для любого `id`, которого нет
+ * в `lib/sections.ts` (контакт, 404, согласие, английская — все страницы вне
+ * главной, которые тоже собираются этим компонентом): им атрибуты и слой
+ * линии не достаются, без отдельной ветки кода здесь. Вся стилистика слоя —
+ * в `BackgroundLine.astro` (`<style is:global>`), этот файл несёт только
+ * разметку и атрибуты, которые эта стилистика читает. */
+const line = lineDataFor(id);
 ---
-<section id={id} data-top-gap={topGap} data-bottom-gap={bottomGap} class:list={{ surface }}>
+<section
+  id={id}
+  data-top-gap={topGap}
+  data-bottom-gap={bottomGap}
+  data-line-side={line?.side}
+  data-line-cross={line?.cross}
+  data-line-cross-top={line?.crossTop}
+  class:list={{ surface }}
+>
+  {line && <span class="bg-line" aria-hidden="true"></span>}
   {label && <p class="t-label">{label}</p>}
   <slot />
 </section>

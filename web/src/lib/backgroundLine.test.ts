@@ -1,7 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { computeLineData, lineDataFor } from './backgroundLine';
+import { readFileSync } from 'node:fs';
+import { computeLineData, lineDataFor, LR_TILE, RL_TILE, tileUrl } from './backgroundLine';
 import { railPoints } from './rail';
 import { HOME_SECTIONS } from './sections';
+
+/** `BackgroundLine.astro` вписывает `mask-image` плиток перехода буквально
+ *  (не через `define:vars` — см. комментарий в компоненте, почему). Раз
+ *  строка не вычисляется на сборке, а переписана руками, её надо сверять
+ *  с тем, что производит сам код СЕЙЧАС — иначе правка кривой (раздел 3.2)
+ *  разойдётся с CSS молча, штрих перехода останется старой формы. */
+describe('линия на фоне — плитка перехода в CSS совпадает с tileUrl()', () => {
+  const component = readFileSync(
+    new URL('../components/BackgroundLine.astro', import.meta.url),
+    'utf8',
+  );
+
+  it('LR_TILE вписан в компонент буквально', () => {
+    expect(component).toContain(tileUrl(LR_TILE));
+  });
+
+  it('RL_TILE вписан в компонент буквально', () => {
+    expect(component).toContain(tileUrl(RL_TILE));
+  });
+});
 
 /** Приёмка брифа `02-background-line.md`, раздел 9, пункт 10: «Число
  *  переходов на странице равно числу точек рельса минус один, и позиции
