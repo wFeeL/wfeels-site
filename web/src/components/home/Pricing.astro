@@ -89,7 +89,11 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
   {SHELF_CARDS.map((item) => (
     <a class="shelf-card reveal" href={item.href}>
       <span class="shelf-label">{item.label}</span>
-      <span class="shelf-price"><span class="from">от</span> <code>{item.price}</code></span>
+      <p class="shelf-desc t-small">{item.description}</p>
+      <span class="shelf-foot">
+        <span class="shelf-price"><span class="from">от</span> <code>{item.price}</code></span>
+        {item.timeframe && <span class="shelf-timeframe">{item.timeframe}</span>}
+      </span>
     </a>
   ))}
 </div>
@@ -283,37 +287,34 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
   .cta { margin: auto 0 0; padding-top: 4px; }
 
   /* Полка — шесть маленьких карточек того же вида, что и верхняя тройка
-     (правка владельца 2026-08-13, часть 1), а не строки-ссылки: два столбца
-     на телефоне, три на планшете, шесть в ряд от 900 px. */
+     (правка владельца 2026-08-13, часть 1): один столбец на телефоне, три в
+     ряд (два ряда) от 700 px — тот же порог, что у `.top-grid` выше. Замер
+     дизайн-ревью 2026-08-13 («полка малых карточек»): при шести-в-ряд и
+     контейнере 1180 px колонка выходила 153 px, содержимое 121 px — три из
+     шести заголовков («ИИ-консультант» 144,7 px, «Автоматизация» 138,6,
+     «Бот-приёмщик» 132,0) шире собственной колонки и переносились посреди
+     слова. Три-в-ряд при том же контейнере даёт содержимое 326,7 px — самый
+     длинный заголовок («Автоматизация и интеграции», 263,1 px) встаёт в
+     строку, и остаётся место на описание. */
   .shelf {
     margin: 32px 0 0;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
-  @media (min-width: 560px) {
+  @media (min-width: 700px) {
     .shelf { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  }
-  @media (min-width: 900px) {
-    .shelf { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   }
 
   /* Каскад полки — протяжка слева направо по столбцу (02-card-motion.md,
-     раздел 5). Полка всегда несёт ровно шесть карточек (сторож в
-     `data/pricingShowcase.ts`). Двухколоночная раскладка (< 560px) — цикл
-     0,1 (позиция по модулю 2). От 560px — цикл 0,1,2 (позиция по модулю 3),
-     тот же цикл держит и шестиколоночный уровень (≥ 900px): второй ряд из
-     трёх столбцов повторяет фазу первого, а не продолжает счёт до 5.
-     Индекс мимо 0…2 отправлял диапазон появления (часть 2, `styles/
-     base.css`, `vh`-формула вместо доли собственной высоты) за пределы
-     физической фазы `entry` у низкой карточки полки (154px) — тест
-     `card-motion.spec.ts` ловил три карточки, застрявшие на нулевой
-     непрозрачности (замер ревью 2026-08-13). `:global` — вес: без него
-     Astro дублирует атрибут скоупинга на обеих сторонах `>`, комбинатор
-     почти вдвое дороже; класс `.shelf` уникален для этой секции, второй
-     охват не нужен. */
-  :global(.shelf > :nth-child(2n)) { --reveal-i: 1; }
-  @media (min-width: 560px) {
+     раздел 5), тот же приём, что у `.top-grid` выше. Полка всегда несёт
+     ровно шесть карточек (сторож в `data/pricingShowcase.ts`), три-в-ряд от
+     700 px даёт ровно два ряда — цикл 0,1,2 по столбцу (позиция по модулю 3)
+     покрывает оба ряда одной фазой, второй ряд повторяет фазу первого, а не
+     продолжает счёт до 5. `:global` — вес: без него Astro дублирует атрибут
+     скоупинга на обеих сторонах `>`, комбинатор почти вдвое дороже; класс
+     `.shelf` уникален для этой секции, второй охват не нужен. */
+  @media (min-width: 700px) {
     :global(.shelf > :nth-child(3n+1)) { --reveal-i: 0; }
     :global(.shelf > :nth-child(3n+2)) { --reveal-i: 1; }
     :global(.shelf > :nth-child(3n)) { --reveal-i: 2; }
@@ -326,7 +327,7 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--surface);
-    padding: 16px;
+    padding: 20px;
     color: inherit;
     text-decoration: none;
     transition: background-color var(--dur-micro) var(--ease),
@@ -334,11 +335,29 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
   }
   .shelf-card:hover { background: var(--accent-soft); border-color: var(--accent); }
 
-  /* `hyphens: auto` — узкая колонка на шести-в-ряд ломает длинное слово
-     («Автоматизация») без переноса ровно посередине, читается как опечатка.
-     Перенос по слогам (страница уже `lang="ru"`, `layouts/Base.astro`)
-     решает это без уменьшения кегля. */
-  .shelf-label { font-weight: 600; hyphens: auto; }
+  .shelf-label { font-weight: 600; }
+
+  /* Описание — в строку-две, приглушённого цвета (правка владельца
+     2026-08-13, «полка малых карточек»): та же ступень шкалы и тот же цвет,
+     что у сноски секции ниже (`.footnote`, `t-small` — 16 px против 18 px
+     `body`). */
+  .shelf-desc { margin: 0; color: var(--text-muted); }
+
+  /* Цена и срок прижаты к низу карточки тем же приёмом, что кнопка верхней
+     тройки (`.cta` выше): `margin-top: auto` на последнем прямом ребёнке
+     `.shelf-card` (flex-колонка) тянет его вниз независимо от того, в одну
+     или две строки легло описание соседней карточки — грид уже растягивает
+     все карточки одного ряда на равную высоту (умолчание `align-items:
+     stretch`, как и у `.top-grid`), поэтому низ у всех трёх карточек ряда
+     совпадает, и цена встаёт на одну вертикальную отметку. */
+  .shelf-foot {
+    margin-top: auto;
+    padding-top: 4px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
   .shelf-price { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
   .shelf-price .from {
     font: 500 0.6875rem/1.3 var(--font-mono);
@@ -350,6 +369,16 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
     color: var(--text);
     background: none;
     padding: 0;
+  }
+  /* Срок — рядом с ценой, тем же приёмом, что `.price .timeframe` верхней
+     тройки: мельче и приглушённее, чтобы не спорить весом с числом. У
+     «Поддержки» срока нет (`item.timeframe` не задан) — тогда в строке
+     остаётся одна цена, `justify-content: space-between` на пустом втором
+     элементе ничего не сдвигает. */
+  .shelf-timeframe {
+    font: 500 0.6875rem/1.3 var(--font-mono);
+    color: var(--text-muted);
+    white-space: nowrap;
   }
 
   .footnote {

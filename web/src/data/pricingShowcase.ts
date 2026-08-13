@@ -186,7 +186,16 @@ for (const card of TOP_CARDS) {
 
 export interface ShelfCard {
   label: string;
+  /** Описание в строку-две — утверждено владельцем 2026-08-13 («Секция цен —
+   *  полка малых карточек»), ставится дословно, не перефразируется. */
+  description: string;
   price: string;
+  /** Срок «от N дней» — решение владельца 2026-08-13, записано в
+   *  `10-offer/PRICING.md` под соответствующей таблицей, тем же приёмом, что
+   *  и `TopCard.timeframe`: срок не выводится из часов, а живёт литералом
+   *  рядом с описанием карточки. `undefined` у «Поддержки» — она помесячная,
+   *  срока у неё нет. */
+  timeframe?: string;
   href: string;
 }
 
@@ -200,32 +209,43 @@ export interface ShelfCard {
 export const SHELF_CARDS: readonly ShelfCard[] = [
   {
     label: 'Лендинг на готовом шаблоне',
+    description: 'Готовый шаблон под ваш контент. Быстрее и дешевле всего, если тексты и фото уже есть.',
     price: stage('Сайты', 'Лендинг из шаблона').price,
+    timeframe: 'от 2 дней',
     href: serviceHref('sites', 'Сайт под ключ'),
   },
   {
     label: 'Бот-приёмщик заявок',
+    description: 'Один сценарий: клиент пишет боту, заявка падает вам в уведомления. Без админки.',
     price: stage('Telegram', 'Бот-приёмщик заявок').price,
+    timeframe: 'от 2 дней',
     href: serviceHref('telegram', 'Telegram-бот под задачу'),
   },
   {
     label: 'Автоматизация и интеграции',
+    description: 'Связать форму с CRM, подключить оплату, выгрузить заявки в таблицу.',
     price: cheapestEntry(group('Автоматизация и интеграции')).price,
+    timeframe: 'от 2 дней',
     href: serviceHref('automation', 'Приём заявок и интеграции'),
   },
   {
     label: 'ИИ-консультант',
+    description: 'Отвечает клиентам по вашим материалам, ссылается на источник и честно говорит, когда ответа в них нет.',
     price: cheapestEntry(group('ИИ')).price,
+    timeframe: 'от 3 дней',
     href: serviceHref('ai', 'ИИ-консультант по материалам'),
   },
   {
     label: 'Поддержка',
+    description: 'Пять часов в месяц на правки и присмотр. Неиспользованное частично переносится.',
     price: stage('Поддержка', 'Пакет поддержки').price,
     href: serviceHref('sites', 'Доработка и поддержка'),
   },
   {
     label: 'Аудит сайта',
+    description: 'Разбор структуры, скорости, мобильной версии и форм. На выходе — список проблем по приоритету.',
     price: stage('Сайты', 'Аудит сайта + план правок').price,
+    timeframe: 'от 1 дня',
     href: serviceHref('sites', 'Аудит сайта'),
   },
 ];
