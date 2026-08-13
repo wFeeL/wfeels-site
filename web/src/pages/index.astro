@@ -43,9 +43,9 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
 >
   {/* `rail` включает рельс-скроллспай (`Rail.astro`, рисует его сам
       `Base.astro` вне `<main>`) и переводит полосу прогресса в шапке в режим
-      «только ниже 1600 px» (`Header.astro` → `ReadingProgress` `mobileOnly`).
+      «только ниже 1244 px» (`Header.astro` → `ReadingProgress` `mobileOnly`).
       Состояние «ни рельса, ни полосы» невозможно ни при какой ширине: два
-      элемента разведены общей точкой перелома 1600 px из `tokens.css`, а не
+      элемента разведены общей точкой перелома 1244 px из `tokens.css`, а не
       двумя независимо подобранными числами. */}
   <LangSwitch slot="lang" />
   {/* Одиннадцать секций собираются из `lib/sections.ts` — единственного

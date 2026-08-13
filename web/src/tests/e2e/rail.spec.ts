@@ -1,17 +1,27 @@
 import { test, expect } from '@playwright/test';
 import { HOME_SECTIONS } from '../../lib/sections';
 
-/* Ширина берётся из общего списка точек перелома в tokens.css — 1600 px,
-   рельс появляется на ней и выше. Design-ревью 2026-08-12 подняло порог с
-   1100 до 1400 px, но 1400 — тоже невычисленное число: по формуле границ
-   контейнера (max-width 1180, padding-inline 40) и рельса (200 px + отступ
-   24 px) они физически перестают пересекаться только с 1548 px, что и
-   подтверждает блок «не пересекает панель» ниже прямым измерением
-   `getBoundingClientRect()` — на 1400 px пересечение остаётся 74 px, на
-   1440 px — 54 px. Порог здесь взят 1600 px: круглое число с запасом
-   поверх 1548 px, совпадающее с одной из проверяемых ширин. Плана задача 4:
-   «ни при каком размере не должно быть ни рельса, ни полосы вместе, ни
-   пустоты без обоих». */
+/* Точка перелома рельса — 1244 px, посчитана в `tokens.css`/`Rail.astro`, а не
+   выбрана: владелец 2026-08-13 опустил её с 1600 px вместе с самим рельсом
+   (кружки вместо подписанных точек, ширина 200 → 48 px). Формула:
+
+     viewport = (контейнер − 2×паддинг) + 2×(отступ рельса + ширина рельса)
+              = (1180 − 2×40)           + 2×(24               + 48)
+              = 1100                    + 144
+              = 1244
+
+   Число здесь не хранится вторым литералом «для теста»: константа читает
+   единственное место расчёта — комментарий у `.rail`/`@media` в `Rail.astro`.
+   Числа в `RAIL_THRESHOLD` ниже обязаны совпасть с ним при следующей правке
+   вручную — тест на срабатывание порога (`±1 px` вокруг) ловит расхождение,
+   если кто-то поправит один файл и забудет другой. */
+const RAIL_THRESHOLD = 1244;
+
+/* Широкий экран для тестов, которым важна не сама точка перелома, а факт, что
+   рельс на этой ширине точно есть — например, разметка и роль, скроллспай,
+   клик по точке. 1600 px — круглое число с большим запасом над порогом
+   (1244 px), не завязанное на его точное значение: сдвинь порог завтра ещё
+   раз, эти тесты не заметят. */
 const WIDE = { width: 1600, height: 900 };
 
 /* Секции задачи 2 — заглушки без утверждённого текста (задача 1 плана), и
@@ -24,41 +34,27 @@ const WIDE = { width: 1600, height: 900 };
    прокрутки, чтобы каждая секция стала различима, и не имеет отношения к
    самому рельсу — это свойство высоты страницы, а не его логики. */
 // Скроллспай-тесты держатся на низком окне (см. комментарий выше), но должны
-// видеть рельс — при пороге 1600 px ширина обязана быть не меньше него.
+// видеть рельс — ширина обязана быть не меньше порога.
 const SPY_VIEWPORT = { width: 1600, height: 500 };
 
-test.describe('рельс — точка перелома 1600 px (главная)', () => {
-  test('на 1599 px рельса нет, полоса прогресса видна', async ({ page }) => {
-    await page.setViewportSize({ width: 1599, height: 900 });
+test.describe(`рельс — точка перелома ${RAIL_THRESHOLD} px (главная)`, () => {
+  test(`на ${RAIL_THRESHOLD - 1} px рельса нет, полоса прогресса видна`, async ({ page }) => {
+    await page.setViewportSize({ width: RAIL_THRESHOLD - 1, height: 900 });
     await page.goto('/');
     await expect(page.locator('nav.rail')).toBeHidden();
     await expect(page.locator('#reading-progress')).toBeVisible();
   });
 
-  test('на 1601 px рельс виден, полосы прогресса нет', async ({ page }) => {
-    await page.setViewportSize({ width: 1601, height: 900 });
+  test(`на ${RAIL_THRESHOLD} px рельс виден, полосы прогресса нет`, async ({ page }) => {
+    await page.setViewportSize({ width: RAIL_THRESHOLD, height: 900 });
     await page.goto('/');
     await expect(page.locator('nav.rail')).toBeVisible();
     await expect(page.locator('#reading-progress')).toBeHidden();
   });
 
-  // Находка design-ревью 2026-08-12: при прежнем пороге 1100 px рельс
-  // печатался поверх карточек на 1100–1350 px, при названных ревью 1400 px
-  // пересечение ещё оставалось (см. комментарий выше и блок «не пересекает
-  // панель»). На этих трёх ширинах рельса быть не должно вовсе — только
-  // полоса.
-  for (const width of [1280, 1366, 1440]) {
-    test(`на ${width} px (был центр находки или назывался ревью) рельса нет, полоса видна`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto('/');
-      await expect(page.locator('nav.rail')).toBeHidden();
-      await expect(page.locator('#reading-progress')).toBeVisible();
-    });
-  }
-
   // Другие страницы рельса не несут вовсе (`rail` не передан в `Base`) — на
   // них полоса видна при любой ширине, как до этой задачи.
-  test('на посадочной без рельса полоса видна и на 1600 px', async ({ page }) => {
+  test('на посадочной без рельса полоса видна и на широком экране', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/contact');
     await expect(page.locator('nav.rail')).toHaveCount(0);
@@ -66,32 +62,23 @@ test.describe('рельс — точка перелома 1600 px (главна�
   });
 });
 
-/* Требование B2 (design-ревью 2026-08-12): «рельс никому не мешает», а не
- * только «рельс виден» — прежний тест проверял исключительно видимость, не
- * пересечение. Проверяется на четырёх ширинах, названных ревью для этой
- * проверки: 1400, 1440, 1600, 1920. Ни на одной из них панель и рельс не
- * пересекаются — на 1400 и 1440 px потому, что рельс при пороге 1600 px там
- * не рисуется вовсе (пересекаться нечему), на 1600 и 1920 px — потому что
- * рельс виден и физически помещается рядом с панелью. Тест это различает
- * явно, а не считает отсутствие рельса «неприменимой» проверкой: и то, и
- * другое состояние обязано означать «панель никто не перекрывает». Измеряется
+/* Требование B2 (design-ревью 2026-08-12, актуально и после правки владельца
+ * 2026-08-13): «рельс никому не мешает», а не только «рельс виден» — тест,
+ * проверяющий одну лишь видимость и не проверяющий пересечение с панелью,
+ * уже был здесь дефектом однажды. Ширины ниже — порог ровно, порог с малым
+ * запасом (где раньше, при рельсе-200px, было тесно) и три частых ширины
+ * ноутбука/монитора, которые до этой правки были НИЖЕ порога 1600 px и
+ * рельса не видели вовсе — теперь все они выше 1244 px, и рельс на них
+ * обязан не только появиться, но и не наехать на панель. Измеряется
  * фактическими `getBoundingClientRect()`, а не рассчитывается заранее —
- * расчёт от руки уже подвёл однажды с числом 1400 в этой самой задаче. */
-test.describe('рельс — не пересекает панель ни на одной проверенной ширине', () => {
-  for (const width of [1400, 1440, 1600, 1920]) {
-    test(`на ${width} px рельс не пересекает панель (виден и не пересекает, либо не рисуется вовсе)`, async ({ page }) => {
+ * расчёт от руки уже подводил однажды с числом 1400 в этой самой задаче. */
+test.describe('рельс — виден и не пересекает панель на типичных ширинах ноутбука и монитора', () => {
+  for (const width of [RAIL_THRESHOLD, RAIL_THRESHOLD + 40, 1280, 1366, 1440, 1600, 1920]) {
+    test(`на ${width} px рельс виден и не пересекает панель`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/');
 
-      const railVisible = await page.locator('nav.rail').isVisible();
-
-      if (!railVisible) {
-        // Ниже 1600 px рельса нет вовсе — пересекать панель нечему. Полоса
-        // прогресса обязана быть на месте, иначе это не «рельса нет», а
-        // «пропали оба», что тот же дефект в другой форме.
-        await expect(page.locator('#reading-progress')).toBeVisible();
-        return;
-      }
+      await expect(page.locator('nav.rail')).toBeVisible();
 
       const geometry = await page.evaluate(() => {
         // Первый `<section>` внутри `<main>` — панель главной содержимого,
@@ -149,31 +136,21 @@ test.describe('рельс — роль и разметка', () => {
   });
 });
 
-/* Два теста ниже закрывают починку коммита 235e752 «Выровнять точки рельса,
- * подписать все семь и ужать мобильную шапку» тестами — до этой задачи
- * починка держалась на честном слове (снимок `/tmp/rail-after.png`, не
- * тест). Дефекты, зафиксированные в комментарии `Rail.astro` над `.label`:
- *
- *   дефект 1 — без фиксированной ширины подписи ширина всей группы
- *   «точка+подпись» зависела от длины слова, и точка гуляла по горизонтали
- *   вместе с текстом вместо того, чтобы стоять со всеми на одной вертикали;
- *   дефект 2 — подпись была не видна по умолчанию (`opacity: 0`), видна
- *   только у наведённой/сфокусированной/активной точки — шесть точек из
- *   семи не несли имени вовсе.
- *
- * Проверяется фактическими координатами (дефект 1) и фактической
- * вычисленной прозрачностью (дефект 2), а не наличием класса — оба дефекта
- * были в разметке, у которой класс `.label` уже был на месте.
- *
- * Точек стало восемь, не семь: правка владельца 2026-08-13 расцепила
- * «ПРОЦЕСС» и «ГАРАНТИИ» (`lib/sections.ts`) — у секции 8 «Что я гарантирую»
- * появилась своя точка рельса. */
-test.describe('рельс — восемь точек на одной вертикали, все с подписью', () => {
+/* Правка владельца 2026-08-13 («Рельс: кружки, подпись только у активной
+ * точки, как было в v2»): рельс больше не показывает семь-восемь подписей
+ * разом (то была починка более раннего дефекта, теперь отменённая владельцем
+ * своим же решением) — видимо ровно ноль или одна подпись, у активной точки.
+ * Доступность при этом не теряется: `aria-label` кнопки не зависит от
+ * визуального состояния подписи (проверено выше, «роль и разметка»), а текст
+ * `.label` остаётся в DOM и у скрытых точек — читает его `textContent`, а не
+ * видимость, поэтому блок ниже проверяет ТЕКСТ подписей отдельно от их
+ * ВИДИМОСТИ. */
+test.describe('рельс — восемь подписей в DOM, видима только у активной точки', () => {
   const EXPECTED_LABELS = [
     'НАЧАЛО', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ГАРАНТИИ', 'ОБО МНЕ', 'КОНТАКТ',
   ];
 
-  test('все восемь подписей присутствуют, дословно и в порядке спеки', async ({ page }) => {
+  test('все восемь подписей присутствуют в DOM, дословно и в порядке спеки', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
     const labels = page.locator('nav.rail .point .label');
@@ -181,54 +158,139 @@ test.describe('рельс — восемь точек на одной верти
     expect(await labels.allTextContents()).toEqual(EXPECTED_LABELS);
   });
 
-  test('все восемь подписей видимы без наведения — не opacity: 0 по умолчанию', async ({ page }) => {
+  test('в состоянии покоя (верх страницы) видима ровно одна подпись — у первой точки', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
+
     const labels = page.locator('nav.rail .point .label');
-    const opacities = await labels.evaluateAll(
-      (els) => els.map((el) => getComputedStyle(el).opacity),
-    );
-    for (const [i, opacity] of opacities.entries()) {
-      expect(Number(opacity), `подпись «${EXPECTED_LABELS[i]}»: opacity ${opacity}`)
-        .toBeGreaterThan(0);
-    }
+
+    /* Мгновенный замер после `goto` попадал не в состояние покоя, а в гонку:
+       скроллспай — модульный скрипт, он выполняется после разбора документа,
+       и подпись активной точки раскрывается переходом `max-width` (Rail.astro).
+       Ждём назначения точки и доигранного перехода — и только потом считаем.
+
+       Строгость проверки при этом не падает: `expect.poll` всё равно упадёт,
+       если подпись не раскроется вовсе или раскроется не одна. Ослаблением
+       было бы убрать сравнение с единицей, а не дождаться конца перехода. */
+    await expect(page.locator('.rail .point.active')).toHaveCount(1);
+
+    const visibleWidths = async () =>
+      (await labels.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width)))
+        .filter((w) => w > 0);
+
+    await expect
+      .poll(async () => (await visibleWidths()).length, {
+        message: 'видимых подписей в состоянии покоя',
+      })
+      .toBe(1);
+
+    const active = page.locator('.rail .point.active .label');
+    await expect(active).toHaveText('НАЧАЛО');
   });
 
-  test('правый край подписи и центр точки — одна вертикаль у всех восьми', async ({ page }) => {
+  test('неактивная подпись невидима глазу (нулевая ширина), но остаётся текстом для читалки', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
 
-    const points = page.locator('nav.rail .point');
-    await expect(points).toHaveCount(8);
+    const inactive = page.locator('.rail .point:not(.active) .label').first();
+    await expect(inactive).toHaveCSS('max-width', '0px');
+    // `.label` несёт `aria-hidden="true"` намеренно (имя точки читает
+    // `aria-label` кнопки, см. «роль и разметка» выше) — но сам текст в DOM
+    // остаётся, что и проверяет тест выше («все восемь подписей присутствуют
+    // в DOM»). Здесь — что визуально он и правда скрыт, а не просто узкий.
+    const width = await inactive.evaluate((el) => el.getBoundingClientRect().width);
+    expect(width).toBe(0);
+  });
 
-    const geometry = await points.evaluateAll((els) => els.map((el) => {
-      const dot = el.querySelector('.dot')!.getBoundingClientRect();
-      const label = el.querySelector('.label')!.getBoundingClientRect();
-      return { dotCenterX: dot.x + dot.width / 2, labelRightEdge: label.x + label.width };
-    }));
+  /* Кружки без подписей не сообщают, КУДА можно перейти. Наведение раскрывает
+     подпись именно неактивной точки — это и есть её назначение как навигации
+     (владелец 2026-08-13). Тест мерит фактическую ширину, а не наличие правила
+     в CSS: правило можно написать и перекрыть соседним, а ширину — нет. */
+  test('наведение на неактивную точку раскрывает её подпись', async ({ page }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
 
-    const dotCenters = geometry.map((g) => g.dotCenterX);
-    const labelRightEdges = geometry.map((g) => g.labelRightEdge);
+    const point = page.locator('.rail .point:not(.active)').first();
+    const label = point.locator('.label');
+    const text = await label.textContent();
 
-    // Допуск 0,5 px — под субпиксельный рендеринг, не под расхождение по сути.
-    const spread = (values: number[]) => Math.max(...values) - Math.min(...values);
-    expect(spread(dotCenters), `центры точек: ${dotCenters.join(', ')}`).toBeLessThan(0.5);
-    expect(spread(labelRightEdges), `правые края подписей: ${labelRightEdges.join(', ')}`)
+    expect(await label.evaluate((el) => el.getBoundingClientRect().width)).toBe(0);
+
+    await point.hover();
+    await expect
+      .poll(async () => label.evaluate((el) => el.getBoundingClientRect().width), {
+        message: `ширина подписи «${text}» под курсором`,
+      })
+      .toBeGreaterThan(0);
+  });
+
+  test('клавиатурный фокус раскрывает подпись так же, как наведение', async ({ page }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+
+    const point = page.locator('.rail .point:not(.active)').first();
+    const label = point.locator('.label');
+
+    await point.focus();
+    await expect
+      .poll(async () => label.evaluate((el) => el.getBoundingClientRect().width), {
+        message: 'ширина подписи под фокусом с клавиатуры',
+      })
+      .toBeGreaterThan(0);
+  });
+});
+
+/* Точка не должна «гулять» по горизонтали между активным и неактивным
+ * состоянием (комментарий в `Rail.astro`, `.point`): подпись стоит ПЕРЕД
+ * точкой в разметке и раскрывается вправо-от-начала, не сдвигая саму точку,
+ * которая пакуется к правому краю кнопки через `justify-content: flex-end`
+ * независимо от ширины подписи. Тест ниже подтверждает это фактическими
+ * координатами, а не структурой разметки — структура уже однажды не
+ * гарантировала того, что казалось очевидным (см. историю файла, дефект 1). */
+test.describe('рельс — точка не смещается по горизонтали между состояниями', () => {
+  test('центр точки — на одной вертикали у всех восьми в состоянии покоя', async ({ page }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+
+    const dots = page.locator('nav.rail .point .dot');
+    await expect(dots).toHaveCount(8);
+    const centers = await dots.evaluateAll(
+      (els) => els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return r.x + r.width / 2;
+      }),
+    );
+    const spread = Math.max(...centers) - Math.min(...centers);
+    expect(spread, `центры точек: ${centers.join(', ')}`).toBeLessThan(0.5);
+  });
+
+  test('центр конкретной точки не сдвигается, когда именно она становится активной', async ({ page }) => {
+    await page.setViewportSize(WIDE);
+    await page.goto('/');
+
+    const point = page.locator('.rail .point[aria-label="ПРОЦЕСС"]');
+    const dot = point.locator('.dot');
+
+    const before = await dot.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return r.x + r.width / 2;
+    });
+
+    // Раздел ещё не активен (страница на самом верху) — клик по точке
+    // прокручивает и активирует её, подпись открывается.
+    await point.click();
+    await expect(point).toHaveClass(/active/);
+
+    const after = await dot.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return r.x + r.width / 2;
+    });
+
+    expect(Math.abs(after - before), `центр точки: было ${before}, стало ${after}`)
       .toBeLessThan(0.5);
   });
 });
 
-/* Линия отсчёта скроллспая (Rail.astro, script) стоит на трети высоты окна
- * вниз от его верха, а не у самой верхней кромки (полировка перед приёмкой,
- * находка 1, 2026-08-12). Тест ниже прокручивает каждую секцию к верху окна
- * (`scrollIntoView({ block: 'start' })`) — при таком скролле верх секции
- * совпадает со scrollY, и он остаётся достаточно надёжной проверкой того, что
- * группировка секций в точки не сломана: при настоящем тексте секций (не
- * заглушках) следующая секция начинается заметно дальше, чем на треть высоты
- * окна ниже, так что линия отсчёта не перескакивает через границу. Саму
- * механику «активируется на трети высоты, а не когда предыдущая секция
- * покинула кадр целиком» проверяет отдельный блок ниже, где секция
- * сознательно НЕ докручена до верха. */
 test.describe('рельс — подсветка активной точки по прокрутке', () => {
   for (const section of HOME_SECTIONS) {
     test(`секция «${section.id}» подсвечивает точку «${section.railLabel}»`,
