@@ -96,6 +96,35 @@ if (PROCESS_STEPS.length !== 5) {
     background: var(--border);
   }
 
+  /* Ось прочерчивается по прокрутке (02-process-options.md, «Движение»
+     варианта П2-Б). Базовое правило выше не объявляет ни `scale`, ни
+     `animation-*` — конечное состояние остаётся состоянием по умолчанию:
+     линия нарисована целиком без поддержки `animation-timeline` и при
+     `prefers-reduced-motion: reduce`. Раздельные свойства, не шорткод
+     `animation:` — сборка сводит его с `animation-timeline` в один CSS-
+     шорткод, который собранный Chromium не разбирает и молча роняет
+     анимацию целиком (комментарий `BackgroundLine.astro:124-129`, сторож
+     `tests/css-no-animation-shorthand-with-timeline.test.ts`). */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .axis::before {
+        transform-origin: top;
+        animation-name: process-axis-draw;
+        animation-duration: 1ms; /* реальную длительность задаёт таймлайн */
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range-start: entry 0%;
+        animation-range-end: entry 100%;
+      }
+    }
+  }
+
+  @keyframes process-axis-draw {
+    from { scale: 1 0; }
+    to { scale: 1 1; }
+  }
+
   .step {
     position: relative;
     display: grid;
