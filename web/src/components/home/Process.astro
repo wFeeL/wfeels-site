@@ -5,9 +5,16 @@
  * (`Guarantees.astro`), чтобы один факт не стоял дважды на расстоянии
  * экрана (02-texts.md, «Что здесь нельзя менять при правке»). Содержимое
  * читается из `data/process.ts`, второй ручной копии текста здесь нет.
+ *
+ * Раскрой — вариант П2-Б «Размерная выноска» из
+ * `70-workshop/specs/site-v3/02-process-options.md`, выбран владельцем
+ * 2026-08-13: пять шагов — узлы-квадраты на вертикальной оси, номер шага
+ * рисует узел, а не текст заголовка (число ушло из `data/process.ts` этим
+ * же заходом). Заголовки шагов красятся `--text`, не `--accent` — закрывает
+ * находку ревью №9 («пять синих заголовков читаются как ссылками, хотя
+ * некликабельны»).
  */
 import Label from '../Label.astro';
-import Prose from '../Prose.astro';
 import { PROCESS_STEPS } from '../../data/process';
 
 if (PROCESS_STEPS.length !== 5) {
@@ -16,39 +23,90 @@ if (PROCESS_STEPS.length !== 5) {
 ---
 <Label>КАК ЭТО БУДЕТ</Label>
 <h2 class="t-h2">Как я работаю</h2>
-<Prose>
-  {/* `<ol>` без CSS-счётчика: утверждённый заголовок каждого шага уже несёт
-      свой номер («1. Разбор задачи») — счётчик поверх него задвоил бы
-      нумерацию, показав «01» и «1.» рядом. Список остаётся семантическим
-      `<ol>` ради структуры для скринридера, а порядковый знак рисует только
-      сам текст. */}
-  <ol class="steps">
-    {PROCESS_STEPS.map((step) => (
-      <li><strong>{step.title}</strong> {step.text}</li>
+<div class="process">
+  {/* `<ol>` без CSS-счётчика: номер рисует узел (`.node`, реальный текст
+      «01»…«05», не генерируемый контент) — сам узел помечен `aria-hidden`,
+      чтобы скринридер не объявлял число дважды поверх порядка, который уже
+      даёт семантика `<ol>`. */}
+  <ol class="axis">
+    {PROCESS_STEPS.map((step, i) => (
+      <li class="step reveal">
+        <span class="node" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+        <strong class="t-h3 step-title">{step.title}</strong>
+        <p class="step-text">{step.text}</p>
+      </li>
     ))}
   </ol>
-</Prose>
+</div>
 
 <style>
   /* Отбивка заголовка до первого содержимого — 32 px, одна величина на все
-     десять секций главной (правка владельца 2026-08-13, «Три акта»): было
-     0 — заголовок стоял вплотную к списку шагов. */
+     десять секций главной (правка владельца 2026-08-13, «Три акта»). */
   h2 { margin: 0 0 32px; }
 
-  .steps {
+  .axis {
+    position: relative;
     list-style: none;
     margin: 0;
     padding: 0;
   }
-  .steps li {
-    padding: 20px 0;
-    border-top: 1px solid var(--border);
+
+  /* Ось — 1 px `--border` по левому краю колонки узлов. Начало на середине
+     первого узла (16px = половина 32px квадрата), конец уходит на 32 px
+     (один шаг сетки) НИЖЕ последнего шага — «ось не обрывается», последний
+     отрезок тянется в поле панели, к следующей секции «Что я гарантирую»
+     (00-overview, D-031 — соседние точки рельса). Дальше в саму соседнюю
+     секцию линия не заходит: `Guarantees.astro` этим заходом не трогается
+     (граница мандата). */
+  .axis::before {
+    content: '';
+    position: absolute;
+    top: 16px;
+    bottom: -32px;
+    left: 15px; /* центр 32px квадрата минус половина 1px линии */
+    width: 1px;
+    background: var(--border);
   }
-  .steps li:first-child { border-top: none; padding-top: 0; }
-  .steps li:last-child { padding-bottom: 0; }
-  .steps strong {
+
+  .step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    column-gap: 24px;
+    padding-bottom: 32px; /* расстояние между шагами держит сама ось — кратно шагу сетки 32px, не волосяные линейки */
+  }
+  .step:last-child { padding-bottom: 0; }
+
+  /* Узел — квадрат ровно в клетку сетки, сидит на оси и перекрывает линию
+     своим фоном `--surface` (тот же цвет, что у панели секции) — это и даёт
+     вид «ось проходит сквозь узел», без второго слоя разметки. */
+  .node {
+    grid-column: 1;
+    grid-row: 1;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font: 500 0.6875rem/1 var(--font-mono);
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .step-title {
+    grid-column: 2;
+    grid-row: 1;
     display: block;
-    margin-bottom: 2px;
-    color: var(--accent);
+    color: var(--text);
+    margin: 2px 0 4px;
+    max-width: 558px;
+  }
+  .step-text {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 0;
+    max-width: 558px;
   }
 </style>
