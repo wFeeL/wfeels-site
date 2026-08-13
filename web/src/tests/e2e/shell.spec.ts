@@ -406,7 +406,18 @@ test('заголовок первой страницы начинается бл
     await page.goto(path);
     const gap = await page.evaluate(() => {
       const header = document.querySelector('header')!.getBoundingClientRect();
-      const first = document.querySelector('main section')!.firstElementChild!;
+      /* Первый СОДЕРЖАТЕЛЬНЫЙ потомок, а не просто первый. С появлением
+         посекционных отрезков линии на фоне первым ребёнком секции стал
+         декоративный `.bg-line`: он `aria-hidden`, позиционирован по верхней
+         кромке секции и даёт зазор ровно 0 — тест падал, хотя содержимое
+         секции не сдвинулось ни на пиксель.
+         Признак берётся не по классу, а по `aria-hidden`: это ровно то
+         свойство, которое отличает украшение от содержимого, и следующее
+         декоративное дополнение не сломает проверку заново. */
+      const section = document.querySelector('main section')!;
+      const first = [...section.children]
+        .find((el) => el.getAttribute('aria-hidden') !== 'true');
+      if (!first) throw new Error('в первой секции нет ни одного содержательного потомка');
       return first.getBoundingClientRect().top - header.bottom;
     });
     expect(gap, `${path}: первый экран пустует сверху`).toBeLessThanOrEqual(56);
