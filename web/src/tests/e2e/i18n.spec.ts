@@ -1,3 +1,7 @@
+/* Порт берётся из baseURL конфига, а не зашит числом: с 2026-08-13 по
+   репозиторию работают параллельные git-worktree, у каждой копии свой порт
+   (`SITE_PORT`). Зашитый 4321 делал этот тест красным в любой копии, кроме
+   основной, — то есть проверка ломалась не от кода, а от места запуска. */
 import { test, expect } from '@playwright/test';
 
 test('английская главная отдаётся с правильным lang', async ({ page }) => {
@@ -7,12 +11,12 @@ test('английская главная отдаётся с правильны
 });
 
 test('переключатель ведёт с русской главной на английскую и обратно',
-  async ({ page }) => {
+  async ({ page, baseURL }) => {
     await page.goto('/');
     await page.locator('a.lang').click();
     await expect(page).toHaveURL(/\/en$/);
     await page.locator('a.lang').click();
-    await expect(page).toHaveURL(/localhost:4321\/$/);
+    await expect(page).toHaveURL(new RegExp(`^${baseURL}/$`));
   });
 
 test('в английской шапке нет пунктов, которым некуда вести', async ({ page }) => {

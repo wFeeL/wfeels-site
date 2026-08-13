@@ -1,3 +1,7 @@
+/* Порт берётся из baseURL конфига, а не зашит числом: с 2026-08-13 по
+   репозиторию работают параллельные git-worktree, у каждой копии свой порт
+   (`SITE_PORT`). Зашитый 4321 делал этот тест красным в любой копии, кроме
+   основной, — то есть проверка ломалась не от кода, а от места запуска. */
 import { test, expect } from '@playwright/test';
 
 test('заголовок набран Manrope, текст — Golos Text, метка — JetBrains Mono',
@@ -18,13 +22,13 @@ test('заголовок набран Manrope, текст — Golos Text, мет
     expect(await fam('.t-label')).toContain('JetBrains Mono');
   });
 
-test('ни один ресурс не грузится с внешнего домена', async ({ page }) => {
+test('ни один ресурс не грузится с внешнего домена', async ({ page, baseURL }) => {
   const external: string[] = [];
   page.on('request', (r) => {
     const url = new URL(r.url());
     // data: и blob: — не сетевые запросы, у них пустой host; их пропускаем.
     if (!['http:', 'https:'].includes(url.protocol)) return;
-    if (url.host !== 'localhost:4321') external.push(r.url());
+    if (url.host !== new URL(baseURL!).host) external.push(r.url());
   });
   await page.goto('/', { waitUntil: 'networkidle' });
   expect(external).toEqual([]);

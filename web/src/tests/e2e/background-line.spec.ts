@@ -46,7 +46,14 @@ test.describe('линия на фоне — запасное состояние 
       }
     }
     const withoutSupports = css.slice(0, start) + css.slice(end);
-    expect(withoutSupports).not.toContain('animation-timeline');
+    /* Проверяем, что вырезали ИМЕННО таймлайн линии, а не «любой таймлайн
+       на странице». С 2026-08-13 `animation-timeline` использует ещё и
+       появление карточек — но по другому условию, `view()`, и его блок
+       остаётся на месте. Прежняя редакция искала подстроку `animation-
+       timeline` во всём файле и покраснела на чужом правиле, хотя линия
+       была в порядке. Условие `scroll()` принадлежит только линии. */
+    expect(withoutSupports).not.toContain('animation-timeline:scroll()');
+    expect(withoutSupports).not.toContain('animation-timeline: scroll()');
 
     await page.route(`**${href}`, (route) =>
       route.fulfill({ status: 200, contentType: 'text/css', body: withoutSupports }));

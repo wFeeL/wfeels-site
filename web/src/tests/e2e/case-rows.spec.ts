@@ -68,22 +68,45 @@ test.describe('секция 5 — три полноширинных блока �
     );
   });
 
-  test('описание кейса — визуально одна строка (CSS-усечение, без переноса)', async ({ page }) => {
+  /* Было «визуально одна строка»: описание обрезалось `text-overflow:
+     ellipsis` при `white-space: nowrap`. Дизайн-ревью 2026-08-13 замерило,
+     что видно 22–29% предложения — три оборванных на полуслове фразы подряд
+     читались как битая вёрстка, и владелец отменил приём. Тест не удалён, а
+     вывернут: теперь он требует обратного — что описание НЕ обрезано в одну
+     строку и при этом не растёт бесконечно. Удалить его значило бы снять
+     надзор ровно там, где поведение только что менялось. */
+  test('описание кейса — до двух строк, не обрезано в одну', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
     await page.goto('/');
 
     const descriptions = page.locator('#cases .rows .description');
     const count = await descriptions.count();
     expect(count).toBeGreaterThan(0);
+
     for (let i = 0; i < count; i++) {
       const el = descriptions.nth(i);
-      const singleLineHeight = await el.evaluate((node) => {
+      const m = await el.evaluate((node) => {
         const style = getComputedStyle(node);
-        return parseFloat(style.lineHeight);
+        return {
+          lineHeight: parseFloat(style.lineHeight),
+          height: node.getBoundingClientRect().height,
+          scrollWidth: node.scrollWidth,
+          clientWidth: node.clientWidth,
+          whiteSpace: style.whiteSpace,
+        };
       });
-      const box = await el.boundingBox();
-      expect(box!.height, `описание ${i}: высота не больше одной строки`)
-        .toBeLessThanOrEqual(singleLineHeight + 1);
+
+      const lines = Math.round(m.height / m.lineHeight);
+
+      expect(m.whiteSpace, `описание ${i}: nowrap возвращает усечение в одну строку`)
+        .not.toBe('nowrap');
+      expect(lines, `описание ${i}: занимает ${lines} строк, ожидалось 1–2`)
+        .toBeLessThanOrEqual(2);
+      expect(
+        m.scrollWidth,
+        `описание ${i}: текст шире своей колонки на ${m.scrollWidth - m.clientWidth} px — ` +
+        'значит он всё ещё обрезан по горизонтали, а не перенесён',
+      ).toBeLessThanOrEqual(m.clientWidth + 1);
     }
   });
 });
