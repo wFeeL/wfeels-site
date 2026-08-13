@@ -63,8 +63,8 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
         <h3 class="t-h3">{card.showcaseName}</h3>
         <p class="price">
           <span class="from">от</span> <code>{card.price}</code>
+          <span class="timeframe">{card.timeframe}</span>
         </p>
-        <p class="timeframe">{card.timeframe}</p>
         <ul class="composition" role="list">
           {card.composition.map((item) => (
             <li>
@@ -153,7 +153,16 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
      баланса со звёздочкой рядом с текстом. */
   .badge-star { line-height: 1; }
 
-  h3 { margin: 0 0 4px; }
+  /* Заголовок карточки — фиксированная высота в две строки (правка владельца
+     2026-08-13, часть 4): «Лендинг» умещается в одну строку, «Корпоративный
+     сайт» — в две, и без брони высоты цена трёх карточек стояла бы на разной
+     отметке. `min-height` — не `height`: короткий заголовок оставляет
+     заметное пустое место СНИЗУ (текст блока по умолчанию прижат к верху),
+     и именно это пустое место выравнивает цену, а не обрезает длинный
+     заголовок, если он вдруг займёт три строки. `2.6em` — две строки при
+     line-height `.t-h3` (1.3, `styles/base.css`), тем же приёмом вычисления
+     через `em`, что и в `.check` ниже, а не подобранное на глаз число. */
+  h3 { margin: 0 0 4px; min-height: 2.6em; }
 
   .price {
     margin: 0;
@@ -178,13 +187,14 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
     background: none;
     padding: 0;
   }
-
-  /* Временная строка на этот коммит — Часть 4 брифа переносит срок рядом с
-     ценой в одну строку и убирает этот отдельный абзац. */
-  .timeframe {
-    margin: 2px 0 0;
+  /* Срок — в той же строке, что цена (правка владельца 2026-08-13, часть 4:
+     раньше стоял отдельным абзацем ниже), прижат к правому краю строки цены
+     `margin-left: auto`, чтобы не спорить весом с самим числом. */
+  .price .timeframe {
+    margin-left: auto;
     font: 500 0.6875rem/1.3 var(--font-mono);
     color: var(--text-muted);
+    white-space: nowrap;
   }
 
   .composition {
@@ -202,7 +212,16 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
     gap: 8px;
     font-size: 1.125rem;
   }
-  .composition .check { flex: none; margin-top: 3px; color: var(--accent); }
+  /* Галочка встаёт по центру ПЕРВОЙ строки пункта, а не по верху блока
+     (правка владельца 2026-08-13, часть 4). `align-items: flex-start` на
+     `li` остаётся — многострочный пункт не должен тянуть иконку к своему
+     общему центру, только к центру первой строки. Строка текста при 18 px
+     и унаследованном line-height 1.65 (`body`, `styles/base.css`) высотой
+     1.65em; иконка сама 14 px — отступ сверху равен половине разницы,
+     вычислен через `calc` от собственного `em` иконки (наследует font-size
+     пункта: `.check` — `<svg>`, у него нет своего `font-size`), а не
+     подобран на глаз. */
+  .composition .check { flex: none; margin-top: calc((1.65em - 14px) / 2); color: var(--accent); }
 
   /* Полка — шесть маленьких карточек того же вида, что и верхняя тройка
      (правка владельца 2026-08-13, часть 1), а не строки-ссылки: два столбца
