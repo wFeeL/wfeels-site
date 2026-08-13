@@ -12,4 +12,15 @@ const { id, label } = Astro.props;
   @media (min-width: 480px) { section { padding-block: 64px; } }
   @media (min-width: 900px) { section { padding-block: 96px; } }
   .t-label { margin: 0 0 16px; }
+
+  /* Липкая шапка (`Header.astro`) не должна закрывать цель якоря при плавной
+     прокрутке (правки владельца 2026-08-13, задача 1). Числа — измеренная
+     высота шапки на тех же трёх точках перелома, что и остальная вёрстка
+     (`tokens.css`), плюс запас ~20 px: 125 px на <480 px (шапка переносится в
+     два ряда), 110 px на 480–899 px (строка «Меню» в потоке), 65 px от
+     900 px (одна строка, раскрывашки нет). Измерено `getBoundingClientRect()`
+     в браузере на этих же трёх ширинах. */
+  section { scroll-margin-top: 150px; }
+  @media (min-width: 480px) { section { scroll-margin-top: 132px; } }
+  @media (min-width: 900px) { section { scroll-margin-top: 90px; } }
 </style>
