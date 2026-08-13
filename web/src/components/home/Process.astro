@@ -15,7 +15,7 @@
  * некликабельны»).
  */
 import Label from '../Label.astro';
-import { PROCESS_STEPS } from '../../data/process';
+import { PROCESS_STEPS, WARRANTY_DAYS } from '../../data/process';
 
 if (PROCESS_STEPS.length !== 5) {
   throw new Error('home/Process.astro: секция 7 несёт ровно пять шагов.');
@@ -37,6 +37,18 @@ if (PROCESS_STEPS.length !== 5) {
       </li>
     ))}
   </ol>
+
+  {/* Размерная выноска — единственная крупная цифра секции, и единственное
+      число, у которого есть источник (`data/process.ts`, `WARRANTY_DAYS`,
+      SERVICES.md:151). Разложить срок по пяти шагам нельзя — календарных
+      сроков по шагам процесса не существует, они привязаны к ступеням услуг
+      в PRICING.md (02-process-options.md, раздел 1). Акцент секции остаётся
+      только здесь: узлы и заголовки шагов выше набраны `--text`/`--text-
+      muted`, не `--accent`. */}
+  <div class="dimension reveal">
+    <span class="dimension-line" aria-hidden="true"></span>
+    <span class="dimension-value">{WARRANTY_DAYS}&nbsp;дней</span>
+  </div>
 </div>
 
 <style>
@@ -44,11 +56,27 @@ if (PROCESS_STEPS.length !== 5) {
      десять секций главной (правка владельца 2026-08-13, «Три акта»). */
   h2 { margin: 0 0 32px; }
 
+  /* Два блока: ось с шагами (пружинит до 614px = колонка узла 32 + отступ
+     24 + колонка текста 558) и выноска «30 дней» (растёт на оставшееся
+     место). Без жёсткой точки перелома: когда обоим не хватает ширины
+     панели, выноска сама переносится на новую строку и растягивается на
+     всю ширину — это и есть раскрой 390px из брифа, тем же правилом, без
+     отдельного `@media`. `align-items: flex-end` ставит выноску вровень с
+     низом оси — «справа от пятого шага», как в 02-process-options.md. */
+  .process {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    column-gap: 32px;
+    row-gap: 32px;
+  }
+
   .axis {
     position: relative;
     list-style: none;
     margin: 0;
     padding: 0;
+    flex: 0 1 614px;
   }
 
   /* Ось — 1 px `--border` по левому краю колонки узлов. Начало на середине
@@ -108,5 +136,50 @@ if (PROCESS_STEPS.length !== 5) {
     grid-row: 2;
     margin: 0;
     max-width: 558px;
+  }
+
+  /* Размерная выноска — как размер на чертеже: линия с двумя выносными
+     засечками сверху, число снизу (02-process-options.md, раздел «П2-Б»,
+     ASCII-раскрой). Растёт минимум до 220px, а когда переносится на
+     отдельную строку (см. `.process` выше) — на всю ширину панели, и линия
+     с засечками растягивается вместе с ней (`width: 100%` через блочный
+     элемент, без числа). */
+  .dimension {
+    flex: 1 1 220px;
+  }
+
+  .dimension-line {
+    display: block;
+    height: 1px;
+    background: var(--accent);
+    position: relative;
+  }
+  .dimension-line::before,
+  .dimension-line::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    width: 1px;
+    height: 16px;
+    background: var(--accent);
+  }
+  .dimension-line::before { left: 0; }
+  .dimension-line::after { right: 0; }
+
+  /* Единственная крупная цифра секции: ступень `.t-h1` (36→60px) —
+     объявлена в шкале, но на главной сегодня не занята ни одним элементом
+     (00-overview, раздел 4, «Открытый долг» — теперь занята здесь). Кегль
+     скопирован из `styles/base.css` `.t-h1` буквально (clamp 2.25rem →
+     3.75rem), а не унаследован классом `.t-h1`: тот класс тянет за собой
+     общий заголовочный набор (`h1, h2, h3, .t-display, .t-h1, .t-h2, .t-h3`
+     — Manrope 800, трекинг −0.02em), а выноске нужен другой голос — моно
+     500, без трекинга, тот же приём, что `Prose.astro` уже применяет к
+     `:global(h2)`/`:global(h3)`, дублируя кегль вместо наследования класса. */
+  .dimension-value {
+    display: block;
+    margin-top: 16px;
+    font: 500 clamp(2.25rem, 5.6vw, 3.75rem)/1.1 var(--font-mono);
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
   }
 </style>
