@@ -15,11 +15,18 @@ interface Props {
    *  вычисленным стилем в браузере при разборе находки 2). Модификатор внутри
    *  самого `Card.astro` этой войны специфичностей не создаёт. */
   stack?: boolean;
+  /** Акцентное выделение — рамка акцентного цвета вместо серой и подложка
+   *  на тон темнее обычной поверхности. Заведено для рекомендуемой карточки
+   *  секции 4 «Цены» («Корпоративный сайт», правка владельца 2026-08-13,
+   *  часть 2), но не завязано на неё по имени — общий модификатор карточки,
+   *  тем же приёмом, что и `stack` выше: живёт внутри `Card.astro`, а не
+   *  борется специфичностью с `:global(.card)` снаружи. */
+  accent?: boolean;
 }
-const { href, stack = false } = Astro.props;
+const { href, stack = false, accent = false } = Astro.props;
 const Tag = href ? 'a' : 'div';
 ---
-<Tag class={`card${stack ? ' card--stack' : ''}`} href={href}><slot /></Tag>
+<Tag class={`card${stack ? ' card--stack' : ''}${accent ? ' card--accent' : ''}`} href={href}><slot /></Tag>
 
 <style>
   .card {
@@ -36,5 +43,13 @@ const Tag = href ? 'a' : 'div';
     flex-direction: column;
     gap: 20px;
     height: 100%;
+  }
+  /* Рамка акцентного цвета вместо серой + подложка на тон темнее обычной
+     поверхности (`--surface`) карточек рядом. `--accent-soft` — уже
+     откалиброванный по теме акцентный тон (не изобретён здесь), тот же,
+     которым красится ховер строк и подложка меток. */
+  .card--accent {
+    border-color: var(--accent);
+    background: var(--accent-soft);
   }
 </style>

@@ -8,7 +8,7 @@ import { TOP_CARDS, SHELF_CARDS } from '../../data/pricingShowcase';
  * видимость, высота секции), а не только в тексте `dist/index.html`. */
 
 test.describe('секция «Цены» — три верхние карточки', () => {
-  test('desktop: три карточки видны, у средней — ярлык «Советую этот вариант»', async ({ page }) => {
+  test('desktop: три карточки видны, у рекомендуемой — ярлык «Самый популярный»', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/#pricing');
 
@@ -20,9 +20,9 @@ test.describe('секция «Цены» — три верхние карточ�
       await expect(section.getByText(card.price, { exact: false }).first()).toBeVisible();
     }
 
-    await expect(section.getByText('Советую этот вариант')).toBeVisible();
+    await expect(section.getByText('Самый популярный')).toBeVisible();
     // Ровно одна карточка несёт ярлык.
-    await expect(section.getByText('Советую этот вариант')).toHaveCount(1);
+    await expect(section.getByText('Самый популярный')).toHaveCount(1);
   });
 
   test('desktop: три карточки стоят в ряд (одна строка по Y)', async ({ page }) => {
@@ -69,10 +69,12 @@ test.describe('секция «Цены» — три верхние карточ�
     }
   });
 
-  test('в секции нет ни одной метки спроса (D-029)', async ({ page }) => {
+  test('в секции нет ни одной метки спроса, кроме разрешённой «Самый популярный» (отмена D-029 владельцем 2026-08-13, часть 2)', async ({ page }) => {
     await page.goto('/#pricing');
     const section = page.locator('#pricing');
-    const text = (await section.innerText()).toLowerCase();
+    // Разрешённая строка вырезается ПЕРЕД проверкой стема «популярн» — иначе
+    // легитимный ярлык красил бы этот тест сам на себе.
+    const text = (await section.innerText()).toLowerCase().split('самый популярный').join('');
     for (const word of ['хит продаж', 'популярн', 'выбор клиентов', 'чаще всего заказывают']) {
       expect(text, `метка спроса «${word}»`).not.toContain(word);
     }
