@@ -1,9 +1,10 @@
 ---
 import Base from '../layouts/Base.astro';
 import Container from '../components/Container.astro';
-import Section from '../components/Section.astro';
 import LangSwitch from '../components/LangSwitch.astro';
 import { HOME_SECTIONS } from '../lib/sections';
+import HomeSection from '../components/home/HomeSection.astro';
+import MobileCtaBar from '../components/home/MobileCtaBar.astro';
 import Hero from '../components/home/Hero.astro';
 import Pain from '../components/home/Pain.astro';
 import Services from '../components/home/Services.astro';
@@ -87,20 +88,61 @@ const GAP: Record<string, { topGap?: 'interior' | 'stitch'; bottomGap?: 'none'; 
       ниже (`s.title`) остаётся только страховкой на случай, если якорь
       появится в `lib/sections.ts` раньше своего компонента. */}
   <Container>
-    {HOME_SECTIONS.map((s) => {
-      const Content = HOME_COMPONENTS[s.id];
+    {HOME_SECTIONS.filter((s) => s.id === 'hero').map((s) => {
       const gap = GAP[s.id] ?? {};
       return (
-        <Section id={s.id} topGap={gap.topGap} bottomGap={gap.bottomGap} surface={gap.surface}>
-          {Content ? (
-            <Content />
-          ) : s.order === 1 ? (
-            <h1 class="t-display">{s.title}</h1>
-          ) : (
-            <h2 class="t-h2">{s.title}</h2>
-          )}
-        </Section>
+        <HomeSection
+          id={s.id} order={s.order} title={s.title}
+          topGap={gap.topGap} bottomGap={gap.bottomGap} surface={gap.surface}
+          Content={HOME_COMPONENTS[s.id]}
+        />
+      );
+    })}
+
+    {/* Диапазон липкой мобильной CTA-панели (`MobileCtaBar.astro`, дизайн-
+        ревью 2026-08-13, часть 1) — акты 2 и 3 главной, Pain → Faq,
+        физически обёрнуты в один `<div>`: панель внутри него — липкий якорь
+        нулевой высоты, чей «коридор» прилипания ограничен именно границами
+        этого `<div>` (подробный разбор — в самом компоненте). Герой и
+        Контакт — оба края диапазона, вне обёртки: герой — потому что панель
+        не должна быть видна поверх первого экрана, контакт — потому что
+        панель обязана исчезнуть до того, как поля формы окажутся на
+        экране. */}
+    <div class="mobile-cta-range">
+      <MobileCtaBar />
+      {HOME_SECTIONS.filter((s) => s.id !== 'hero' && s.id !== 'contact').map((s) => {
+        const gap = GAP[s.id] ?? {};
+        return (
+          <HomeSection
+            id={s.id} order={s.order} title={s.title}
+            topGap={gap.topGap} bottomGap={gap.bottomGap} surface={gap.surface}
+            Content={HOME_COMPONENTS[s.id]}
+          />
+        );
+      })}
+    </div>
+
+    {HOME_SECTIONS.filter((s) => s.id === 'contact').map((s) => {
+      const gap = GAP[s.id] ?? {};
+      return (
+        <HomeSection
+          id={s.id} order={s.order} title={s.title}
+          topGap={gap.topGap} bottomGap={gap.bottomGap} surface={gap.surface}
+          Content={HOME_COMPONENTS[s.id]}
+        />
       );
     })}
   </Container>
 </Base>
+
+<style>
+  /* Система отсчёта для `.mobile-cta-clip` (`MobileCtaBar.astro`,
+     `position: absolute; inset: 0`) — сам диапазон вне потока не выходит:
+     `position: relative` без смещений не двигает ни сам диапазон, ни ритм
+     секций внутри него ни на пиксель, он только даёт обрезающему слою верную
+     точку отсчёта по высоте (высоту диапазону задают сами секции — Pain →
+     Faq, обычные потоковые дети). */
+  .mobile-cta-range {
+    position: relative;
+  }
+</style>

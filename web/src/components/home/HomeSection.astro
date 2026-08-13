@@ -1,0 +1,36 @@
+---
+/* Одна секция главной — вынесена из `pages/index.astro` в отдельный
+ * компонент правкой мобильной липкой панели (дизайн-ревью 2026-08-13,
+ * часть 1): страница больше не собирает все десять секций одним `.map()`
+ * подряд — восемь из них (Pain → Faq) обёрнуты в `<div class="mobile-cta-
+ * range">` (`MobileCtaBar.astro`), а `hero` и `contact` остаются
+ * необёрнутыми краями. Три отдельных прохода по `HOME_SECTIONS` в разметке
+ * `.astro`-файла не могут звать одну и ту же функцию-рендерер — JSX-подобная
+ * разметка Astro распознаётся компилятором только внутри самого шаблона
+ * (после второго `---`), не во фронтматтере, — поэтому тело `.map()` живёт
+ * здесь, в собственном компоненте, а не тройной копией текста в `index.astro`.
+ * Содержимое (`Section` + сам компонент секции или заглушка) не изменилось
+ * ни на строку.
+ */
+import Section from '../Section.astro';
+
+interface Props {
+  id: string;
+  order: number;
+  title: string;
+  topGap?: 'interior' | 'stitch';
+  bottomGap?: 'none';
+  surface?: boolean;
+  Content?: any;
+}
+const { id, order, title, topGap, bottomGap, surface, Content } = Astro.props;
+---
+<Section id={id} topGap={topGap} bottomGap={bottomGap} surface={surface}>
+  {Content ? (
+    <Content />
+  ) : order === 1 ? (
+    <h1 class="t-display">{title}</h1>
+  ) : (
+    <h2 class="t-h2">{title}</h2>
+  )}
+</Section>
