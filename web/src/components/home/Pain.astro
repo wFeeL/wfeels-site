@@ -79,7 +79,12 @@ if (PAIN_POINTS.length !== 5) {
     position: absolute;
     left: 0;
     top: 0.1em;
-    font: 500 0.8125rem/1.65 var(--font-mono);
+    /* Было 13 px — самовольный кегль, вне шкалы. Нумерация — та же роль, что
+       у меток `label` (11 px), правка 2026-08-13, свод к семи объявленным
+       ([[02-redesign-options]], предусловие пункта 8). Токен `--text-faint`
+       здесь остаётся неверным долгом (00-overview, раздел 4, «Уточнение,
+       добавлено 2026-08-13») — правка цвета вне мандата этого захода. */
+    font: 500 0.6875rem/1.65 var(--font-mono);
     color: var(--text-faint);
   }
   .pain-list strong { display: block; margin-bottom: 2px; }

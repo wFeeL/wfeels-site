@@ -43,7 +43,10 @@ const Tag = placeholder ? 'span' : href ? 'a' : 'button';
     border-radius: var(--radius-pill);
     padding: 10px 20px;
     min-height: 44px;
-    font: 600 0.9375rem/1 var(--font-text);
+    /* Было 15 px — самовольный кегль, вне шкалы. Текст кнопки — главное
+       действие экрана, ступень `body` (16 px), правка 2026-08-13, свод к
+       семи объявленным ([[02-redesign-options]], предусловие пункта 8). */
+    font: 600 1rem/1 var(--font-text);
     text-decoration: none;
     cursor: pointer;
     border: 1px solid transparent;

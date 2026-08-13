@@ -28,7 +28,10 @@ import { TELEGRAM_URL } from '../lib/contacts';
   .lead { margin: 24px 0 0; }
   .fallback {
     margin: 24px 0 32px;
-    font-size: 0.9375rem;
+    /* Было 15 px — самовольный кегль, вне шкалы. Запасной путь — второстепенная
+       строка под ведущим `body-lg`, ступень `small` (14 px), правка
+       2026-08-13, свод к семи объявленным. */
+    font-size: 0.875rem;
     color: var(--text-muted);
   }
   .fallback a {

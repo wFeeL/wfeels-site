@@ -128,13 +128,20 @@ if (REGALIA.length !== 5) {
   .offer-row:hover { background: var(--accent-soft); }
 
   .offer-group { font-weight: 600; }
+  /* Было 13 px — самовольный кегль, вне шкалы. Срок — моно-пометка рядом с
+     ценой, та же роль, что у меток `label` (11 px), правка 2026-08-13, свод к
+     семи объявленным ([[02-redesign-options]], предусловие пункта 8). */
   .offer-term {
-    font: 500 0.8125rem/1.3 var(--font-mono);
+    font: 500 0.6875rem/1.3 var(--font-mono);
     color: var(--text-muted);
     white-space: nowrap;
   }
+  /* Было 15 px — самовольный кегль, вне шкалы. Цена — не мелкий текст, она
+     главная в своей строке: ступень `h3` (20 px), не «ближайшая» `small`,
+     той же логикой, что и цены секции 4 (`Pricing.astro`, `dd code`). Правка
+     2026-08-13, свод к семи объявленным («цена — не мелкий текст», решение 8). */
   .offer-price {
-    font: 700 0.9375rem/1.3 var(--font-mono);
+    font: 700 1.25rem/1.3 var(--font-mono);
     color: var(--accent);
     white-space: nowrap;
     text-align: right;

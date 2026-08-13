@@ -109,7 +109,10 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-pill);
     color: var(--text-muted);
-    font-size: 0.9375rem;
+    /* Было 15 px — самовольный кегль, вне шкалы. Значок читается content-
+       текстом того же масштаба, что и обычный контент — ступень `body`
+       (16 px), правка 2026-08-13, свод к семи объявленным. */
+    font-size: 1rem;
     line-height: 1;
     cursor: pointer;
     transition: color var(--dur-micro) var(--ease),

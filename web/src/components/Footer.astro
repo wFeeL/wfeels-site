@@ -128,9 +128,12 @@ const FACTS = [t.footerReply, t.footerCity, t.footerHours];
     .brand-group { grid-column: auto; }
   }
 
+  /* Тот же знак, что в шапке (`Header.astro`, `.brand`) — 18 px, ступень
+     `body-lg`. Было 17 px, самовольный кегль вне шкалы (правка 2026-08-13,
+     свод к семи объявленным, [[02-redesign-options]], предусловие пункта 8). */
   .wordmark {
     margin: 0;
-    font: 800 1.0625rem/1 var(--font-head);
+    font: 800 1.125rem/1 var(--font-head);
     letter-spacing: -0.02em;
     color: var(--text);
   }
@@ -212,5 +215,8 @@ const FACTS = [t.footerReply, t.footerCity, t.footerHours];
     .bottom { grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: end; }
   }
   .ai { margin: 0; max-width: 62ch; }
-  .year { margin: 0; font-family: var(--font-mono); font-size: 0.75rem; }
+  /* Было 12 px — самовольный кегль, вне шкалы. Год — служебная моно-пометка,
+     та же роль, что у меток `label` (11 px), поэтому взял их ступень (правка
+     2026-08-13, свод к семи объявленным). */
+  .year { margin: 0; font-family: var(--font-mono); font-size: 0.6875rem; }
 </style>
