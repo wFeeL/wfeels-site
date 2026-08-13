@@ -6,6 +6,12 @@ import { test, expect } from '@playwright/test';
  * проверяют геометрию и ссылки, не текст (текст и его дословность проверяет
  * `dist-home-cases.test.ts`). */
 
+/* Появление полос кейсов по прокрутке (02-card-motion.md) сдвигает `.text` и
+ * `.illustration` по-разному в момент замера — тесты ниже проверяют
+ * раскладку, а не движение. `reducedMotion: 'reduce'` даёт чистую раскладку
+ * (бриф, раздел 12, ловушка 2). Допуски не ослабляются. */
+test.use({ reducedMotion: 'reduce' });
+
 test.describe('секция 5 — три полноширинных блока кейсов', () => {
   test('desktop (1280px): текст слева, поле иллюстрации справа, три ссылки на страницы кейсов', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 1000 });

@@ -7,6 +7,12 @@ import { TOP_CARDS, SHELF_CARDS } from '../../data/pricingShowcase';
  * проверок `dist-home-sections.test.ts` в РЕАЛЬНОМ браузере (раскладка,
  * видимость, высота секции), а не только в тексте `dist/index.html`. */
 
+/* Появление карточек по прокрутке (02-card-motion.md) разводит тройку цен
+ * каскадом «от центра наружу» в момент замера — тесты ниже проверяют
+ * раскладку, а не движение. `reducedMotion: 'reduce'` даёт чистую раскладку
+ * (бриф, раздел 12, ловушка 2). Допуски не ослабляются. */
+test.use({ reducedMotion: 'reduce' });
+
 test.describe('секция «Цены» — три верхние карточки', () => {
   test('desktop: три карточки видны, у рекомендуемой — ярлык «Самый популярный»', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
