@@ -19,6 +19,7 @@
  */
 import Label from '../Label.astro';
 import Card from '../Card.astro';
+import Button from '../Button.astro';
 import { PRICING } from '../../data/pricing';
 import { TOP_CARDS, SHELF_CARDS } from '../../data/pricingShowcase';
 
@@ -49,8 +50,8 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
 
 <p class="intro">
   «От» — потому что цена зависит от объёма. После разбора называю вилку, а в
-  предложении фиксирую точную. Дальше она растёт только если задачу меняете
-  вы — и тогда мы обсуждаем это до работы, а не после.
+  предложении фиксирую точную. Оплата — половина на старте и половина на
+  сдаче; для работ от {EDITS_THRESHOLD_PRICE} разбиваю на вехи.
 </p>
 
 <div class="top-grid">
@@ -77,6 +78,9 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
           ))}
         </ul>
       </div>
+      <p class="cta">
+        <Button href="#contact" variant={card.recommended ? 'primary' : 'secondary'}>{card.cta}</Button>
+      </p>
     </Card>
   ))}
 </div>
@@ -90,7 +94,12 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
   ))}
 </div>
 
-<p class="footnote">
+{/* `t-small` — сноска обязана читаться сноской, а не абзацем (правка
+    владельца 2026-08-13, часть 5): кегль на ступень мельче основного текста
+    карточек (16 px против 18 px `body`), из объявленной шкалы — сторож
+    `dist-typography-scale.test.ts` валит сборку на размере вне неё.
+    Приглушённый цвет уже был (`.footnote`, `color: var(--text-muted)`). */}
+<p class="footnote t-small">
   Правки входят в цену: один раунд для лендинга, два для сайтов и Mini Apps,
   три для работ от {EDITS_THRESHOLD_PRICE}. Не входят: ваш контент и
   фотографии, домен и хостинг, расход на ИИ-модель.
@@ -222,6 +231,18 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
      пункта: `.check` — `<svg>`, у него нет своего `font-size`), а не
      подобран на глаз. */
   .composition .check { flex: none; margin-top: calc((1.65em - 14px) / 2); color: var(--accent); }
+
+  /* Кнопка — второй прямой ребёнок `Card` (первый — `.top-body`), прижата к
+     низу карточки тем же приёмом, что `.stack` в `home/ServiceCard.astro`:
+     `margin-top: auto` в `.card--stack` (flex-колонка на всю высоту грида,
+     `Card.astro`) тянет её вниз независимо от того, сколько строк занял
+     заголовок или состав у соседней карточки. Залитая (`variant="primary"`)
+     — только у рекомендуемой карточки: на странице уже три залитые
+     акцентные кнопки (Header, Hero, LeadForm) — находка ревью №7 из
+     `home/Services.astro` про «Все услуги», четвёртая спорила бы весом с
+     «Отправить» в форме заявки. Обычные карточки несут `variant="secondary"`
+     — тот же контурный вариант. */
+  .cta { margin: auto 0 0; padding-top: 4px; }
 
   /* Полка — шесть маленьких карточек того же вида, что и верхняя тройка
      (правка владельца 2026-08-13, часть 1), а не строки-ссылки: два столбца
