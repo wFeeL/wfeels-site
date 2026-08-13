@@ -1,17 +1,42 @@
 import { defineConfig } from '@playwright/test';
 
+/* Порты берутся из окружения, а не зашиты числом (правка 2026-08-13).
+ *
+ * Причина не в гибкости ради гибкости: с этого дня по репозиторию работают
+ * параллельные git-worktree — по копии на задачу, чтобы два исполнителя не
+ * дрались за одну папку сборки и один индекс. Копии независимы во всём, кроме
+ * портов: два `astro preview` на 4321 и два uvicorn на 8000 сталкиваются, и
+ * второй прогон либо падает, либо — хуже — молча тестирует ЧУЖУЮ сборку,
+ * поднятую соседней копией, потому что `reuseExistingServer` видит живой порт
+ * и переиспользует его.
+ *
+ * Второе — и есть настоящая опасность: прогон зелёный, а проверял он не тот
+ * код. Ровно этот класс ошибки («проверка есть, проверяет не то») здесь ловили
+ * весь день. Поэтому у каждой копии обязан быть свой порт.
+ *
+ * Значения по умолчанию — прежние, так что для одиночной работы ничего не
+ * меняется и ни одна команда в документации не устаревает.
+ *
+ *   SITE_PORT=4331 API_PORT=8010 npx playwright test
+ */
+const SITE_PORT = process.env.SITE_PORT ?? '4321';
+const API_PORT = process.env.API_PORT ?? '8000';
+
+const SITE_URL = `http://localhost:${SITE_PORT}`;
+const API_URL = `http://localhost:${API_PORT}`;
+
 export default defineConfig({
   testDir: './src/tests/e2e',
-  use: { baseURL: 'http://localhost:4321' },
+  use: { baseURL: SITE_URL },
   webServer: [
     {
-      command: 'npm run build && npm run preview',
+      command: `npm run build && npm run preview -- --port ${SITE_PORT}`,
       env: {
         // Preview-сервер Astro не проксирует /api, а переменная зашивается на
         // этапе `astro build`, не в рантайме. Без неё форма отправилась бы на
         // localhost:4321/api/lead и получила 404. В проде переменная пустая:
         // запрос идёт на тот же домен, где его подхватывает Caddy.
-        PUBLIC_API_BASE: 'http://localhost:8000',
+        PUBLIC_API_BASE: API_URL,
         // Astro 7 определяет запуск из-под ИИ-агента (пакет am-i-vibing) и уводит
         // preview в фоновый демон — процесс завершается, и Playwright считает, что
         // сервер упал. Переменная выключает это автоопределение и оставляет сервер
@@ -24,17 +49,17 @@ export default defineConfig({
         // прогресса. Флаг ставится только тут — боевая сборка его не знает.
         DEV_PAGES: '1',
       },
-      url: 'http://localhost:4321',
+      url: SITE_URL,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
-      command: '.venv/bin/uvicorn app.main:app --port 8000',
+      command: `.venv/bin/uvicorn app.main:app --port ${API_PORT}`,
       cwd: '../api',
       env: {
         // Адрес редиректа на /thanks при отправке без JavaScript, он же
         // единственный разрешённый источник для CORS.
-        SITE_URL: 'http://localhost:4321',
+        SITE_URL,
         // Счётчик частоты живёт в памяти процесса, а `reuseExistingServer`
         // намеренно оставляет процесс жить между прогонами. При боевом пределе
         // в пять заявок третий подряд локальный прогон начал бы получать 429 —
@@ -42,7 +67,7 @@ export default defineConfig({
         // проверяется юнит-тестами задачи 9, здесь он только мешает.
         RATE_LIMIT_PER_HOUR: '1000',
       },
-      url: 'http://localhost:8000/api/health',
+      url: `${API_URL}/api/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },

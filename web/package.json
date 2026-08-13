@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "astro dev --port 4321",
     "build": "astro build",
-    "preview": "astro preview --port 4321",
+    "preview": "astro preview",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "check:budget": "node ../scripts/check-budget.mjs"
