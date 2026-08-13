@@ -1,0 +1,35 @@
+---
+/* Поле рисунка секции 5 — общая рамка для всех трёх иллюстраций кейсов
+ * (бриф `70-workshop/specs/site-v3/02-case-illustrations.md`, раздел 2.1):
+ * рамка 1px solid var(--border), паспарту var(--surface), радиус 8 — то же
+ * правило, что действует на изображения по общей спеке (`02-redesign-
+ * options.md`, раздел 2.5, «общая часть»).
+ *
+ * Ширина поля одинаковая у всех трёх блоков (задаёт сама колонка грида
+ * `CaseRow.astro`); высота — своя у каждой иллюстрации, кратная 32,
+ * передаётся пропом. Пустого рисунка не бывает: слот всегда несёт готовое
+ * содержимое (числа, схему или диалог), а не декоративную заглушку.
+ */
+interface Props {
+  /** Высота поля в px, кратная 32, в коридоре 288…448 (раздел 2.1 брифа). */
+  height: number;
+}
+const { height } = Astro.props;
+---
+<div class="field" style={`--field-height: ${height}px`}>
+  <slot />
+</div>
+
+<style>
+  .field {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 32px;
+    height: var(--field-height);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+</style>

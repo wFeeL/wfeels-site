@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 /* Полировка перед приёмкой (2026-08-12), находка 2: карточки одного ряда
  * одной высоты, а их нижняя строка стека (моношрифт) — нет, потому что текст
  * над ней разной длины. Причина не в вёрстке самих карточек, а в войне
- * специфичности: `CaseCard.astro`/`ServiceCard.astro` красили `.card` в
+ * специфичности: `ServiceCard.astro` красил `.card` в
  * `:global(.card){display:flex;...}`, а собственное скоупленное правило
  * `Card.astro` — `.card[data-astro-cid-…]{display:block}` — специфичнее
  * (класс+атрибут против голого класса) и тихо побеждало: `.card` оставалась
@@ -11,25 +11,17 @@ import { test, expect } from '@playwright/test';
  * обычном потоке. Починка — проп `stack` у `Card.astro` (см. комментарий
  * там же), который красит `.card` в его собственном скоупе, без войны
  * специфичности. Тесты ниже проверяют результат геометрией, а не наличием
- * класса — так же, как рельс проверяет вертикаль точек `rail.spec.ts`. */
+ * класса — так же, как рельс проверяет вертикаль точек `rail.spec.ts`.
+ *
+ * Кейсы секции 5 (D-030, `02-case-illustrations.md`) с 2026-08-13 — три
+ * полноширинных блока, не карточки: сравнивать «строку стека в ряду» больше
+ * не с чем, каждый блок занимает всю ширину сам по себе. Соответствующие
+ * проверки этого файла сняты вместе с карточной раскладкой; геометрию строк
+ * секции 5 проверяет `case-rows.spec.ts`. */
 
 const WIDE = { width: 1280, height: 900 };
 
 test.describe('карточки — строка стека прижата к низу и совпадает в ряду', () => {
-  test('карточки кейсов (секция 5): все три строки стека на одной линии', async ({ page }) => {
-    await page.setViewportSize(WIDE);
-    await page.goto('/');
-
-    const stacks = page.locator('#cases .grid .stack');
-    await expect(stacks).toHaveCount(3);
-
-    const tops = await stacks.evaluateAll((els) =>
-      els.map((el) => el.getBoundingClientRect().top),
-    );
-    const spread = Math.max(...tops) - Math.min(...tops);
-    expect(spread, `верхние края строк стека: ${tops.join(', ')}`).toBeLessThan(1);
-  });
-
   test('карточки услуг (секция 3): строки стека совпадают в каждом ряду 2×2', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
@@ -50,13 +42,4 @@ test.describe('карточки — строка стека прижата к н
     }
   });
 
-  test('`.card` карточки кейса — реально flex-колонка, а не подмена display', async ({ page }) => {
-    await page.setViewportSize(WIDE);
-    await page.goto('/');
-    const display = await page
-      .locator('#cases .grid > a.card')
-      .first()
-      .evaluate((el) => getComputedStyle(el).display);
-    expect(display).toBe('flex');
-  });
 });

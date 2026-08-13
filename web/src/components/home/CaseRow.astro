@@ -1,0 +1,87 @@
+---
+/* Одна строка секции 5 — полноширинный блок вместо карточки (D-030, бриф
+ * `02-case-illustrations.md`, раздел 2.1): слева короткий текст и ссылка на
+ * страницу кейса, справа — поле иллюстрации. Рисунок всегда справа во всех
+ * трёх блоках — повторение здесь ритм, а не бедность (бриф, раздел 2.1).
+ *
+ * Описание кейса сжимается до одной строки — не переписанным текстом, а
+ * CSS-усечением уже утверждённого абзаца (`02-texts.md`, секция 5): второй
+ * ручной копии текста здесь не заводится, полный абзац остаётся в разметке
+ * для программы чтения и для страницы кейса.
+ */
+import type { CaseCard as CaseCardData } from '../../data/cases';
+import CaseIllustrationField from './CaseIllustrationField.astro';
+
+interface Props {
+  item: CaseCardData;
+  /** Высота поля иллюстрации, кратная 32 (бриф, раздел 2.1). */
+  illustrationHeight: number;
+}
+const { item, illustrationHeight } = Astro.props;
+---
+<div class="row">
+  <div class="text">
+    <h3 class="t-h3">{item.title}</h3>
+    {item.description && <p class="description">{item.description}</p>}
+    {item.stack && <p class="stack"><code>{item.stack}</code></p>}
+    <p class="link">
+      <a href={`/cases/${item.slug}`}>Разобрать кейс <span aria-hidden="true">→</span></a>
+    </p>
+  </div>
+  <div class="illustration">
+    <CaseIllustrationField height={illustrationHeight}>
+      <slot />
+    </CaseIllustrationField>
+    <slot name="caption" />
+  </div>
+</div>
+
+<style>
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 32px;
+    padding: 48px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  @media (max-width: 899px) {
+    .row { grid-template-columns: 1fr; }
+  }
+
+  .text { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+  /* Одна строка — усечение многоточием, а не переписанный текст (раздел
+     разработки выше). Полный абзац остаётся в DOM, читается программой
+     чтения целиком; визуально видна только первая строка. */
+  .description {
+    margin: 0;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stack {
+    margin: 4px 0 0;
+  }
+  .stack code {
+    font: 400 0.6875rem/1.4 var(--font-mono);
+    color: var(--text-muted);
+    background: none;
+    padding: 0;
+  }
+
+  .link { margin: 8px 0 0; }
+  .link a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .link a:hover { text-decoration: underline; }
+
+  .illustration { min-width: 0; }
+  .illustration :global(.field) { width: 100%; }
+</style>
