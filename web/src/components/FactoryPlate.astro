@@ -55,6 +55,13 @@ const hasData = FACTORY.length > 0 && FACTORY_FRAME.length > 0;
   .factory-plate {
     display: block;
     pointer-events: none;
+    /* Общий таймлайн на весь блок (бриф, раздел 9): плита ниже колонок по
+       документу, и собственный `view()` у каждого потомка дал бы обратный
+       порядок входа. Объявление стоит вне `@supports` намеренно — браузер
+       без поддержки просто отбрасывает неизвестное свойство и не задаёт
+       никакого состояния. */
+    view-timeline-name: --factory-plate;
+    view-timeline-axis: block;
   }
 
   /* Общие метки — моно 11, капслок, трекинг .16em (бриф, раздел 4). Регистр
@@ -230,5 +237,76 @@ const hasData = FACTORY.length > 0 && FACTORY_FRAME.length > 0;
     .fp-cells li:nth-child(-n + 4) {
       border-bottom: var(--stroke-hair) solid var(--border);
     }
+  }
+
+  /* Номер колонки типа 0…3 — для сдвига фазы каскада ниже. Не сортируется,
+     порядок задаётся `nth-child`, а не данными. */
+  .fp-type:nth-child(1) { --fp-i: 0; }
+  .fp-type:nth-child(2) { --fp-i: 1; }
+  .fp-type:nth-child(3) { --fp-i: 2; }
+  .fp-type:nth-child(4) { --fp-i: 3; }
+
+  /* Родная CSS-анимация по прокрутке, ноль JavaScript (бриф, раздел 9).
+     Конечное состояние — состояние ПО УМОЛЧАНИЮ: вне этого блока `.fp-frame`,
+     `.fp-legs i` и `.fp-type` не объявляют ни `opacity`, ни `translate`, ни
+     `clip-path` — они и так полностью видны. Анимация навешивается только
+     здесь, поверх статичного состояния, никогда наоборот: браузер без
+     поддержки `animation-timeline` (Firefox держит её за флагом на 2026-08)
+     и читатель с `prefers-reduced-motion: reduce` обязаны увидеть рисунок
+     целиком, не спрятанным.
+
+     ЛОВУШКА (стоила в этом репозитории уже трижды): рядом с
+     `animation-timeline` запрещён шорткод `animation:` — сборка сводит его с
+     `animation-timeline` в один шорткод, который сбрасывает `animation-name`
+     в `none`, и правило умирает молча. Ниже — только длинные свойства. */
+  @supports (animation-timeline: view()) and (view-timeline-name: --fp) {
+    @media (prefers-reduced-motion: no-preference) {
+      /* Плита ложится слева направо. */
+      .fp-frame {
+        animation-name: fp-frame-in;
+        animation-duration: 1ms; /* реальную длительность задаёт таймлайн */
+        animation-timing-function: cubic-bezier(0.2, 0, 0.4, 1);
+        animation-fill-mode: both;
+        animation-timeline: --factory-plate;
+        animation-range-start: entry 5%;
+        animation-range-end: entry 40%;
+      }
+
+      /* Ножки проявляются следом. */
+      .fp-legs i {
+        animation-name: fp-legs-in;
+        animation-duration: 1ms;
+        animation-timing-function: cubic-bezier(0.2, 0, 0.4, 1);
+        animation-fill-mode: both;
+        animation-timeline: --factory-plate;
+        animation-range-start: entry 40%;
+        animation-range-end: entry 52%;
+      }
+
+      /* Четыре колонки — по очереди, сдвиг фазы через `--fp-i`. При i=3
+         конец приходится на 94% — внутри фазы `entry`, с запасом. */
+      .fp-type {
+        animation-name: fp-type-in;
+        animation-duration: 1ms;
+        animation-timing-function: cubic-bezier(0.2, 0, 0.4, 1);
+        animation-fill-mode: both;
+        animation-timeline: --factory-plate;
+        animation-range-start: entry calc(52% + var(--fp-i, 0) * 6%);
+        animation-range-end: entry calc(76% + var(--fp-i, 0) * 6%);
+      }
+    }
+  }
+
+  @keyframes fp-frame-in {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0 0 0); }
+  }
+  @keyframes fp-legs-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes fp-type-in {
+    from { opacity: 0; translate: 0 16px; }
+    to { opacity: 1; translate: 0 0; }
   }
 </style>

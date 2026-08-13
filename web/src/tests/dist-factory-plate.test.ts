@@ -181,6 +181,48 @@ describe('dist/ — плита фабрики (вариант владельца
     expect(occurrences, 'ожидался ровно один var(--accent) в правилах .fp-*/.factory-plate').toBe(1);
   });
 
+  // Критерий 9. Ловушка шорткода: рядом с `animation-timeline` в блоке не
+  // должно быть ни одного `animation:`, ни одного `transition:` — сборка
+  // сводит их в один шорткод и сбрасывает `animation-name` в `none`. Тест
+  // ищет по СОБРАННОМУ CSS, а не по исходнику: беда происходит на сборке.
+  it('в правилах .fp-*/.factory-plate внутри @supports нет шорткода animation:/transition:', () => {
+    const cssFiles = walk(join(DIST, '_astro')).filter((f) => f.endsWith('.css'));
+    let checkedAny = false;
+    for (const file of cssFiles) {
+      const css = readFileSync(file, 'utf8');
+      // lightningcss нормализует пробелы внутри `@supports (...)`, оставляя
+      // пробел после `@supports`, но не вокруг двоеточия — ищем оба
+      // написания, чтобы не зависеть от версии сборщика.
+      let start = css.indexOf('@supports (animation-timeline:view())');
+      if (start === -1) start = css.indexOf('@supports (animation-timeline: view())');
+      while (start !== -1) {
+        let depth = 0;
+        let end = start;
+        for (let i = css.indexOf('{', start); i < css.length; i++) {
+          if (css[i] === '{') depth++;
+          else if (css[i] === '}') {
+            depth--;
+            if (depth === 0) { end = i + 1; break; }
+          }
+        }
+        const block = css.slice(start, end);
+        if (/fp-frame-in|fp-legs-in|fp-type-in/.test(block)) {
+          checkedAny = true;
+          // Внутри правил .fp-*: ни одного объявления `animation:` целиком
+          // (не `animation-name:`/`animation-duration:` и т.п. — те легальны)
+          // и ни одного `transition:` (в этом блоке переходов нет вовсе).
+          expect(block, 'найден шорткод animation: рядом с animation-timeline')
+            .not.toMatch(/[^-]animation:/);
+          expect(block, 'найден transition: — в этом блоке переходов нет')
+            .not.toMatch(/[^-]transition:/);
+          break;
+        }
+        start = css.indexOf('@supports', end);
+      }
+    }
+    expect(checkedAny, 'не нашёлся @supports-блок анимации плиты в собранном CSS').toBe(true);
+  });
+
   // Критерий 17: блок встречается на главной ровно один раз и не появляется
   // ни на одной другой странице сборки.
   it('плита — ровно один раз на главной, и нигде больше на сайте', () => {
