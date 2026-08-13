@@ -33,7 +33,7 @@ describe('dist/index.html — секции 7 и 8', () => {
   });
 
   it('секция 8: метка, заголовок и все четыре гарантии дословно на странице', () => {
-    expect(html).toContain('ЧТО Я БЕРУ НА СЕБЯ');
+    expect(html).toContain('ГАРАНТИИ');
     expect(html).toContain('>Что я гарантирую<');
     for (const g of GUARANTEES) {
       expect(html, g.title).toContain(g.title);

@@ -41,7 +41,7 @@ describe('dist/index.html — секции 1–3', () => {
 
   it('секция 1: метка, заголовок, подзаголовок, кнопки — дословно на странице', () => {
     expect(html).toContain('КОГДА КОНСТРУКТОРА УЖЕ НЕ ХВАТАЕТ');
-    expect(html).toContain('Сайты и автоматизация — дни там, где обычно недели');
+    expect(html).toContain('Сайты и автоматизация — дни вместо недель');
     expect(html).toContain('Проектирую и проверяю сам, а');
     expect(html).toContain('Обсудить задачу');
     expect(html).toContain('Смотреть цены');
@@ -69,7 +69,7 @@ describe('dist/index.html — секции 1–3', () => {
   });
 
   it('секция 2: метка, заголовок и все пять пунктов боли', () => {
-    expect(html).toContain('ЗНАКОМАЯ КАРТИНА');
+    expect(html).toContain('ЗНАКОМАЯ БОЛЬ');
     expect(html).toContain('Как обычно бывает');
     expect(html).toContain('Десятки откликов, и все одинаковые.');
     expect(html).toContain('Смета растёт по ходу.');
