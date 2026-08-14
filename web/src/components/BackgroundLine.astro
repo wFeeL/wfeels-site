@@ -185,11 +185,11 @@
   }
   section[data-line-cross-top="lr"] .bg-line::after {
     height: 48px;
-    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%201000%20192'%3E%3Cpath%20d%3D'M0%2C0%20C0%2C96%201000%2C96%201000%2C192'%20stroke%3D'%23000'%20stroke-width%3D'2'%20fill%3D'none'%2F%3E%3C%2Fsvg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%201000%20192'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M0%2C0%20C0%2C96%201000%2C96%201000%2C192'%20stroke%3D'%23000'%20stroke-width%3D'2'%20fill%3D'none'%2F%3E%3C%2Fsvg%3E");
   }
   section[data-line-cross-top="rl"] .bg-line::after {
     height: 48px;
-    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%201000%20192'%3E%3Cpath%20d%3D'M1000%2C0%20C1000%2C96%200%2C96%200%2C192'%20stroke%3D'%23000'%20stroke-width%3D'2'%20fill%3D'none'%2F%3E%3C%2Fsvg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%201000%20192'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M1000%2C0%20C1000%2C96%200%2C96%200%2C192'%20stroke%3D'%23000'%20stroke-width%3D'2'%20fill%3D'none'%2F%3E%3C%2Fsvg%3E");
   }
   @media (min-width: 480px) {
     section[data-line-cross-top="lr"] .bg-line::after,
@@ -224,7 +224,25 @@
         animation-timing-function: linear;
         animation-fill-mode: both;
         animation-timeline: view();
-        animation-range: entry;
+        /* `cover`, а не `entry` — правка 2026-08-14 по замечанию владельца
+           «она даже не рисуется, а просто появляется».
+
+           Замер прежнего поведения: при `entry` отрезок дорисован НА 100% в
+           тот момент, когда верх секции доходит до верха окна (прогон клипа
+           100% → 78% → 56% → 33% → 11% → 0% на пути секции снизу вверх).
+           Дальше читатель листает уже готовую линию: фронт рисования
+           обгоняет его на всю высоту секции и заканчивается за кадром.
+           Формально анимация работала, зрительно её не существовало.
+
+           Причина арифметическая: длина диапазона `entry` равна высоте окна
+           (900 px), а рисовать надо высоту секции (1500 px у «Услуг») — фронт
+           шёл в 1,67 раза быстрее прокрутки. `cover` даёт длину
+           «высота секции + высота окна», и на середине пути фронт оказывается
+           ровно в середине окна: секция высотой H, прогресс
+           (scroll − top + 900) / (H + 900); при scroll = top + H/2 − 450 он
+           равен 0,5, то есть нарисовано H/2 — ровно там, куда смотрит глаз.
+           Линия дочерчивается рядом с читателем, а не до его прихода. */
+        animation-range: cover;
       }
     }
   }
