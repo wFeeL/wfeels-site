@@ -190,6 +190,19 @@ const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
     const h = vbHOf('pricing');
     return { vbH: h, wide: straightPath(h, DOCK_RIGHT), narrow: narrowPath(h) };
   })(),
+  // process — раздел 4.3: «траверс справа налево» — граница акта 2→3
+  // (Ч-4), высота 1279 px проходит порог 850. Карта 6.2: `.panel`
+  // 170…1270 × +245…1279 — закрыто почти во всю ширину и высоту секции;
+  // траверс проходит под панелью (Л-2: линия ныряет под лист), видна
+  // только в полях по краям.
+  process: (() => {
+    const h = vbHOf('process');
+    return {
+      vbH: h,
+      wide: traversePath(h, DOCK_RIGHT, DOCK_LEFT),
+      narrow: narrowPath(h),
+    };
+  })(),
 };
 
 export const LINE_PATHS: Readonly<Record<string, LinePathEntry>> = {
