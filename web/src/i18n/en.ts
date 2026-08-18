@@ -17,6 +17,7 @@ export default {
   footerSections: 'Sections',
   footerTagline: 'Websites, lead capture and automation for small businesses.',
   footerTelegram: 'Message me on Telegram',
+  footerEmail: 'Send an email',
   /* Те же три обязательства, что и в русском словаре, и ни одним больше. Часы
      названы с поясом: без него окно ничего не говорит читателю из другой
      страны — а английская версия существует именно для него. */

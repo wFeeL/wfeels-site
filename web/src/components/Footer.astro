@@ -1,8 +1,8 @@
 ---
 import Container from './Container.astro';
-import Button from './Button.astro';
+import TelegramMark from './TelegramMark.astro';
 import { dict } from '../i18n/locales';
-import { TELEGRAM_URL } from '../lib/contacts';
+import { TELEGRAM_URL, emailIconLinkHtml } from '../lib/contacts';
 import { samePath, sections } from '../lib/nav';
 
 interface Props { lang: 'ru' | 'en' }
@@ -38,29 +38,41 @@ const FACTS = [t.footerReply, t.footerCity, t.footerHours];
         <p class="wordmark">wfeels</p>
         <p class="tagline">{t.footerTagline}</p>
 
-        {/* Прямой выход — кнопка, а не строчная ссылка: решение владельца, и
-            оно же единственное действие подвала. Второй кнопки здесь нет, так
-            что спорить ей не с чем.
+        {/* Задача 17 (правка 2026-08-18): было кнопкой «Написать в Telegram»
+            — стало парой значков (Telegram и почта), решение владельца.
+            Прямой выход — по-прежнему единственное действие подвала, просто
+            без подписи: обе ссылки несут доступное имя через `aria-label`
+            (`t.footerTelegram`/`t.footerEmail`), а не текст внутри.
 
-            Новую вкладку кнопка НЕ открывает, и это разобрано, а не забыто.
-            `https://t.me/…` — универсальная ссылка: на телефоне её перехватывает
-            приложение Telegram, и страница в браузере вообще никуда не уходит;
-            с `target="_blank"` рядом оставалась бы пустая вкладка. На десктопе
-            уход честный, а возврат — одна кнопка «назад», с сохранением места
-            прокрутки. Навязанное новое окно к тому же нарушает WCAG 3.2.5 и
-            ломает жест «назад» на телефоне.
+            Новую вкладку ссылка на Telegram НЕ открывает, и это разобрано, а
+            не забыто. `https://t.me/…` — универсальная ссылка: на телефоне
+            её перехватывает приложение Telegram, и страница в браузере
+            вообще никуда не уходит; с `target="_blank"` рядом оставалась бы
+            пустая вкладка. На десктопе уход честный, а возврат — одна кнопка
+            «назад», с сохранением места прокрутки. Навязанное новое окно к
+            тому же нарушает WCAG 3.2.5 и ломает жест «назад» на телефоне.
+            Ссылка на почту (`mailto:`) новую вкладку не открывает по той же
+            логике — почтовый клиент тоже перехватывает переход сам.
 
-            `rel="me"` — заявление, что профиль по ссылке принадлежит тому же
-            человеку, чей это сайт (registered link type «me»); на этом держится
-            проверка личности во внешних сервисах. `noopener`/`noreferrer` не
-            ставятся намеренно: без `target="_blank"` окна-открывателя не
-            возникает, защищать нечего, а `noreferrer` только спрятал бы от нас
-            же источник перехода. */}
-        <p class="cta">
-          <Button href={TELEGRAM_URL} variant="primary" rel="me">
-            {t.footerTelegram}
-          </Button>
-        </p>
+            `rel="me"` — заявление, что канал по ссылке принадлежит тому же
+            человеку, чей это сайт (registered link type «me»); на этом
+            держится проверка личности во внешних сервисах. `noopener`/
+            `noreferrer` не ставятся намеренно: без `target="_blank"`
+            окна-открывателя не возникает, защищать нечего, а `noreferrer`
+            только спрятал бы от нас же источник перехода.
+
+            Почтовая ссылка собрана целиком строкой (`emailIconLinkHtml`,
+            `lib/contacts.ts`) и выведена через `set:html` — та же причина,
+            что у `emailLinkHtml` в секции «Расскажите о задаче»
+            (`home/Contact.astro`): обычная интерполяция Astro дважды
+            экранировала бы числовые ссылки внутри `href` и ломала защиту
+            адреса от сборщиков. */}
+        <div class="icon-links">
+          <a class="icon-link" href={TELEGRAM_URL} rel="me" aria-label={t.footerTelegram}>
+            <TelegramMark size={20} />
+          </a>
+          <Fragment set:html={emailIconLinkHtml(t.footerEmail, 'icon-link')} />
+        </div>
 
         <ul class="facts">
           {FACTS.map((fact) => <li>{fact}</li>)}
@@ -103,12 +115,37 @@ const FACTS = [t.footerReply, t.footerCity, t.footerHours];
 </footer>
 
 <style>
+  /* Задача 17 (правка 2026-08-18): фон подвала темнее фона страницы.
+     НАХОДКА, не решение вкусом: `tokens.css` не несёт отдельного токена
+     «затемнённая поверхность» — есть `--surface` (карточки, светлее `--bg` в
+     обеих темах) и сама `--bg`, но темнее `--bg` в палитре ничего нет. Ниже
+     — не седьмой литеральный серый (правило пользователя), а формула ИЗ уже
+     объявленного `--bg`, тем же приёмом, что уже стоит в `BackgroundLine.astro`
+     (`color-mix(in srgb, var(--accent) …)`).
+
+     Процент подобран РАЗНЫМ на двух ветках не на глаз, а посчитан по WCAG
+     2.1, формула 1.4.3 (та же, что в `tokens.test.ts`): ссылки подвала
+     (`.links a`) набраны `--accent`, 16 px обычным текстом, порог AA 4,5:1.
+     В светлой теме у акцента и так мало запаса над исходным `--bg`
+     (4,78:1) — уже на 97 % смеси к чёрному запас падает до 4,49:1 (ниже
+     порога), на 98 % — 4,57:1 (проходит с небольшим, но настоящим
+     запасом), поэтому светлая ветка темнеет едва заметно. В тёмной теме
+     `--bg` и так близок к чёрному, и запас огромный (5,43:1 у акцента на
+     исходном фоне); даже при 80 % смеси к чёрному контраст акцента
+     РАСТЁТ (до 5,61:1), поэтому там темнее можно позволить куда заметнее
+     без риска для AA. */
   footer {
     border-top: 1px solid var(--border);
     padding-block: 48px 32px;
     color: var(--text-muted);
     font-size: 1rem;
+    --footer-bg-mix: 98%;
+    background: color-mix(in srgb, var(--bg) var(--footer-bg-mix), black);
   }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) footer { --footer-bg-mix: 80%; }
+  }
+  :global(:root[data-theme='dark']) footer { --footer-bg-mix: 80%; }
 
   /* Столбик на телефоне; с 480 px две колонки, и бренд занимает свою строку
      целиком — иначе кнопка и три обязательства ужимаются вдвое ради двух
@@ -139,12 +176,36 @@ const FACTS = [t.footerReply, t.footerCity, t.footerHours];
   }
   /* Мера строки: без неё описание тянется во всю ширину колонки на десктопе. */
   .tagline { margin: 8px 0 0; max-width: 34ch; }
-  .cta { margin: 24px 0 0; }
+
+  /* Ряд значков вместо прежней кнопки. Тот же ящик 44×44 px и та же круглая
+     рамка, что у Telegram-значка шапки (`Header.astro`, `.telegram`) —
+     одинаковый вид у соседних органов управления читается как один язык
+     значков, а не как две разные вёрстки одного и того же приёма. */
+  .icon-links { display: flex; gap: 12px; margin: 24px 0 0; }
+  .icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--text-muted);
+    transition: color var(--dur-micro) var(--ease),
+                border-color var(--dur-micro) var(--ease);
+  }
+  .icon-link:hover,
+  .icon-link:focus-visible {
+    color: var(--text);
+    border-color: var(--text-faint);
+  }
 
   /* Обязательства набраны основным цветом, а не приглушённым: это не подпись к
      кнопке, а то, ради чего человек её нажмёт. Чертёжная засечка слева заменяет
-     маркер списка — иконок в подвале нет по решению владельца, а голый столбик
-     строк читался бы как продолжение описания. */
+     маркер списка — список фактов остаётся текстовым и без своих значков даже
+     после задачи 17 (значки появились только у прямых ссылок выше, `.icon-
+     link`, а не здесь), а голый столбик строк читался бы как продолжение
+     описания. */
   .facts { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 8px; }
   .facts li { position: relative; padding-left: 20px; color: var(--text); }
   /* Засечка 2 px, а не 1: строки списка стоят с шагом 31,1 px, поэтому линия в
