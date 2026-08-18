@@ -419,3 +419,49 @@ test.describe('рельс — клик по точке', () => {
       await ctx.close();
     });
 });
+
+/* Находка 2 дизайн-ревью: `top: 50%` центрировал рельс по всему вьюпорту, не
+ * зная о липкой шапке (65px). Десять точек (правка владельца 2026-08-18,
+ * пункт 23) дают высоту 476px вместо прежних 380px у восьми — первая точка
+ * стала заходить под шапку уже на обычных ноутбучных высотах: на 1366×620
+ * зазор был 7px, на 1366×560 точка «НАЧАЛО» резалась пополам. `Rail.astro`
+ * теперь берёт `top` как БОЛЬШЕЕ из «центр минус половина рельса» и «низ
+ * шапки плюс 24px» — ниже 654px высоты действует аварийный пол с постоянным
+ * зазором 24px, выше — обычное центрирование, как и было. Тест меряет
+ * фактические `getBoundingClientRect()` на высотах из отчёта ревью, а не
+ * полагается на формулу — формула уже однажды разошлась с измерением в этом
+ * же компоненте (см. историю порога 1324px выше в этом файле). */
+test.describe('рельс — не заходит под шапку на низких ноутбучных высотах', () => {
+  for (const height of [560, 606, 620, 654]) {
+    test(`1366×${height}: первая точка «НАЧАЛО» видна целиком под шапкой`, async ({ page }) => {
+      await page.setViewportSize({ width: 1366, height });
+      await page.goto('/');
+
+      const geometry = await page.evaluate(() => {
+        const header = document.querySelector('header');
+        const first = document.querySelector('nav.rail .point');
+        if (!header || !first) return null;
+        return {
+          headerBottom: header.getBoundingClientRect().bottom,
+          pointTop: first.getBoundingClientRect().top,
+        };
+      });
+
+      expect(geometry, 'не нашлась шапка или первая точка рельса').not.toBeNull();
+      expect(
+        geometry!.pointTop,
+        `на 1366×${height} верх первой точки (${geometry!.pointTop}) выше низа шапки ` +
+          `(${geometry!.headerBottom}) — точка частично скрыта под шапкой`,
+      ).toBeGreaterThanOrEqual(geometry!.headerBottom);
+    });
+  }
+
+  test('на просторной высоте (900px) рельс по-прежнему центрирован — правка не поменяла обычный режим', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await page.goto('/');
+
+    const railTop = await page.locator('nav.rail').evaluate((el) => el.getBoundingClientRect().top);
+    // Центр 900px минус половина рельса (238px, см. Rail.astro): 450-238=212.
+    expect(Math.abs(railTop - 212), `верх рельса: ${railTop}, ожидалось ~212`).toBeLessThan(1);
+  });
+});
