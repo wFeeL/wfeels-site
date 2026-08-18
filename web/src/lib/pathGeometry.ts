@@ -170,6 +170,24 @@ export function verticalRunLength(points: readonly Point[], fromStart: boolean):
   return len;
 }
 
+/** Точки, где путь «оборачивается» по горизонтали — Г-5 (раздел 3 брифа
+ *  `05-line`): индекс `i` такой, что знак `x[i]-x[i-1]` не совпадает со
+ *  знаком `x[i+1]-x[i]`. Простой траверс (док → док, `x` меняется
+ *  монотонно) таких точек не даёт вовсе — «вершина изгиба» есть только там,
+ *  где путь реально поворачивает назад (`cases`: «выход внутрь и обратно»),
+ *  что и назначает Г-5 предметом проверки: не каждый путь несёт вершину. */
+export function lateralTurningPoints(points: readonly Point[]): Point[] {
+  const out: Point[] = [];
+  for (let i = 1; i < points.length - 1; i++) {
+    const dPrev = points[i].x - points[i - 1].x;
+    const dNext = points[i + 1].x - points[i].x;
+    if (dPrev !== 0 && dNext !== 0 && Math.sign(dPrev) !== Math.sign(dNext)) {
+      out.push(points[i]);
+    }
+  }
+  return out;
+}
+
 /** Вынос концов пути за пределы `viewBox` (`0…vbH`) — вторая половина Г-2.
  *  Возвращает `{ start, end }`: на сколько единиц первая/последняя точка
  *  пути лежит за пределами `[0, vbH]` (отрицательное — внутри бокса). */
