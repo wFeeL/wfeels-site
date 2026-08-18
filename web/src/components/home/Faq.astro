@@ -79,7 +79,11 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
   @media (min-width: 900px) {
     :global(#faq) {
       display: grid;
-      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+      /* Нижняя граница колонки заголовка — из содержимого, а не число:
+         слово «спрашивают» в Unbounded 48 px шире прежних 280 px, и заголовок
+         рвался посередине («спрашива/ют»). Та же правка, что в секции
+         гарантий, и по той же причине. */
+      grid-template-columns: minmax(min-content, 360px) minmax(0, 1fr);
       column-gap: 48px;
       align-items: start;
     }
