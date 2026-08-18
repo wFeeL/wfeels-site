@@ -135,24 +135,23 @@ function traversePath(vbH: number, xFrom: number, xTo: number, margin = STRAIGHT
 
 /** Раздел 4.3 `cases`: «выход внутрь и обратно» — единственное событие
  *  страницы, которое не меняет сторону (`turn='none'` у `cases`, группа
- *  держит `right` весь акт «дело»). Симметричный туда-обратно от дока
- *  `dock` к `peakX` и назад, пик в открытой полосе карты 6.2 (между полями
- *  `+262…646` и `+1014…1590`, у `cases` — «крест-накрест», раздел 6.2). */
+ *  держит `right` весь акт «дело»). Две симметричные кубики того же рода,
+ *  что несёт `traversePath` (вертикальная касательная на обоих концах
+ *  каждой половины, без стыковой кривизны): док → `peakX` → док, пик на
+ *  доле `peakYFrac` внутренней высоты — у открытой полосы карты 6.2 (между
+ *  полями `+262…646` и `+1014…1590`, у `cases` — «крест-накрест», раздел
+ *  6.2), подальше от углов обоих полей (Г-5). */
 function dipPath(vbH: number, dock: number, peakX: number, peakYFrac: number): string {
   const dx = peakX - dock;
   const yA = STRAIGHT_IN_OUT;
   const yB = round2(vbH - STRAIGHT_IN_OUT);
   const peakY = round2(yA + peakYFrac * (yB - yA));
-  const inSpan = peakY - yA;
-  const outSpan = yB - peakY;
-  const yIn = (f: number) => round2(yA + f * inSpan);
-  const yOut = (f: number) => round2(peakY + f * outSpan);
-  const xIn = (f: number) => round2(dock + f * dx);
-  const xOut = (f: number) => round2(peakX - f * dx);
+  const midIn = round2((yA + peakY) / 2);
+  const midOut = round2((peakY + yB) / 2);
   return (
     `M${dock},${-OVERHANG} L${dock},${yA} ` +
-    `C${dock},${yIn(0.35)} ${xIn(0.55)},${yIn(0.7)} ${peakX},${peakY} ` +
-    `C${xOut(0.55)},${yOut(0.3)} ${dock},${yOut(0.65)} ${dock},${yB} ` +
+    `C${dock},${midIn} ${peakX},${midIn} ${peakX},${peakY} ` +
+    `C${peakX},${midOut} ${dock},${midOut} ${dock},${yB} ` +
     `L${dock},${round2(vbH + OVERHANG)}`
   );
 }
@@ -192,6 +191,23 @@ const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
   pricing: (() => {
     const h = vbHOf('pricing');
     return { vbH: h, wide: straightPath(h, DOCK_RIGHT), narrow: narrowPath(h) };
+  })(),
+  // cases — раздел 4.3: «выход внутрь и обратно», боковой ход 300 ед.
+  // (30 % — событие по Г-4), сторона не меняется (right → right).
+  // «Самая длинная секция страницы; 2925 px без единого события — это и
+  // есть „просто идёт вниз“» (раздел 4.3) — пик в открытой полосе между
+  // двумя полями карты 6.2 (низ первого +646, верх второго +1014),
+  // на середине зазора (≈ +830), подальше от углов обоих полей.
+  cases: (() => {
+    const h = vbHOf('cases');
+    const peakX = DOCK_RIGHT - 300;
+    const gapMid = (646 + 1014) / 2; // ≈830
+    const peakYFrac = (gapMid - STRAIGHT_IN_OUT) / (h - 2 * STRAIGHT_IN_OUT);
+    return {
+      vbH: h,
+      wide: dipPath(h, DOCK_RIGHT, peakX, peakYFrac),
+      narrow: narrowPath(h),
+    };
   })(),
   // process — раздел 4.3: «траверс справа налево» — граница акта 2→3
   // (Ч-4), высота 1279 px проходит порог 850. Карта 6.2: `.panel`
