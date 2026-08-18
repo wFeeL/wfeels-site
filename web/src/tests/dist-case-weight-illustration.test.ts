@@ -83,7 +83,7 @@ describe('dist/index.html — иллюстрация «Замер»', () => {
     const expectedPct = ((WEIGHT_ILLUSTRATION.ourKb / WEIGHT_ILLUSTRATION.typicalKb) * 100).toFixed(2);
     expect(weightHtml, `--target:${expectedPct}%`).toContain(`--target:${expectedPct}%`);
     // Соразмерность: полоса «этот сайт» обязана быть короче в ту же кратность,
-    // что печатает подпись под полем (WEIGHT_CLAIM) — не «заметно короче».
+    // что печатает коэффициент в правом нижнем углу — не «заметно короче».
     const ratio = WEIGHT_ILLUSTRATION.typicalKb / WEIGHT_ILLUSTRATION.ourKb;
     expect(Math.round(ratio)).toBe(WEIGHT_ILLUSTRATION.multiplier);
   });

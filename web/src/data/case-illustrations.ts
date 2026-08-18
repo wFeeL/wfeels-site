@@ -14,7 +14,6 @@ import {
   TYPICAL_PAGE_KB_DISPLAY,
   TYPICAL_PAGE_MB_TEXT,
   WEIGHT_MULTIPLIER,
-  WEIGHT_MULTIPLIER_WORD,
   PAGE_JS_GZIP_KB_TEXT,
   THIRD_PARTY_SCRIPTS_COUNT,
 } from './pageWeight';
@@ -30,14 +29,17 @@ import {
 // в форму, удобную рисунку, вторых литералов не заводит. `typicalKb` — это
 // ОКРУГЛЁННАЯ медиана (`TYPICAL_PAGE_KB_DISPLAY`, «2,4 МБ» × 1024, не точные
 // 2412 КБ): длина полосы сравнения обязана совпадать с тем же соотношением,
-// которое подпись и `check-budget.mjs` читают с готовой страницы.
+// которое коэффициент и `check-budget.mjs` читают с готовой страницы.
+// `multiplier` — тот же коэффициент, что печатается числом в правом нижнем
+// углу иллюстрации (решение владельца 2026-08-14, пункт 7 списка правок):
+// словесная форма кратности («шесть») больше не нужна — она обслуживала
+// только удалённую фразу-подпись, второго читателя у неё не было.
 // ---------------------------------------------------------------------
 export const WEIGHT_ILLUSTRATION = {
   ourKb: PAGE_WEIGHT_KB,
   typicalKb: TYPICAL_PAGE_KB_DISPLAY,
   typicalMbText: TYPICAL_PAGE_MB_TEXT,
   multiplier: WEIGHT_MULTIPLIER,
-  multiplierWord: WEIGHT_MULTIPLIER_WORD,
   /* Строка мелких метрик под полосой сравнения — только числа с готовым
      сторожем в `check-budget.mjs` (задача 2 захода 2026-08-13). Число
      тестов сюда НЕ идёт: у него нет и не может быть сторожа, оно протухает
