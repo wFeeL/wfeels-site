@@ -109,19 +109,22 @@ function narrowPath(vbH: number): string {
   return straightPath(vbH, DOCK_LEFT);
 }
 
-/** Траверс (раздел 4.4): вертикальный вход `STRAIGHT_IN_OUT` (прямая `L`,
- *  а не затухающая кривизна кубики — раздел 12: «на этом линия ломалась уже
+/** Траверс (раздел 4.4): вертикальный вход `margin` (прямая `L`, а не
+ *  затухающая кривизна кубики — раздел 12: «на этом линия ломалась уже
  *  дважды», прямой хвост гарантирует Г-2 безусловно, не приближённо), затем
  *  ОДНА симметричная кубика с вертикальной касательной на обоих концах
  *  (оба контрольных узла лежат на высоте середины хода `mid` — классическая
  *  S-кривая без стыков) — ровно та конструкция, для которой раздел 4.4
  *  считает оценку радиуса `R = 3/8 · dy² / dx`, и затем снова вертикальный
- *  выход `STRAIGHT_IN_OUT`. `xFrom` → `xTo` — доки входа и выхода (не
- *  обязательно оба края холста: у `contact` выход — середина, «сход к
- *  середине», раздел 4.3). */
-function traversePath(vbH: number, xFrom: number, xTo: number): string {
-  const yA = STRAIGHT_IN_OUT;
-  const yB = round2(vbH - STRAIGHT_IN_OUT);
+ *  выход `margin`. `xFrom` → `xTo` — доки входа и выхода (не обязательно
+ *  оба края холста: у `contact` выход — середина, «сход к середине»,
+ *  раздел 4.3). `margin` по умолчанию `STRAIGHT_IN_OUT` (порог Г-2 96 плюс
+ *  запас); при малом `dx` (сход `contact`, 440 вместо 882) отдаётся под
+ *  бо́льший `dy` кривой, чтобы Г-1 (`R ≥ 8·w`) держался тем же приёмом, не
+ *  вторым числом. */
+function traversePath(vbH: number, xFrom: number, xTo: number, margin = STRAIGHT_IN_OUT): string {
+  const yA = margin;
+  const yB = round2(vbH - margin);
   const mid = round2((yA + yB) / 2);
   return (
     `M${xFrom},${-OVERHANG} L${xFrom},${yA} ` +
@@ -225,7 +228,25 @@ const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
     const h = vbHOf('faq');
     return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
   })(),
+  // contact — раздел 4.3: «сход к середине (Л-2: и дальше вниз)», боковой
+  // ход 440 ед. (44 % — событие по Г-4) — выход (Ч-4), но НЕ до правого
+  // причала: 966 px проходит порог 850 (раздел 3, сноска Г-3). Заканчивает
+  // не на доке, а на x=499 («середина») — footer продолжает оттуда же.
+  contact: (() => {
+    const h = vbHOf('contact');
+    const xMid = DOCK_LEFT + 440;
+    return {
+      vbH: h,
+      wide: traversePath(h, DOCK_LEFT, xMid, 48),
+      narrow: narrowPath(h),
+    };
+  })(),
 };
+
+/** Раздел 4.3 `contact`: x, на котором «сход к середине» заканчивается —
+ *  `footer` обязан продолжить путь с ТОЙ ЖЕ точки (раздел 11, п. 3: «на
+ *  каждом стыке секций горизонтальное расстояние… 0 px»). */
+const CONTACT_MID_X = DOCK_LEFT + 440;
 
 export const LINE_PATHS: Readonly<Record<string, LinePathEntry>> = {
   ...FALLBACK,
