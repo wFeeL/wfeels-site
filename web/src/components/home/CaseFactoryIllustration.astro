@@ -36,6 +36,23 @@
  * задачи (раздел 16 брифа, потолок прироста +6 КБ) без единого визуального
  * отличия. Префикс проверен на отсутствие коллизий с остальными
  * компонентами (`grep '\.cf-' src/components` — пусто до этого файла).
+ *
+ * ХОРЕОГРАФИЯ ПОЯВЛЕНИЯ (правка 2026-08-18, владелец: «должна быть слева
+ * направо, а не сверху вниз»). Геометрия схемы (D-046) не меняется — меняется
+ * только порядок, в котором она проявляется по прокрутке. Раньше каждый
+ * элемент нёс СВОЙ анонимный `animation-timeline: view()` — таймлайн любого
+ * элемента считается от его СОБСТВЕННОГО положения на странице, и четыре
+ * полки, физически стоящие одна под другой, поэтому проявлялись один за
+ * другим сверху вниз — просто потому, что нижняя полка позже пересекает
+ * границу экрана, а не потому, что так задумано. Починка — ОДИН именованный
+ * таймлайн (`view-timeline-name`, источник — `.cf-stellar` целиком), на
+ * который подписываются все элементы через `animation-timeline: --cfr`.
+ * Порядок появления теперь задаётся ЯВНО числом (`animation-range` на
+ * каждом элементе), а не положением элемента в документе — узел, затем
+ * отвод и гребёнка, затем ветки с подписями (ряды почти одновременно, с
+ * малым сдвигом), затем плитки тем (тот же малый сдвиг между рядами, а
+ * внутри ряда — `clip-path` неизменно раскрывает слева направо), затем
+ * подпись пучка последней.
  */
 import { FACTORY, FACTORY_CAPTIONS } from '../../data/factory';
 
@@ -234,10 +251,15 @@ const ariaLabel =
     /* Раскрой Б поворачивает отрезок узел → шина на 90° (`.cf-branch` выше)
        — фаза 2 обязана расти по той же оси, иначе линия «нарисуется» вбок,
        пока сама лежит вертикально (раздел 8.1: анимация только поверх
-       готовой геометрии, никогда её не искажая). */
+       готовой геометрии, никогда её не искажая). Селектор `.cf-rack
+       .cf-branch` — с одним классом-предком, специфичность (0,0,2,0) —
+       нарочно выше, чем у общего `.cf-branch` из фазы 2 ниже (0,0,1,0):
+       два правила задают РАЗНЫЕ оси для одного свойства `transform`, и без
+       перевеса в специфичности победитель зависел бы от порядка блоков в
+       файле, а не от ширины экрана. */
     @supports (animation-timeline: view()) {
       @media (prefers-reduced-motion: no-preference) {
-        .cf-branch {
+        .cf-rack .cf-branch {
           transform: scaleY(0);
           animation-name: cf-line-y-in;
         }
@@ -247,30 +269,47 @@ const ariaLabel =
 
   /* Запасное состояние — состояние ПО УМОЛЧАНИЮ (раздел 8.1): без блока
      ниже узел, шина, стержни и полки уже полностью нарисованы. Анимация —
-     только внутри `@supports`, поверх готового рисунка, никогда наоборот. */
+     только внутри `@supports`, поверх готового рисунка, никогда наоборот.
+
+     Один именованный таймлайн (`--cfr`), источник — `.cf-stellar`
+     целиком: все фазы читают ОДНУ и ту же прокрутку, поэтому порядок между
+     ними решает исключительно `animation-range` (число), а не собственное
+     положение элемента в потоке документа (это и было причиной «сверху
+     вниз» — см. комментарий у шапки файла). Диапазоны ниже не выходят за
+     100% фазы `entry`: у поля высотой 352px этого достаточно на весь показ,
+     и не приходится смешивать `entry`/`cover` в одном градиенте фаз. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
+      .cf-stellar {
+        view-timeline-name: --cfr; /* ось по умолчанию block — прокрутка вниз, ось не переопределяем */
+      }
+
+      /* Фазы 1 и 5 — узел и подпись пучка: общий кадр появления
+         (`cf-node-in`, прозрачность), различается только `animation-range`
+         — узел первым, подпись пучка последней (раздел «что требуется»,
+         пункты 1 и 5). */
       .cf-node,
       .cf-caption {
         opacity: 0;
-        animation-timeline: view();
-        animation-range: entry 15% cover 65%;
+        animation-timeline: --cfr;
         animation-timing-function: linear;
         animation-fill-mode: both;
         animation-name: cf-node-in;
         animation-duration: 60ms;
       }
+      .cf-node { animation-range: entry 0% entry 14%; }
+      .cf-caption { animation-range: entry 85% entry 100%; }
+
+      /* Фаза 2 — отвод узла и вертикальная гребёнка (шина), следом за узлом. */
       .cf-branch,
-      .cf-shelves,
-      .cf-shelf::before {
-        animation-timeline: view();
-        animation-range: entry 15% cover 65%;
+      .cf-shelves {
+        animation-timeline: --cfr;
+        animation-range: entry 10% entry 26%;
         animation-timing-function: linear;
         animation-fill-mode: both;
         animation-duration: 140ms;
       }
-      .cf-branch,
-      .cf-shelf::before {
+      .cf-branch {
         transform: scaleX(0);
         animation-name: cf-line-x-in;
       }
@@ -278,10 +317,44 @@ const ariaLabel =
         transform: scaleY(0);
         animation-name: cf-line-y-in;
       }
+
+      /* Фаза 3 — ветки (стержень к полке) и их подписи, следом за
+         гребёнкой. Чётные ряды сдвинуты на 3 п.п. позже нечётных — «почти
+         одновременно, с малым сдвигом» (раздел «что требуется»), а не
+         строгая очередь сверху вниз: сдвиг задан НОМЕРОМ ряда (`nth-child`),
+         а не унаследован от вертикальной позиции полки на странице — та
+         связь и была причиной прежнего дефекта. */
+      .cf-shelf::before,
+      .cf-shelf-label {
+        animation-timeline: --cfr;
+        animation-range: entry 22% entry 40%;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-duration: 100ms;
+      }
+      .cf-shelf::before {
+        transform: scaleX(0);
+        animation-name: cf-line-x-in;
+      }
+      .cf-shelf-label {
+        opacity: 0;
+        animation-name: cf-node-in;
+      }
+      .cf-shelf:nth-child(even)::before,
+      .cf-shelf:nth-child(even) .cf-shelf-label {
+        animation-range: entry 25% entry 43%;
+      }
+
+      /* Фаза 4 — плитки тем: каждый ряд заполняется слева направо
+         (`clip-path` сужается от правого края к нулю — направление не
+         менялось и не было причиной прежнего дефекта). Ряды почти
+         одновременно (бюджет веса раздела 16 брифа не даёт четвёртого
+         набора чисел на сдвиг рядов — малый сдвиг уже виден на фазе 3),
+         после её конца. */
       .cf-marks {
         clip-path: inset(0 100% 0 0);
-        animation-timeline: view();
-        animation-range: entry 15% cover 65%;
+        animation-timeline: --cfr;
+        animation-range: entry 40% entry 68%;
         animation-timing-function: linear;
         animation-fill-mode: both;
         animation-name: cf-marks-in;
