@@ -184,6 +184,12 @@ const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
       narrow: narrowPath(h),
     };
   })(),
+  // pricing — раздел 4.3: «прямая, правый причал» — пауза после события
+  // services, продолжает правый док, на котором тот закончился.
+  pricing: (() => {
+    const h = vbHOf('pricing');
+    return { vbH: h, wide: straightPath(h, DOCK_RIGHT), narrow: narrowPath(h) };
+  })(),
 };
 
 export const LINE_PATHS: Readonly<Record<string, LinePathEntry>> = {
