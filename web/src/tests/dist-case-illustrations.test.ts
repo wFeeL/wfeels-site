@@ -7,6 +7,7 @@ import {
   FLOW_RETRY_LABEL,
   DIALOGUE_FIELD_LABEL,
   DIALOGUE_LINES,
+  DIALOGUE_INPUT_PLACEHOLDER,
 } from '../data/case-illustrations';
 
 /* Критерии приёмки `70-workshop/specs/site-v3/02-case-illustrations.md`,
@@ -41,6 +42,13 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
     expect(casesHtml).not.toMatch(/<video\b/i);
     expect(casesHtml).not.toMatch(/<canvas\b/i);
     expect(casesHtml).not.toContain('url(');
+  });
+
+  it('внутри секции кейсов нет настоящей формы: ни <input, ни <button (бриф 04, раздел 3.2/13.7)', () => {
+    // Кнопка «Все кейсы» — `<a class="btn secondary">` (Button.astro), не
+    // `<button>`; строка ввода чата — `<div aria-hidden>`, не `<input>`.
+    expect(casesHtml).not.toMatch(/<input\b/i);
+    expect(casesHtml).not.toMatch(/<button\b/i);
   });
 
   describe('«Одна труба, четыре отвода» (Заявка-Хаб)', () => {
@@ -136,6 +144,22 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
       expect((ol.match(/<li/g) || []).length).toBe(4);
       expect(ol).not.toContain('aria-hidden');
       expect(ol).not.toContain('role="img"');
+    });
+
+    it('подсказка строки ввода присутствует дословно (бриф 04, раздел 4.6/13.8)', () => {
+      expect(casesHtml).toContain(DIALOGUE_INPUT_PLACEHOLDER);
+    });
+
+    it('строка ввода — рисунок, не форма: `aria-hidden`, вне таб-порядка', () => {
+      const idx = casesHtml.indexOf(DIALOGUE_INPUT_PLACEHOLDER);
+      expect(idx).toBeGreaterThan(-1);
+      // Ближайший открывающий div перед подсказкой — контейнер строки ввода.
+      const before = casesHtml.slice(Math.max(0, idx - 400), idx);
+      const divStart = before.lastIndexOf('<div class="input"');
+      expect(divStart, 'контейнер строки ввода не найден перед подсказкой').toBeGreaterThan(-1);
+      const inputTag = before.slice(divStart);
+      expect(inputTag).toContain('aria-hidden="true"');
+      expect(inputTag).not.toContain('tabindex');
     });
   });
 });
