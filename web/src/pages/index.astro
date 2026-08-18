@@ -57,7 +57,19 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
  *  2026-08-18, пункт 11): заголовок секции стоит снаружи `.panel`, и с этой
  *  правки его рисует `Section.astro`, а не сама секция внутри своего тела.
  *  Строки читаются из констант самой секции (`Pain.astro`, `Process.astro`,
- *  `Faq.astro`) — второй копии текста здесь не заводится. */
+ *  `Faq.astro`) — второй копии текста здесь не заводится.
+ *
+ *  `bottomGap: 'none'` у `faq` — следствие того же пункта 11, найденное
+ *  дизайн-ревью 2026-08-18. Пока подложкой была сама секция, её собственные
+ *  96 px нижнего поля лежали ВНУТРИ подложки и в зазор до соседа не
+ *  попадали. Панель стала отдельным узлом — и эти 96 сложились с `topGap:
+ *  'interior'` (96) секции контакта: 192 px пустоты ровно перед формой
+ *  заявки, вдвое больше любого другого стыка страницы (замер ревью: 1440 px,
+ *  низ панели 10634, метка контакта 10826). Секция контакта существует
+ *  ради одного — получить заявку; страница, которая перед ней читается как
+ *  закончившаяся, эту задачу проваливает. Правка выравнивает `faq` с двумя
+ *  другими панельными секциями, у которых `bottomGap: 'none'` стоял с
+ *  самого начала. */
 const GAP: Record<
   string,
   { topGap?: 'interior' | 'stitch'; bottomGap?: 'none'; surface?: boolean; label?: string; heading?: string }
@@ -69,7 +81,7 @@ const GAP: Record<
   process: { topGap: 'stitch', bottomGap: 'none', surface: true, label: PROCESS_LABEL, heading: PROCESS_HEADING },
   guarantees: { topGap: 'interior', bottomGap: 'none' },
   about: { topGap: 'interior', bottomGap: 'none' },
-  faq: { topGap: 'interior', surface: true, label: FAQ_LABEL, heading: FAQ_HEADING },
+  faq: { topGap: 'interior', bottomGap: 'none', surface: true, label: FAQ_LABEL, heading: FAQ_HEADING },
 };
 ---
 <Base
