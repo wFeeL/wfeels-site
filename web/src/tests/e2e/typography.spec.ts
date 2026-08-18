@@ -4,14 +4,14 @@
    основной, — то есть проверка ломалась не от кода, а от места запуска. */
 import { test, expect } from '@playwright/test';
 
-test('заголовок набран Manrope, текст — Golos Text, метка — JetBrains Mono',
+test('заголовок набран Unbounded, текст — Onest, метка — JetBrains Mono',
   async ({ page }) => {
     const fam = (sel: string) =>
       page.locator(sel).first().evaluate((el) => getComputedStyle(el).fontFamily);
 
     await page.goto('/');
-    expect(await fam('h1')).toContain('Manrope');
-    expect(await fam('body')).toContain('Golos Text');
+    expect(await fam('h1')).toContain('Unbounded');
+    expect(await fam('body')).toContain('Onest');
 
     // Метка проверяется на `/contact`, не на главной: с задачи 2 плана
     // «Главная» одиннадцать секций `/` несут только заголовки-заглушки без
