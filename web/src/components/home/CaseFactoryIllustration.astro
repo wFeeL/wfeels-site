@@ -307,9 +307,28 @@ const ariaLabel =
      целиком: все фазы читают ОДНУ и ту же прокрутку, поэтому порядок между
      ними решает исключительно `animation-range` (число), а не собственное
      положение элемента в потоке документа (это и было причиной «сверху
-     вниз» — см. комментарий у шапки файла). Диапазоны ниже не выходят за
-     100% фазы `entry`: у поля высотой 352px этого достаточно на весь показ,
-     и не приходится смешивать `entry`/`cover` в одном градиенте фаз. */
+     вниз» — см. комментарий у шапки файла).
+
+     ДИАПАЗОН — `contain`, не `entry` (правка 2026-08-19, второе замечание
+     того же ревью дизайна: «анимация заканчивается до того, как на неё
+     посмотрят — полное состояние достигается примерно за 300px до того,
+     как схема встаёт в кадр»). Замер той же схемы на 1440×1000
+     (`.tmp/measure-range.mjs`, не входит в репозиторий): при живой
+     `entry`-хореографии узел начинал проявляться на scrollY=5975 — ровно
+     там же, где `.cf-stellar` показывает первый пиксель, — а подпись
+     пучка завершалась на scrollY=6263, и это ЧИСЛО В ЧИСЛО совпадало со
+     scrollY, на котором схема впервые становится видна ЦЕЛИКОМ (замер:
+     `fullyVisibleStart=6263`). Пока схема въезжает в кадр — идёт вся
+     анимация; как только она встала в кадр — на неё уже нечего смотреть,
+     дальше и до `fullyVisibleEnd=6971` (ещё ≈700px прокрутки) — готовая
+     картинка. `entry` физически не может дать диапазон ПОСЛЕ полного
+     появления: 100% этой фазы по определению есть момент полного входа.
+     Нужный кусок прокрутки — `contain` (0% = впервые целиком в кадре,
+     100% = начинает выходить), тот же замер даёт под него ≈708px. Пять фаз
+     ниже используют те же СООТНОШЕНИЯ, что были в `entry` (0/10/14/22/
+     /25/26/40/43/68/85/100), пересчитанные в диапазон 0–65% этого окна
+     (коэффициент 0,65) — показ идёт, пока схема уже целиком в кадре, и
+     оставляет ≈35% окна (≈250px) на готовую картинку до начала выхода. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
       .cf-stellar {
@@ -329,14 +348,14 @@ const ariaLabel =
         animation-name: cf-node-in;
         animation-duration: 60ms;
       }
-      .cf-node { animation-range: entry 0% entry 14%; }
-      .cf-caption { animation-range: entry 85% entry 100%; }
+      .cf-node { animation-range: contain 0% contain 9%; }
+      .cf-caption { animation-range: contain 55% contain 65%; }
 
       /* Фаза 2 — отвод узла и вертикальная гребёнка (шина), следом за узлом. */
       .cf-branch,
       .cf-shelves {
         animation-timeline: --cfr;
-        animation-range: entry 10% entry 26%;
+        animation-range: contain 7% contain 17%;
         animation-timing-function: linear;
         animation-fill-mode: both;
         animation-duration: 140ms;
@@ -359,7 +378,7 @@ const ariaLabel =
       .cf-shelf::before,
       .cf-shelf-label {
         animation-timeline: --cfr;
-        animation-range: entry 22% entry 40%;
+        animation-range: contain 14% contain 26%;
         animation-timing-function: linear;
         animation-fill-mode: both;
         animation-duration: 100ms;
@@ -374,7 +393,7 @@ const ariaLabel =
       }
       .cf-shelf:nth-child(even)::before,
       .cf-shelf:nth-child(even) .cf-shelf-label {
-        animation-range: entry 25% entry 43%;
+        animation-range: contain 16% contain 28%;
       }
 
       /* Фаза 4 — плитки тем: каждый ряд заполняется слева направо
@@ -386,7 +405,7 @@ const ariaLabel =
       .cf-marks {
         clip-path: inset(0 100% 0 0);
         animation-timeline: --cfr;
-        animation-range: entry 40% entry 68%;
+        animation-range: contain 26% contain 44%;
         animation-timing-function: linear;
         animation-fill-mode: both;
         animation-name: cf-marks-in;
