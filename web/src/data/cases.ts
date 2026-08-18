@@ -58,17 +58,6 @@ export const CASES: readonly CaseCard[] = [
     homeOrder: 1,
   },
   {
-    slug: 'zayavka-hub',
-    title: 'Заявка-Хаб',
-    description:
-      'Заявки приходят из формы, из бота, с лендинга — и расходятся туда, ' +
-      'где вы работаете: почта, CRM, таблицы, Telegram. Четыре канала ' +
-      'доставки, повтор при сбое, панель со статусами.',
-    stack: 'FastAPI · SQLite · Docker',
-    onHome: true,
-    homeOrder: 2,
-  },
-  {
     slug: 'ai-consultant',
     title: 'ИИ-консультант',
     description:
@@ -76,6 +65,17 @@ export const CASES: readonly CaseCard[] = [
       'взял ответ. Если ответа в материалах нет — говорит об этом, а не ' +
       'придумывает.',
     stack: 'RAG · Chroma · FastAPI',
+    onHome: true,
+    homeOrder: 2,
+  },
+  {
+    slug: 'zayavka-hub',
+    title: 'Заявка-Хаб',
+    description:
+      'Заявки приходят из формы, из бота, с лендинга — и расходятся туда, ' +
+      'где вы работаете: почта, CRM, таблицы, Telegram. Четыре канала ' +
+      'доставки, повтор при сбое, панель со статусами.',
+    stack: 'FastAPI · SQLite · Docker',
     onHome: true,
     homeOrder: 3,
   },

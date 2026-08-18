@@ -1,9 +1,11 @@
 ---
-/* Секция 5 — кейсы. Три полноширинных блока (D-030, бриф `02-case-
- * illustrations.md`), не карточки: слева короткий текст и ссылка на страницу
- * кейса, справа — иллюстрация. Плюс тизер фабрики под ними
- * (`FactoryTeaser.astro`). Текст читается из `data/cases.ts` — единственного
- * источника, второй ручной копии здесь нет.
+/* Секция 5 — кейсы. Четыре полноширинных блока (бриф `70-workshop/specs/
+ * site-v3/04-cases-brief.md`, D-048), не карточки: слева короткий текст,
+ * справа — иллюстрация. Стороны чередуются (раздел 2.1 брифа) — рисуется
+ * циклом по `homeCases()`, а не четырьмя ручными блоками, чтобы порядок и
+ * зеркало читались из данных, а не дублировались в разметке. Текст читается
+ * из `data/cases.ts` — единственного источника, второй ручной копии здесь
+ * нет.
  */
 import Label from '../Label.astro';
 import CaseRow from './CaseRow.astro';
@@ -14,7 +16,6 @@ import FactoryTeaser from './FactoryTeaser.astro';
 import { homeCases, CASES_CATALOG_HREF } from '../../data/cases';
 
 const cases = homeCases();
-const [siteV3, zayavkaHub, aiConsultant] = cases;
 
 /* Высота поля иллюстрации — своя у каждого блока, кратная 32, в коридоре
  * 288…448 (бриф, раздел 2.1). Число здесь, а не в `data/cases.ts`: это
@@ -52,28 +53,40 @@ const ZAYAVKA_HUB_MOBILE_HEIGHT = 544;
  * тем же запасом на разницу рендеринга шрифта, что и десктопная высота
  * выше. */
 const AI_CONSULTANT_MOBILE_HEIGHT = 640;
+
+const MOBILE_HEIGHT: Record<string, number | undefined> = {
+  'zayavka-hub': ZAYAVKA_HUB_MOBILE_HEIGHT,
+  'ai-consultant': AI_CONSULTANT_MOBILE_HEIGHT,
+};
+
+/* Компонент иллюстрации по slug — читается циклом, не четырьмя ручными
+ * блоками (бриф, раздел 2.1: чередование сторон выражается формулой, а не
+ * четырьмя флагами). Четвёртый кейс (`bot-factory`) добавляется отдельной
+ * задачей (пункт 10) вместе со своей иллюстрацией. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ILLUSTRATIONS: Record<string, any> = {
+  'site-v3': CaseWeightIllustration,
+  'zayavka-hub': CaseFlowIllustration,
+  'ai-consultant': CaseDialogueIllustration,
+};
 ---
 <Label>ЧТО УЖЕ СДЕЛАНО</Label>
 <h2 class="t-h2">Кейсы</h2>
 
 <div class="rows">
-  <CaseRow item={siteV3} illustrationHeight={ILLUSTRATION_HEIGHT[siteV3.slug]}>
-    <CaseWeightIllustration />
-  </CaseRow>
-  <CaseRow
-    item={zayavkaHub}
-    illustrationHeight={ILLUSTRATION_HEIGHT[zayavkaHub.slug]}
-    illustrationMobileHeight={ZAYAVKA_HUB_MOBILE_HEIGHT}
-  >
-    <CaseFlowIllustration />
-  </CaseRow>
-  <CaseRow
-    item={aiConsultant}
-    illustrationHeight={ILLUSTRATION_HEIGHT[aiConsultant.slug]}
-    illustrationMobileHeight={AI_CONSULTANT_MOBILE_HEIGHT}
-  >
-    <CaseDialogueIllustration />
-  </CaseRow>
+  {cases.map((item) => {
+    const Illustration = ILLUSTRATIONS[item.slug];
+    return (
+      <CaseRow
+        item={item}
+        mirrored={(item.homeOrder ?? 0) % 2 === 0}
+        illustrationHeight={ILLUSTRATION_HEIGHT[item.slug]}
+        illustrationMobileHeight={MOBILE_HEIGHT[item.slug]}
+      >
+        {Illustration && <Illustration />}
+      </CaseRow>
+    );
+  })}
 </div>
 
 <p class="all-cases">

@@ -1,27 +1,34 @@
 ---
-/* Одна строка секции 5 — полноширинный блок вместо карточки (D-030, бриф
- * `02-case-illustrations.md`, раздел 2.1): слева короткий текст и ссылка на
- * страницу кейса, справа — поле иллюстрации. Рисунок всегда справа во всех
- * трёх блоках — повторение здесь ритм, а не бедность (бриф, раздел 2.1).
+/* Одна строка секции 5 — полноширинный блок вместо карточки (бриф
+ * `70-workshop/specs/site-v3/04-cases-brief.md`, раздел 2): слева короткий
+ * текст, справа — поле иллюстрации. Стороны чередуются: нечётный
+ * `homeOrder` — обычная раскладка, чётный — зеркальная (`mirrored`,
+ * вычисляется в `Cases.astro` формулой `homeOrder % 2 === 0`, раздел 2.1
+ * брифа). Порядок в DOM у всех блоков одинаковый — текст, потом рисунок;
+ * зеркалятся только колонки грида (раздел 2.3 брифа), не разметка.
  *
- * Описание кейса сжимается до одной строки — не переписанным текстом, а
- * CSS-усечением уже утверждённого абзаца (`02-texts.md`, секция 5): второй
- * ручной копии текста здесь не заводится, полный абзац остаётся в разметке
- * для программы чтения и для страницы кейса.
+ * Описание кейса не обрезается — не переписанным текстом, а полным
+ * абзацем (`02-texts.md`, секция 5 / `data/cases.ts`): второй ручной копии
+ * текста здесь не заводится, полный абзац остаётся в разметке для
+ * программы чтения и для страницы кейса.
  */
 import type { CaseCard as CaseCardData } from '../../data/cases';
 import CaseIllustrationField from './CaseIllustrationField.astro';
 
 interface Props {
   item: CaseCardData;
-  /** Высота поля иллюстрации, кратная 32 (бриф, раздел 2.1). */
+  /** Зеркальная раскладка — вторая и четвёртая строки (бриф, раздел 2.1). */
+  mirrored?: boolean;
+  /** Высота поля иллюстрации, кратная 32 (бриф, раздел 2.2). */
   illustrationHeight: number;
   /** Высота поля ниже 899 px, если отличается — см. `CaseIllustrationField`. */
   illustrationMobileHeight?: number;
 }
-const { item, illustrationHeight, illustrationMobileHeight } = Astro.props;
+const {
+  item, mirrored = false, illustrationHeight, illustrationMobileHeight,
+} = Astro.props;
 ---
-<div class="row">
+<div class:list={['row', { mirror: mirrored }]}>
   <div class="text">
     <h3 class="t-h3">{item.title}</h3>
     {item.description && <p class="description">{item.description}</p>}
@@ -46,8 +53,21 @@ const { item, illustrationHeight, illustrationMobileHeight } = Astro.props;
     padding: 48px 0;
     border-bottom: 1px solid var(--border);
   }
+  /* Колонка рисунка остаётся широкой (7fr) в обеих раскладках — зеркалится
+     сторона, а не пропорция (бриф, раздел 2.3). `direction: rtl` и
+     перестановка элементов в разметке запрещены — оба ломают порядок
+     чтения или выравнивание знаков препинания. */
+  .row.mirror { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+  .row.mirror .text { grid-column: 2; }
+  .row.mirror .illustration { grid-column: 1; }
+
   @media (max-width: 899px) {
-    .row { grid-template-columns: 1fr; }
+    /* Ниже 900 px зеркала не существует: одна колонка, сначала текст, потом
+       рисунок — у всех строк одинаково (бриф, раздел 2.3). `grid-column`
+       обязан сброситься явно: в одноколоночном гриде «2» создал бы лишнюю
+       неявную колонку и сдвинул текст вбок. */
+    .row, .row.mirror { grid-template-columns: 1fr; }
+    .row.mirror .text, .row.mirror .illustration { grid-column: auto; }
   }
 
   .text { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
