@@ -6,14 +6,14 @@ import { HOME_SECTIONS } from '../lib/sections';
 import HomeSection from '../components/home/HomeSection.astro';
 import MobileCtaBar from '../components/home/MobileCtaBar.astro';
 import Hero from '../components/home/Hero.astro';
-import Pain from '../components/home/Pain.astro';
+import Pain, { PAIN_LABEL, PAIN_HEADING } from '../components/home/Pain.astro';
 import Services from '../components/home/Services.astro';
 import Pricing from '../components/home/Pricing.astro';
 import Cases from '../components/home/Cases.astro';
-import Process from '../components/home/Process.astro';
+import Process, { PROCESS_LABEL, PROCESS_HEADING } from '../components/home/Process.astro';
 import Guarantees from '../components/home/Guarantees.astro';
 import About from '../components/home/About.astro';
-import Faq from '../components/home/Faq.astro';
+import Faq, { FAQ_LABEL, FAQ_HEADING } from '../components/home/Faq.astro';
 import Contact from '../components/home/Contact.astro';
 
 /** Секции с настоящим текстом (план `02-home-plan.md`, задачи 5–13). Читает
@@ -51,16 +51,25 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
  *  `surface` — три подложки, не подряд и не там, где уже стоят карточки на
  *  `--surface` (услуги, цены, кейсы, гарантии — увидела бы себя внутри
  *  подложки того же цвета и растворилась): «Как обычно бывает» отмечает
- *  первый акт, «Как я работаю» и «Частые вопросы» — третий. */
-const GAP: Record<string, { topGap?: 'interior' | 'stitch'; bottomGap?: 'none'; surface?: boolean }> = {
-  pain: { bottomGap: 'none', surface: true },
+ *  первый акт, «Как я работаю» и «Частые вопросы» — третий.
+ *
+ *  `label`/`heading` — только у панельных секций (правило владельца
+ *  2026-08-18, пункт 11): заголовок секции стоит снаружи `.panel`, и с этой
+ *  правки его рисует `Section.astro`, а не сама секция внутри своего тела.
+ *  Строки читаются из констант самой секции (`Pain.astro`, `Process.astro`,
+ *  `Faq.astro`) — второй копии текста здесь не заводится. */
+const GAP: Record<
+  string,
+  { topGap?: 'interior' | 'stitch'; bottomGap?: 'none'; surface?: boolean; label?: string; heading?: string }
+> = {
+  pain: { bottomGap: 'none', surface: true, label: PAIN_LABEL, heading: PAIN_HEADING },
   services: { topGap: 'stitch', bottomGap: 'none' },
   pricing: { topGap: 'interior', bottomGap: 'none' },
   cases: { topGap: 'interior', bottomGap: 'none' },
-  process: { topGap: 'stitch', bottomGap: 'none', surface: true },
+  process: { topGap: 'stitch', bottomGap: 'none', surface: true, label: PROCESS_LABEL, heading: PROCESS_HEADING },
   guarantees: { topGap: 'interior', bottomGap: 'none' },
   about: { topGap: 'interior', bottomGap: 'none' },
-  faq: { topGap: 'interior', surface: true },
+  faq: { topGap: 'interior', surface: true, label: FAQ_LABEL, heading: FAQ_HEADING },
 };
 ---
 <Base
@@ -94,6 +103,7 @@ const GAP: Record<string, { topGap?: 'interior' | 'stitch'; bottomGap?: 'none'; 
         <HomeSection
           id={s.id} order={s.order} title={s.title}
           topGap={gap.topGap} bottomGap={gap.bottomGap} surface={gap.surface}
+          label={gap.label} heading={gap.heading}
           Content={HOME_COMPONENTS[s.id]}
         />
       );
@@ -116,6 +126,7 @@ const GAP: Record<string, { topGap?: 'interior' | 'stitch'; bottomGap?: 'none'; 
           <HomeSection
             id={s.id} order={s.order} title={s.title}
             topGap={gap.topGap} bottomGap={gap.bottomGap} surface={gap.surface}
+            label={gap.label} heading={gap.heading}
             Content={HOME_COMPONENTS[s.id]}
           />
         );
@@ -128,6 +139,7 @@ const GAP: Record<string, { topGap?: 'interior' | 'stitch'; bottomGap?: 'none'; 
         <HomeSection
           id={s.id} order={s.order} title={s.title}
           topGap={gap.topGap} bottomGap={gap.bottomGap} surface={gap.surface}
+          label={gap.label} heading={gap.heading}
           Content={HOME_COMPONENTS[s.id]}
         />
       );

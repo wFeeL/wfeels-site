@@ -21,11 +21,18 @@ interface Props {
   topGap?: 'interior' | 'stitch';
   bottomGap?: 'none';
   surface?: boolean;
+  /** Метка и заголовок панельных секций (правило владельца 2026-08-18,
+   *  пункт 11) — читает `pages/index.astro` из констант самих секций
+   *  (`Pain.astro`, `Process.astro`, `Faq.astro`) и передаёт сюда, а
+   *  `Section` рисует их снаружи `.panel`. `undefined` у секций без панели —
+   *  они по-прежнему несут свой заголовок сами, внутри `Content`. */
+  label?: string;
+  heading?: string;
   Content?: any;
 }
-const { id, order, title, topGap, bottomGap, surface, Content } = Astro.props;
+const { id, order, title, topGap, bottomGap, surface, label, heading, Content } = Astro.props;
 ---
-<Section id={id} topGap={topGap} bottomGap={bottomGap} surface={surface}>
+<Section id={id} topGap={topGap} bottomGap={bottomGap} surface={surface} label={label} heading={heading}>
   {Content ? (
     <Content />
   ) : order === 1 ? (

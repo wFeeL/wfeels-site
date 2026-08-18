@@ -8,14 +8,23 @@
  * Разметка `FAQPage` в `ld+json` строится из того же массива
  * (`lib/schema.ts` → `faqPageSchema`), ровно один раз на странице: второй
  * `FAQPage` здесь не появится, даже если секцию скопируют — компонент один.
+ *
+ * Метка и заголовок секции ушли отсюда в `Section.astro` (правка владельца
+ * 2026-08-18, пункт 11: заголовок секции — снаружи панели `.surface`, не
+ * внутри неё). Константы ниже — единственный источник текста, читает их
+ * `pages/index.astro`.
  */
-import Label from '../Label.astro';
 import { FAQ_ITEMS } from '../../data/faq';
 import { faqPageSchema, serializeSchema } from '../../lib/schema';
 
 if (FAQ_ITEMS.length !== 5) {
   throw new Error('home/Faq.astro: секция 10 несёт ровно пять вопросов.');
 }
+
+/** Метка и заголовок секции — передаются в `Section` (пропы
+ *  `label`/`heading`), которая рисует их снаружи `.panel`. */
+export const FAQ_LABEL = 'ЧАСТЫЕ ВОПРОСЫ';
+export const FAQ_HEADING = 'Что обычно спрашивают';
 
 /** Разбирает `**слово**` на текстовые и полужирные куски — единственное
  *  место, где спека кладёт разметку внутрь текста данных (`data/faq.ts`).
@@ -28,9 +37,6 @@ function parts(text: string): Array<{ bold: boolean; value: string }> {
 
 const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
 ---
-<Label>ЧАСТЫЕ ВОПРОСЫ</Label>
-<h2 class="t-h2">Что обычно спрашивают</h2>
-
 <div class="list">
   {FAQ_ITEMS.map((item) => (
     <details class="item">
@@ -50,8 +56,14 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
 <script type="application/ld+json" is:inline set:html={structured} />
 
 <style>
+  /* Раньше `.list` несла собственную отбивку от заголовка (`margin: 32px 0 0`)
+     — заголовок и список делили одну подложку. Теперь заголовок стоит
+     снаружи `.panel` (правка владельца 2026-08-18, пункт 11) и отбивается от
+     неё своим собственным полем (`Section.astro`, `.section-heading`), а
+     `.panel` несёт единое поле по всему периметру — второе поле здесь
+     оказалось бы третьим случайным числом, складывающимся с полем панели. */
   .list {
-    margin: 32px 0 0;
+    margin: 0;
     border-top: 1px solid var(--border);
   }
   .item { border-bottom: 1px solid var(--border); }
