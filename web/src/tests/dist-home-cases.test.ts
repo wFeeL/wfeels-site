@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { homeCases, FACTORY_TEASER, CASES_CATALOG_HREF } from '../data/cases';
-import { WEIGHT_CLAIM, PAGE_WEIGHT_KB } from '../data/pageWeight';
+import { PAGE_WEIGHT_KB } from '../data/pageWeight';
 
 /* Тот же паттерн, что `dist-home-sections.test.ts`: читает `dist/index.html`
  * напрямую, без браузера, — доказывает, что текст секции 5 присутствует
@@ -43,14 +43,18 @@ describe('dist/index.html — секция 5', () => {
     expect(html).toContain(CASES_CATALOG_HREF);
   });
 
-  it('блок «Этот сайт»: подпись о весе страницы — дословно, вместе с рисунком «Замер»', () => {
-    expect(html, WEIGHT_CLAIM).toContain(WEIGHT_CLAIM);
+  it('блок «Этот сайт»: иллюстрация «Замер» несёт машинный якорь гейта веса', () => {
+    // С 2026-08-14 (пункт 7 списка правок владельца) прозаической подписи
+    // под полем больше нет — коэффициент печатается внутри самой
+    // иллюстрации. `check-budget.mjs` находит её по этому атрибуту; сюда
+    // выведена только сама проверка присутствия, подробный разбор чисел —
+    // `dist-case-weight-illustration.test.ts`.
+    expect(html, 'data-illustration="case-weight"').toContain(
+      'data-illustration="case-weight"',
+    );
   });
 
-  it('блок «Этот сайт»: число внутри поля иллюстрации — тот же вес, что в подписи', () => {
-    // Правка ревью 2026-08-13, часть 2: подпись под полем несёт вес словами
-    // (`WEIGHT_CLAIM`), а само поле — тем же числом крупно, из того же
-    // источника (`data/pageWeight.ts`), без второй ручной копии.
+  it('блок «Этот сайт»: число внутри поля иллюстрации — вес из data/pageWeight.ts', () => {
     const start = html.indexOf('id="cases"');
     const end = html.indexOf('id="process"');
     const section = html.slice(start, end);

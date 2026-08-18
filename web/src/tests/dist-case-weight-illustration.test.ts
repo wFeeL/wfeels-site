@@ -48,9 +48,17 @@ describe('dist/index.html — иллюстрация «Замер»', () => {
     );
   });
 
-  it('регулярка гейта «весит N КБ» находит утверждение на этой же странице', () => {
-    // Тот же паттерн, что `check-budget.mjs:368` — строчными, без флага `i`.
-    expect(/весит\s+\d+\s*КБ/.test(html)).toBe(true);
+  it('гейт находит вес страницы в полосе «этот сайт», а не по фразе на странице', () => {
+    // С 2026-08-14 (пункт 7 списка правок владельца) гейт больше не ищет
+    // прозаическую фразу «весит N КБ» — она снята со страницы. Он вырезает
+    // иллюстрацию по `data-illustration="case-weight"` и читает вес из
+    // полосы «этот сайт» (`bar-row ours`) внутри среза — тот же паттерн,
+    // что `check-budget.mjs`.
+    const oursSlice = weightHtml.slice(
+      weightHtml.indexOf('bar-row ours'),
+      weightHtml.indexOf('bar-row typical'),
+    );
+    expect(/\d+\s*КБ/.test(oursSlice)).toBe(true);
   });
 
   it('регулярка гейта «N,N КБ JS» находит мелкую метрику JS дословно', () => {
@@ -75,9 +83,21 @@ describe('dist/index.html — иллюстрация «Замер»', () => {
     const expectedPct = ((WEIGHT_ILLUSTRATION.ourKb / WEIGHT_ILLUSTRATION.typicalKb) * 100).toFixed(2);
     expect(weightHtml, `--target:${expectedPct}%`).toContain(`--target:${expectedPct}%`);
     // Соразмерность: полоса «этот сайт» обязана быть короче в ту же кратность,
-    // что печатает подпись под полем (WEIGHT_CLAIM) — не «заметно короче».
+    // что печатает коэффициент в правом нижнем углу — не «заметно короче».
     const ratio = WEIGHT_ILLUSTRATION.typicalKb / WEIGHT_ILLUSTRATION.ourKb;
     expect(Math.round(ratio)).toBe(WEIGHT_ILLUSTRATION.multiplier);
+  });
+
+  it('якорь гейта и коэффициент — правый нижний угол блока, число из WEIGHT_ILLUSTRATION.multiplier', () => {
+    // `data-illustration="case-weight"` — машинный признак, по которому
+    // `check-budget.mjs` вырезает именно эту иллюстрацию из собранной
+    // страницы (решение владельца 2026-08-14, пункт 7 списка правок).
+    expect(weightHtml, 'data-illustration="case-weight"').toContain(
+      'data-illustration="case-weight"',
+    );
+    expect(weightHtml, `×${WEIGHT_ILLUSTRATION.multiplier}`).toContain(
+      `×${WEIGHT_ILLUSTRATION.multiplier}`,
+    );
   });
 
   it('единственный акцент рисунка — на полосе «этот сайт», не на полосе медианы', () => {

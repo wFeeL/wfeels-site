@@ -22,6 +22,51 @@ const MAX_JS_GZIP_BYTES = 30 * 1024;
 
 const PAGES = ['index.html', 'contact/index.html', 'privacy/index.html'];
 
+/* Иллюстрация «Замер» (`CaseWeightIllustration.astro`) стоит только в секции
+   кейсов главной — `contact` и `privacy` её не несут по устройству страницы,
+   и это законно. Список ниже разводит эти два случая явно, по ИМЕНИ
+   страницы, а не по факту «нашлось/не нашлось»: на главной отсутствие якоря
+   ниже — красный дефект, на остальных двух — ожидаемое отсутствие, и цикл
+   по страницам вообще не пытается там ничего искать.
+
+   Решение владельца 2026-08-14, пункт 7 списка правок ([[03-redesign-2026-
+   08-14]], раздел 1 и раздел 4.1): гейт перецеплен с прозаической фразы
+   «Она весит N КБ… в N раз больше» (удалена со страницы) на срез разметки
+   самой иллюстрации. */
+const WEIGHT_ILLUSTRATION_PAGES = new Set(['index.html']);
+const WEIGHT_ILLUSTRATION_MARKER = 'data-illustration="case-weight"';
+
+// Вырезает поддерево `<div …marker…>…</div>` из HTML по БАЛАНСУ тегов, а не
+// по первому попавшемся `</div>` после маркера — разметка иллюстрации сама
+// вложенная (`.bars` > `.bar-row` > `.track` > `.fill`), и наивный индекс
+// оборвал бы срез на первом внутреннем div, а не на конце иллюстрации.
+// Возвращает `null`, если маркер не найден на странице ИЛИ разметка не
+// сбалансирована — оба случая гейт обязан считать красными, не пустыми.
+function extractElementByMarker(html, marker) {
+  const openTagRe = /<div\b[^>]*>/g;
+  let openMatch;
+  let elementStart = -1;
+  let scanFrom = -1;
+  while ((openMatch = openTagRe.exec(html))) {
+    if (openMatch[0].includes(marker)) {
+      elementStart = openMatch.index;
+      scanFrom = openTagRe.lastIndex;
+      break;
+    }
+  }
+  if (elementStart === -1) return null;
+
+  const tagRe = /<div\b[^>]*>|<\/div>/g;
+  tagRe.lastIndex = scanFrom;
+  let depth = 1;
+  let tagMatch;
+  while ((tagMatch = tagRe.exec(html))) {
+    depth += tagMatch[0] === '</div>' ? -1 : 1;
+    if (depth === 0) return html.slice(elementStart, tagRe.lastIndex);
+  }
+  return null;
+}
+
 const FONT_EXT = new Set(['.woff2', '.woff', '.ttf', '.otf', '.eot']);
 
 // Исполняемые типы `<script>`. Отсутствие атрибута — тоже JS.
@@ -371,124 +416,162 @@ for (const page of PAGES) {
 
   if (!pageOk || !jsOk) failed = true;
 
-  /* Иллюстрация «Замер» (`CaseWeightIllustration.astro`, секция кейсов
-     главной) с 2026-08-13 печатает сжатый вес JS и число сторонних скриптов
-     строкой мелких метрик — оба числа обязаны иметь сторожа на тех же
-     основаниях, что вес страницы и кратность выше (раздел 3.2 брифа
-     `02-case-illustrations.md`, «число без сторожа на рисунок не попадает»).
+  /* Иллюстрация «Замер» несёт три утверждения о весе (вес, медиана,
+     кратность) и строку мелких метрик (JS, сторонние скрипты) — все пять
+     чисел обязаны иметь сторожа (раздел 3.2 брифа `02-case-illustrations
+     .md`, «число без сторожа на рисунок не попадает»). Решение владельца
+     2026-08-14 (пункт 7 списка правок) убрало прозаическую фразу-носитель
+     этих чисел — сверка ведётся по СРЕЗУ разметки самой иллюстрации, вырезаемому
+     по `WEIGHT_ILLUSTRATION_MARKER`, а не по первому совпадению где-то на
+     странице. Это тот же класс дефекта, который здесь уже дважды чинили
+     (флаг `i` у регулярки, кратность вне таблицы слов): «проверка есть,
+     проверяет не то» — и на этот раз лечится не регуляркой точнее, а тем,
+     что сверке вообще нечего искать вне этого среза. */
+  if (WEIGHT_ILLUSTRATION_PAGES.has(page)) {
+    const weightSlice = extractElementByMarker(html, WEIGHT_ILLUSTRATION_MARKER);
 
-     Допуск не в процентах, как у веса страницы: 5% от ~2 КБ — это ~0,1 КБ,
-     уже меньше точности округления до одного знака после запятой, которым
-     печатается число. Сверяется поэтому не разница в проценте, а СОВПАДЕНИЕ
-     округлённого до 0,1 КБ значения. */
-  const jsClaim = html.match(/(\d+),(\d+)\s*КБ\s*JS\b/);
-  if (jsClaim) {
-    const claimedJsKb = Number(jsClaim[1]) + Number(jsClaim[2]) / 10;
-    const actualJsKb = Math.round((jsGzip / 1024) * 10) / 10;
-    if (Math.abs(claimedJsKb - actualJsKb) > 0.05) {
+    if (weightSlice === null) {
       console.error(
-        `✗ ${page} — страница утверждает JS ${jsClaim[1]},${jsClaim[2]} КБ, а фактический ` +
-        `сжатый JS — ${actualJsKb.toFixed(1)} КБ. Подставить новое число в data/pageWeight.ts ` +
-        '(PAGE_JS_GZIP_KB).'
+        `✗ ${page} — иллюстрация «Замер» (${WEIGHT_ILLUSTRATION_MARKER}) не найдена.\n` +
+        '  Без её среза утверждения о весе, медиане и кратности некому сверять — ' +
+        'это красный дефект, а не повод молча пропустить проверку.'
       );
       failed = true;
-    }
-  }
+    } else {
+      const oursIdx = weightSlice.indexOf('bar-row ours');
+      const typicalIdx = weightSlice.indexOf('bar-row typical');
+      const metricsIdx = weightSlice.indexOf('class="metrics"');
+      const coefficientIdx = weightSlice.indexOf('class="coefficient"');
 
-  const thirdPartyClaim = html.match(/(\d+)\s*сторонних\s*скрипт/i);
-  if (thirdPartyClaim) {
-    const claimedThirdParty = Number(thirdPartyClaim[1]);
-    if (claimedThirdParty !== thirdPartyScripts) {
-      console.error(
-        `✗ ${page} — страница утверждает ${claimedThirdParty} сторонних скриптов, а по факту ` +
-        `${thirdPartyScripts}. Подставить новое число в data/pageWeight.ts (THIRD_PARTY_SCRIPTS_COUNT).`
-      );
-      failed = true;
-    }
-  }
-
-  /* Секция «Что можно проверить» называет вес этой самой страницы и во
-     сколько раз она легче типичного сайта. Числа статические — их подставляет
-     человек по выводу этого скрипта. Значит они могут устареть молча, и тогда
-     сайт, чей главный тезис «каждое число проверяемо», станет утверждать вес,
-     которого у него нет. Это самая неловкая из возможных здесь ошибок.
-     Поэтому гейт, который вес и так измеряет, заодно сверяет утверждение. */
-  // Флаг `i` — почина 2026-08-13 ([[02-case-illustrations.md]], раздел 3.2):
-  // без него регулярка не находит «Весит N КБ» с прописной, и утверждение
-  // остаётся без надзора молча — гейт продолжает печатать зелёную галочку,
-  // хотя ни строку, ни кратность больше не проверяет. Красноту после
-  // починки — заведомо неверный вес — проверял руками, см. отчёт задачи 3
-  // плана (`70-workshop/specs/site-v3/02-case-illustrations.md`).
-  const claim = html.match(/весит\s+(\d+)\s*КБ/i);
-  if (claim) {
-    const claimedKb = Number(claim[1]);
-    const actualKb = total / 1024;
-    const drift = Math.abs(claimedKb - actualKb) / actualKb;
-
-    if (drift > 0.05) {
-      console.error(
-        `✗ ${page} — страница утверждает ${claimedKb} КБ, а весит ${kb(total)}. ` +
-        'Разница больше 5%: подставить новое число в `data/pageWeight.ts` вместе с ' +
-        'кратностью — они считаются только вместе.'
-      );
-      failed = true;
-    }
-
-    /* Кратность выведена из веса, поэтому проверяется тем же заходом.
-
-       Медиана берётся С САМОЙ СТРАНИЦЫ, а не из копии числа здесь. До правки
-       2026-08-13 она была зашита сюда литералом `2.5 * 1024 * 1024` и жила
-       ещё в двух местах — в `data/pageWeight.ts` и отдельной строкой в тексте
-       утверждения. Когда 2026-08-13 нашёлся первоисточник (Web Almanac 2025,
-       медиана десктопа 2 412 КБ, а не 2,5 МБ), стало видно, во что это
-       обходится: три копии одного числа расходятся по одной, и та, что
-       осталась в гейте, продолжила бы «подтверждать» отменённое значение.
-       Теперь зарегистрированное значение одно (`data/pageWeight.ts`), а гейт
-       сверяет напечатанное на странице с фактическим весом файла. */
-    const WORDS = ['', '', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь',
-      'восемь', 'девять', 'десять', 'одиннадцать', 'двенадцать', 'тринадцать'];
-    /* Медиана берётся не «первым числом с МБ на странице», а тем, что стоит
-       В ОДНОЙ ФРАЗЕ с кратностью. Прежняя редакция брала первое совпадение
-       `— N,N МБ` по всему документу: сегодня подходящее одно, но любая новая
-       строка вида «— 1,5 МБ» выше по документу молча подменила бы медиану в
-       сверке, и гейт остался бы зелёным, сверив кратность не с тем числом.
-       Привязка к «в N раз больше» — это ровно то отношение, которое гейт и
-       проверяет. */
-    const medianClaim = html.match(/—\s*(\d+),(\d+)\s*МБ,\s*в\s+[а-яё]+\s+раз\s+больше/i);
-    const multiplier = html.match(/в\s+([а-яё]+)\s+раз\s+больше/i);
-
-    if (!medianClaim) {
-      console.error(
-        `✗ ${page} — страница называет свой вес, но не называет медиану, с ` +
-        'которой сравнивает себя. Кратность сверять не с чем, а значит ' +
-        'утверждение «в N раз легче» осталось без надзора.'
-      );
-      failed = true;
-    } else if (multiplier) {
-      const medianKb = (Number(medianClaim[1]) + Number(medianClaim[2]) / 10) * 1024;
-      const ratio = Math.round(medianKb / (total / 1024));
-
-      /* Кратность вне списка слов — не повод промолчать. Прежняя редакция
-         проверяла `WORDS[ratio] &&` и при выходе за таблицу пропускала
-         сверку молча, продолжая печатать галочку: тот же класс дефекта
-         («проверка есть, проверяет не то»), что и флаг `i` до починки. */
-      if (!WORDS[ratio]) {
+      if (oursIdx === -1 || typicalIdx === -1 || typicalIdx <= oursIdx) {
         console.error(
-          `✗ ${page} — кратность ${ratio} вне таблицы слов (2…13). Либо ` +
-          'страница неожиданно потяжелела, либо медиана прочитана неверно; ' +
-          'в обоих случаях утверждение сверить нечем.'
-        );
-        failed = true;
-      } else if (multiplier[1].toLowerCase() !== WORDS[ratio]) {
-        console.error(
-          `✗ ${page} — страница утверждает «в ${multiplier[1]} раз больше», ` +
-          `а по факту в ${WORDS[ratio]} (${ratio}). Кратность выводится из веса: ` +
-          'подставлять оба числа вместе.'
+          `✗ ${page} — в иллюстрации «Замер» не нашлись обе полосы сравнения ` +
+          '(bar-row ours / bar-row typical). Разметка иллюстрации изменилась ' +
+          'сильнее, чем сторож ожидал — поправить сторож вместе с разметкой.'
         );
         failed = true;
       }
+
+      const weightClaim = oursIdx !== -1 && typicalIdx > oursIdx
+        ? weightSlice.slice(oursIdx, typicalIdx).match(/(\d+)\s*КБ/)
+        : null;
+      if (!weightClaim) {
+        console.error(
+          `✗ ${page} — иллюстрация «Замер» не называет вес страницы ` +
+          '(ожидалось «N КБ» в полосе «этот сайт»).'
+        );
+        failed = true;
+      } else {
+        const claimedKb = Number(weightClaim[1]);
+        const actualKb = total / 1024;
+        const drift = Math.abs(claimedKb - actualKb) / actualKb;
+        if (drift > 0.05) {
+          console.error(
+            `✗ ${page} — иллюстрация «Замер» утверждает ${claimedKb} КБ, а страница весит ${kb(total)}. ` +
+            'Разница больше 5%: подставить новое число в `data/pageWeight.ts` (PAGE_WEIGHT_KB) ' +
+            'вместе с кратностью — они считаются только вместе.'
+          );
+          failed = true;
+        }
+      }
+
+      const medianEnd = metricsIdx !== -1 && (typicalIdx === -1 || metricsIdx > typicalIdx)
+        ? metricsIdx
+        : weightSlice.length;
+      const medianClaim = typicalIdx !== -1
+        ? weightSlice.slice(typicalIdx, medianEnd).match(/(\d+),(\d+)\s*МБ/)
+        : null;
+      if (!medianClaim) {
+        console.error(
+          `✗ ${page} — иллюстрация «Замер» называет вес, но не называет медиану ` +
+          '(ожидалось «N,N МБ» в полосе «средний»). Кратность сверить не с чем.'
+        );
+        failed = true;
+      }
+
+      const coefficientClaim = coefficientIdx !== -1
+        ? weightSlice.slice(coefficientIdx).match(/×(\d+)/)
+        : null;
+      if (!coefficientClaim) {
+        console.error(
+          `✗ ${page} — коэффициент («×N» в правом нижнем углу иллюстрации, ` +
+          'class="coefficient") не найден или не несёт числа.'
+        );
+        failed = true;
+      }
+
+      // Кратность выведена из веса (`WEIGHT_MULTIPLIER`, `data/pageWeight
+      // .ts`) — сверяется только когда все три числа найдены, иначе сверять
+      // нечего и об этом уже сказано выше по каждому числу отдельно.
+      if (weightClaim && medianClaim && coefficientClaim) {
+        const claimedKb = Number(weightClaim[1]);
+        const medianKb = (Number(medianClaim[1]) + Number(medianClaim[2]) / 10) * 1024;
+        const claimedRatio = Number(coefficientClaim[1]);
+        const expectedRatio = Math.round(medianKb / claimedKb);
+        if (claimedRatio !== expectedRatio) {
+          console.error(
+            `✗ ${page} — коэффициент утверждает ×${claimedRatio}, а по факту медиана/вес даёт ` +
+            `×${expectedRatio} (медиана ${medianClaim[1]},${medianClaim[2]} МБ, вес ${claimedKb} КБ). ` +
+            'Кратность выводится из веса: подставить оба числа в `data/pageWeight.ts` вместе.'
+          );
+          failed = true;
+        }
+      }
+
+      /* Мелкие метрики (JS сжатый, сторонние скрипты) — та же логика
+         среза, тот же принцип «нет якоря — красный дефект». Допуск JS не в
+         процентах, как у веса страницы: 5% от ~2 КБ — это ~0,1 КБ, уже
+         меньше точности округления до одного знака после запятой, которым
+         печатается число. Сверяется поэтому не разница в проценте, а
+         СОВПАДЕНИЕ округлённого до 0,1 КБ значения. */
+      const metricsSlice = metricsIdx !== -1
+        ? weightSlice.slice(metricsIdx, coefficientIdx !== -1 && coefficientIdx > metricsIdx ? coefficientIdx : weightSlice.length)
+        : null;
+      if (metricsSlice === null) {
+        console.error(
+          `✗ ${page} — строка мелких метрик (JS, сторонние скрипты) не найдена ` +
+          'в иллюстрации «Замер» (ожидался class="metrics").'
+        );
+        failed = true;
+      } else {
+        const jsClaim = metricsSlice.match(/(\d+),(\d+)\s*КБ\s*JS\b/);
+        if (!jsClaim) {
+          console.error(`✗ ${page} — иллюстрация «Замер» не называет сжатый вес JS.`);
+          failed = true;
+        } else {
+          const claimedJsKb = Number(jsClaim[1]) + Number(jsClaim[2]) / 10;
+          const actualJsKb = Math.round((jsGzip / 1024) * 10) / 10;
+          if (Math.abs(claimedJsKb - actualJsKb) > 0.05) {
+            console.error(
+              `✗ ${page} — иллюстрация утверждает JS ${jsClaim[1]},${jsClaim[2]} КБ, а фактический ` +
+              `сжатый JS — ${actualJsKb.toFixed(1)} КБ. Подставить новое число в data/pageWeight.ts ` +
+              '(PAGE_JS_GZIP_KB).'
+            );
+            failed = true;
+          }
+        }
+
+        const thirdPartyClaim = metricsSlice.match(/(\d+)\s*сторонних\s*скрипт/i);
+        if (!thirdPartyClaim) {
+          console.error(`✗ ${page} — иллюстрация «Замер» не называет число сторонних скриптов.`);
+          failed = true;
+        } else {
+          const claimedThirdParty = Number(thirdPartyClaim[1]);
+          if (claimedThirdParty !== thirdPartyScripts) {
+            console.error(
+              `✗ ${page} — иллюстрация утверждает ${claimedThirdParty} сторонних скриптов, а по факту ` +
+              `${thirdPartyScripts}. Подставить новое число в data/pageWeight.ts (THIRD_PARTY_SCRIPTS_COUNT).`
+            );
+            failed = true;
+          }
+        }
+      }
     }
   }
+  // `contact/index.html` и `privacy/index.html` иллюстрацию «Замер» не
+  // несут по устройству страницы (она рендерится только в секции кейсов
+  // главной, `Cases.astro`) — сюда они не попадают уже на уровне
+  // `WEIGHT_ILLUSTRATION_PAGES`, и это законное, а не пропущенное отсутствие.
 }
 
 if (failed) {

@@ -12,7 +12,6 @@ import CaseFlowIllustration from './CaseFlowIllustration.astro';
 import CaseDialogueIllustration from './CaseDialogueIllustration.astro';
 import FactoryTeaser from './FactoryTeaser.astro';
 import { homeCases, CASES_CATALOG_HREF } from '../../data/cases';
-import { WEIGHT_CLAIM } from '../../data/pageWeight';
 
 const cases = homeCases();
 const [siteV3, zayavkaHub, aiConsultant] = cases;
@@ -60,7 +59,6 @@ const AI_CONSULTANT_MOBILE_HEIGHT = 640;
 <div class="rows">
   <CaseRow item={siteV3} illustrationHeight={ILLUSTRATION_HEIGHT[siteV3.slug]}>
     <CaseWeightIllustration />
-    <p slot="caption" class="t-small weight-caption">{WEIGHT_CLAIM}</p>
   </CaseRow>
   <CaseRow
     item={zayavkaHub}
@@ -90,12 +88,6 @@ const AI_CONSULTANT_MOBILE_HEIGHT = 640;
     border-top: 1px solid var(--border);
   }
   .rows :global(.row:last-child) { border-bottom: none; }
-
-  .weight-caption {
-    margin: 16px 0 0;
-    font-family: var(--font-mono);
-    color: var(--text-muted);
-  }
 
   .all-cases {
     margin: 32px 0 0;
