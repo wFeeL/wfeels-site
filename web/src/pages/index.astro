@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import Container from '../components/Container.astro';
 import LangSwitch from '../components/LangSwitch.astro';
 import { HOME_SECTIONS } from '../lib/sections';
+import { isActStitch } from '../lib/backgroundLine';
 import HomeSection from '../components/home/HomeSection.astro';
 import MobileCtaBar from '../components/home/MobileCtaBar.astro';
 import Hero from '../components/home/Hero.astro';
@@ -70,15 +71,27 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
  *  закончившаяся, эту задачу проваливает. Правка выравнивает `faq` с двумя
  *  другими панельными секциями, у которых `bottomGap: 'none'` стоял с
  *  самого начала. */
+/** `topGap: 'stitch'` у `services` и `process` не пишется здесь литералом —
+ *  оба выведены функцией `isActStitch` (`lib/backgroundLine.ts`) из смены
+ *  поля `act` в `lib/sections.ts` (бриф `02-background-line.md`, раздел 4.2:
+ *  «GAPS выводит topGap:'stitch' из смены act»). `contact` в этот вывод
+ *  сознательно не включён — акт меняется и там (3 → 'out'), но бриф прямо
+ *  запрещает трогать её `topGap` этим заходом (вопрос владельцу, «Влияние на
+ *  базу»); `isActStitch` учитывает только переходы МЕЖДУ пронумерованными
+ *  актами (1↔2, 2↔3), поэтому и без явного исключения не задевает ни
+ *  `hero→pain` ('in'→1), ни `faq→contact` (3→'out'). */
 const GAP: Record<
   string,
   { topGap?: 'interior' | 'stitch'; bottomGap?: 'none'; surface?: boolean; label?: string; heading?: string }
 > = {
   pain: { bottomGap: 'none', surface: true, label: PAIN_LABEL, heading: PAIN_HEADING },
-  services: { topGap: 'stitch', bottomGap: 'none' },
+  services: { topGap: isActStitch('services') ? 'stitch' : 'interior', bottomGap: 'none' },
   pricing: { topGap: 'interior', bottomGap: 'none' },
   cases: { topGap: 'interior', bottomGap: 'none' },
-  process: { topGap: 'stitch', bottomGap: 'none', surface: true, label: PROCESS_LABEL, heading: PROCESS_HEADING },
+  process: {
+    topGap: isActStitch('process') ? 'stitch' : 'interior',
+    bottomGap: 'none', surface: true, label: PROCESS_LABEL, heading: PROCESS_HEADING,
+  },
   guarantees: { topGap: 'interior', bottomGap: 'none' },
   about: { topGap: 'interior', bottomGap: 'none' },
   faq: { topGap: 'interior', bottomGap: 'none', surface: true, label: FAQ_LABEL, heading: FAQ_HEADING },

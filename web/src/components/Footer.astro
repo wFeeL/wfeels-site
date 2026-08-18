@@ -4,10 +4,25 @@ import TelegramMark from './TelegramMark.astro';
 import { dict } from '../i18n/locales';
 import { TELEGRAM_URL, emailIconLinkHtml } from '../lib/contacts';
 import { samePath, sections } from '../lib/nav';
+import { footerLineData } from '../lib/backgroundLine';
 
-interface Props { lang: 'ru' | 'en' }
-const { lang } = Astro.props;
+interface Props {
+  lang: 'ru' | 'en';
+  /** Хвост линии на фоне (бриф `02-background-line.md`, раздел 3.1/7.2) —
+   *  подвал несёт его только на странице, где линия вообще есть (сегодня —
+   *  главная, `Base.astro` пробрасывает свой проп `line` сюда без правки).
+   *  Без гейта подвал рисовал бы неоформленный `<svg>` на КАЖДОЙ странице:
+   *  разметку и атрибуты несёт этот файл, а `stroke`/`vector-effect`/
+   *  анимацию — `BackgroundLine.astro`, который подключается только при
+   *  `line: true`. */
+  line?: boolean;
+}
+const { lang, line = false } = Astro.props;
 const t = dict(lang);
+/* `footerLineData()` безопасно вызывать только когда `line` включён:
+   функция не смотрит на `line`, но вне главной её сторона не нужна
+   (страница без линии эти данные никак не использует), поэтому вызов ниже
+   стоит внутри условной ветки разметки, не здесь. */
 const year = 2026;
 
 /* Разделы приходят ровно оттуда же, откуда их берёт шапка. Своего списка у
@@ -30,8 +45,15 @@ const LEGAL = [
    ответит». Сами формулировки — в словаре, вместе с объяснением, почему они
    такие. */
 const FACTS = [t.footerReply, t.footerCity, t.footerHours];
+
+const tail = line ? footerLineData() : null;
 ---
-<footer>
+<footer data-line-side={tail?.side} data-line-last={tail ? '' : undefined}>
+  {tail && (
+    <svg class="line-run" viewBox="0 0 100 1000" preserveAspectRatio="none" aria-hidden="true">
+      <path d={tail.runD} pathLength="1" />
+    </svg>
+  )}
   <Container>
     <div class="groups">
       <div class="brand-group">
@@ -141,7 +163,43 @@ const FACTS = [t.footerReply, t.footerCity, t.footerHours];
     font-size: 1rem;
     --footer-bg-mix: 98%;
     background: color-mix(in srgb, var(--bg) var(--footer-bg-mix), black);
+    /* Хвост линии на фоне (бриф `02-background-line.md`, раздел 3.1, 3.5):
+       `<footer>` — не потомок `Container.astro` (он оборачивает Container
+       внутри себя), поэтому `--container-pad` не наследуется сюда сама и
+       задана явно теми же тремя числами, что и в `Container.astro`
+       (16/24/40) — второй раз число не подбирается, переносится. `position:
+       relative` даёт хвосту (`position: absolute; inset-block: 0`) точку
+       отсчёта, покрывающую ПОЛНУЮ высоту подвала, включая его собственный
+       `padding-block` — иначе мощение (раздел 3.5) оставило бы дыру в 80 px
+       между концом прогона `contact` и началом хвоста. */
+    position: relative;
+    --container-pad: 16px;
   }
+
+  /* Хвост подвала докуется от СВОИХ кромок, а не от кромок контейнера.
+     Общее правило `BackgroundLine.astro` считает вынос как
+     `--container-pad + (100vw − --container) / 2 − --line-x`: это расстояние
+     от кромки СОДЕРЖИМОГО до кромки окна, и оно верно для секций, которые
+     лежат внутри `Container`. `<footer>` контейнер оборачивает СОБСТВЕННЫМ
+     полем, то есть его собственная кромка и есть кромка окна — поправка на
+     центрирование там лишняя и уносит прогон за край: на 1920 px хвост
+     уезжал на 298 px вправо и рождал горизонтальную прокрутку всей страницы
+     (замерено; вместе с ним падал и сторож раскроя схемы фабрики, который
+     проверяет ту же прокрутку).
+
+     Числа выведены из общего правила, а не подобраны: в секциях правая
+     кромка прогона встаёт ровно на `--line-x` от кромки окна, поэтому его
+     левая кромка — на `--line-x − --line-amp`. Здесь записано то же самое,
+     только напрямую. Специфичность выше общего правила за счёт имени
+     элемента, поэтому переопределение срабатывает без `!important`. */
+  footer[data-line-side="left"] :global(.line-run) {
+    left: calc(var(--line-x) - var(--line-amp));
+  }
+  footer[data-line-side="right"] :global(.line-run) {
+    right: calc(var(--line-x-right) - var(--line-amp));
+  }
+  @media (min-width: 480px) { footer { --container-pad: 24px; } }
+  @media (min-width: 900px) { footer { --container-pad: 40px; } }
   @media (prefers-color-scheme: dark) {
     :global(:root:not([data-theme='light'])) footer { --footer-bg-mix: 80%; }
   }

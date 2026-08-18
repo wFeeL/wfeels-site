@@ -36,6 +36,16 @@
  *  плейсхолдером рельса `.label { max-width: 96px }` (`Rail.astro`) — не
  *  ломают его на 390 px (см. отчёт исполнителя). */
 
+/** Акт «Трёх актов» (правка владельца 2026-08-13, `70-workshop/specs/
+ *  site-v3/02-background-line.md`, раздел 4.2): `'in'` — первый экран,
+ *  `1` — «проблема» (pain), `2` — «дело» (services/pricing/cases),
+ *  `3` — «доверие» (process/guarantees/about/faq), `'out'` — выход
+ *  (contact). Единственный источник ритма: и отступы страницы
+ *  (`pages/index.astro`, вывод `topGap` из смены `act`), и переходы линии на
+ *  фоне (`lib/backgroundLine.ts`) читают это поле, второго перечня не
+ *  заводится. */
+export type HomeAct = 'in' | 1 | 2 | 3 | 'out';
+
 export interface HomeSection {
   /** Якорь секции. Читает разметка (`id` на `<section>`), шапка и подвал
    *  (`lib/nav.ts` собирает из части этих якорей четыре пункта навигации) и
@@ -55,19 +65,21 @@ export interface HomeSection {
   /** Секция — первая в своей точке рельса. Точка рисуется рельсом (задача 4)
    *  один раз на группу, и это поле определяет, какая секция её представляет. */
   railFirst: boolean;
+  /** Акт ритма «Три акта» — см. `HomeAct`. */
+  act: HomeAct;
 }
 
 export const HOME_SECTIONS: readonly HomeSection[] = [
-  { id: 'hero', order: 1, title: 'Секция 1 — Первый экран', railLabel: 'НАЧАЛО', railFirst: true },
-  { id: 'pain', order: 2, title: 'Секция 2 — Как обычно бывает', railLabel: 'КАК БЫВАЕТ', railFirst: true },
-  { id: 'services', order: 3, title: 'Секция 3 — Что я делаю', railLabel: 'УСЛУГИ', railFirst: true },
-  { id: 'pricing', order: 4, title: 'Секция 4 — Цены', railLabel: 'ЦЕНЫ', railFirst: true },
-  { id: 'cases', order: 5, title: 'Секция 5 — Кейсы', railLabel: 'КЕЙСЫ', railFirst: true },
-  { id: 'process', order: 6, title: 'Секция 6 — Как я работаю', railLabel: 'ПРОЦЕСС', railFirst: true },
-  { id: 'guarantees', order: 7, title: 'Секция 7 — Что я гарантирую', railLabel: 'ГАРАНТИИ', railFirst: true },
-  { id: 'about', order: 8, title: 'Секция 8 — Обо мне', railLabel: 'ОБО МНЕ', railFirst: true },
-  { id: 'faq', order: 9, title: 'Секция 9 — Частые вопросы', railLabel: 'FAQ', railFirst: true },
-  { id: 'contact', order: 10, title: 'Секция 10 — Контакт', railLabel: 'КОНТАКТ', railFirst: true },
+  { id: 'hero', order: 1, title: 'Секция 1 — Первый экран', railLabel: 'НАЧАЛО', railFirst: true, act: 'in' },
+  { id: 'pain', order: 2, title: 'Секция 2 — Как обычно бывает', railLabel: 'КАК БЫВАЕТ', railFirst: true, act: 1 },
+  { id: 'services', order: 3, title: 'Секция 3 — Что я делаю', railLabel: 'УСЛУГИ', railFirst: true, act: 2 },
+  { id: 'pricing', order: 4, title: 'Секция 4 — Цены', railLabel: 'ЦЕНЫ', railFirst: true, act: 2 },
+  { id: 'cases', order: 5, title: 'Секция 5 — Кейсы', railLabel: 'КЕЙСЫ', railFirst: true, act: 2 },
+  { id: 'process', order: 6, title: 'Секция 6 — Как я работаю', railLabel: 'ПРОЦЕСС', railFirst: true, act: 3 },
+  { id: 'guarantees', order: 7, title: 'Секция 7 — Что я гарантирую', railLabel: 'ГАРАНТИИ', railFirst: true, act: 3 },
+  { id: 'about', order: 8, title: 'Секция 8 — Обо мне', railLabel: 'ОБО МНЕ', railFirst: true, act: 3 },
+  { id: 'faq', order: 9, title: 'Секция 9 — Частые вопросы', railLabel: 'FAQ', railFirst: true, act: 3 },
+  { id: 'contact', order: 10, title: 'Секция 10 — Контакт', railLabel: 'КОНТАКТ', railFirst: true, act: 'out' },
 ];
 
 /** Список якорей в порядке страницы. Читает `pages/index.astro`, чтобы не

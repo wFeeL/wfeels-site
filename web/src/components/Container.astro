@@ -5,7 +5,17 @@
     max-width: var(--container);
     margin-inline: auto;
     padding-inline: 16px;
+    /* `--container-pad` — то же число, что и `padding-inline` выше, задано
+       ещё и переменной: линия на фоне (`BackgroundLine.astro`, раздел 3.4
+       брифа `02-background-line.md`) считает горизонтальный вынос прогона
+       от кромки окна и ей нужно это число в `calc()`, а не только в самом
+       свойстве. Второй раз число не подбирается — читает то же самое. */
+    --container-pad: 16px;
   }
-  @media (min-width: 480px) { .container { padding-inline: 24px; } }
-  @media (min-width: 900px) { .container { padding-inline: 40px; } }
+  @media (min-width: 480px) {
+    .container { padding-inline: 24px; --container-pad: 24px; }
+  }
+  @media (min-width: 900px) {
+    .container { padding-inline: 40px; --container-pad: 40px; }
+  }
 </style>
