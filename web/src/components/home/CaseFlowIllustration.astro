@@ -176,7 +176,6 @@ const ariaLabel =
     <rect class="b d p2" x={NODE_X} y={NODE_Y} width={NODE_W} height={NODE_H} pathLength="1" />
     <g class="f p2">
       <text class="lx" x={NODE_X + NODE_W / 2} y={NODE_CY + 5} text-anchor="middle">ЗАЯВКА</text>
-      <circle class="dot" cx={NODE_X} cy={NODE_CY} r="3.5" />
     </g>
 
     <path class="l d p3" d={aPathTrunkOut} pathLength="1" />
@@ -205,6 +204,22 @@ const ariaLabel =
 
     <path class="h d p6" d={aPathReturn} pathLength="1" />
     <text class="lm f p6" x={(RETURN_X + LAST_CHANNEL_X) / 2} y={RETURN_LABEL_Y} text-anchor="middle">{FLOW_RETRY_LABEL}</text>
+
+    {/* Пакеты — заявка едет по уже нарисованным линиям (бриф раздел 5.3/5.4).
+        Атрибуты `cx`/`cy` — КОНЕЧНОЕ положение каждого пакета (докладка), это
+        и есть запасное состояние по умолчанию (раздел 8.1). Анимация (только
+        при поддержке `view()` и без `reduce`) двигает пакет `translate`-ом от
+        точки отправления НАЗАД к нулю — см. `@keyframes pkt-*` в `<style>`.
+        Средний источник (БОТ, SOURCE_Y[1]) пакета не получает (раздел 5.3:
+        его маршрут — прямая вдоль ствола, движение по ней не читается). */}
+    <g class="pkts" aria-hidden="true">
+      <circle class="pkt p7 k-sf" cx={NODE_X} cy={NODE_CY} r="4" />
+      <circle class="pkt p8 k-sl" cx={NODE_X} cy={NODE_CY} r="4" />
+      <circle class="pkt p9 k-cm" cx={CHANNEL_XS[0]} cy={CHANNEL_NODE_Y} r="4" />
+      <circle class="pkt p10 k-cc" cx={CHANNEL_XS[1]} cy={CHANNEL_NODE_Y} r="4" />
+      <circle class="pkt p11 k-ct" cx={CHANNEL_XS[2]} cy={CHANNEL_NODE_Y} r="4" />
+      <circle class="pkt p12 k-rt" cx={LAST_CHANNEL_X} cy={CHANNEL_NODE_Y} r="4" />
+    </g>
   </svg>
 
   <svg class="svg rb" viewBox={`0 0 ${B_VIEWBOX_W} 480`} width={B_VIEWBOX_W} height="480" role="img" aria-label={ariaLabel} focusable="false">
@@ -216,7 +231,6 @@ const ariaLabel =
     <rect class="b d p2" x={B_NODE_X} y={B_NODE_Y} width={B_NODE_W} height={B_NODE_H} pathLength="1" />
     <g class="f p2">
       <text class="lx" x={B_NODE_CX} y={B_NODE_Y + B_NODE_H / 2 + 5} text-anchor="middle">ЗАЯВКА</text>
-      <circle class="dot" cx={B_NODE_CX} cy={B_NODE_Y} r="3.5" />
     </g>
 
     <path class="l d p3" d={bPathTrunk} pathLength="1" />
@@ -230,6 +244,18 @@ const ariaLabel =
 
     <path class="h d p6" d={bPathReturn} pathLength="1" />
     <text class="lm f p6" x={B_NODE_CX} y={B_LABEL_Y} text-anchor="middle">{FLOW_RETRY_LABEL}</text>
+
+    {/* Пакеты раскроя Б — меньше, чем в А (четыре вместо шести, бриф раздел
+        5.3): один слитный источник и только два первых канала получают
+        видимое движение, третий и четвёртый несёт только повтор. Веса те же
+        фазы (`.p7`/`.p9`/`.p10`/`.p12`), что у раскроя А — тот же смысл,
+        другая геометрия. */}
+    <g class="pkts" aria-hidden="true">
+      <circle class="pkt p7 k-ms" cx={B_NODE_CX} cy={B_NODE_Y} r="4" />
+      <circle class="pkt p9 k-c1" cx={B_NODE_LEFT} cy={B_BRANCH_YS[0]} r="4" />
+      <circle class="pkt p10 k-c2" cx={B_NODE_LEFT} cy={B_BRANCH_YS[1]} r="4" />
+      <circle class="pkt p12 k-mr" cx={B_NODE_LEFT} cy={B_LAST_BRANCH_Y} r="4" />
+    </g>
   </svg>
 </div>
 
@@ -257,6 +283,23 @@ const ariaLabel =
      * блоках. */
     overflow-x: auto;
     overflow-y: hidden;
+    /* Именованный таймлайн — обязателен здесь, не анонимный `view()` на
+     * каждом элементе (бриф `04-cases-brief.md`, раздел 8.3, «Ловушка 2»):
+     * `.flow` сам — прокручиваемый контейнер (`overflow-x: auto` выше
+     * создаёт его вне зависимости от того, есть ли фактическая горизонтальная
+     * прокрутка), и АНОНИМНЫЙ `view()` у потомка (линии, пакеты) разрешился
+     * бы ПРОТИВ `.flow`, а не против окна — `.flow` по вертикали никогда не
+     * скроллится сам по себе, диапазон таймлайна свернулся бы в точку, и
+     * анимация замерла бы на первом кадре. Именованный таймлайн ставит
+     * СУБЪЕКТОМ сам `.flow`: источник ищется от РОДИТЕЛЯ `.flow` вверх — это
+     * `.field` (`CaseIllustrationField.astro`, `overflow: clip`, не
+     * прокручиваемый контейнер) — и находит окно. Потомки (`.d`, `.f`,
+     * `.pkt`) — читают этот же таймлайн по имени, не заводят собственный.
+     * Свойство — ВНЕ `@supports`/`@media` намеренно: браузер без поддержки
+     * просто отбрасывает незнакомое свойство и никакого состояния не задаёт
+     * (тот же приём, что `CaseFactoryIllustration.astro`: `.cf-stellar`). */
+    view-timeline-name: --case-flow;
+    view-timeline-axis: block;
   }
 
   .svg { display: block; max-width: 100%; height: auto; }
@@ -306,7 +349,11 @@ const ariaLabel =
   .h { stroke: var(--text-muted); stroke-width: var(--stroke-hair); opacity: var(--stroke-hair-opacity); }
   .b { stroke-width: var(--stroke-bold); }
   .n { fill: var(--bg); }
-  .dot { fill: var(--accent); } /* единственный акцент рисунка (бриф, раздел 4.3) */
+  /* Единственный акцент рисунка (бриф, раздел 5.3) — роль «заявка», у всех
+     шести/четырёх пакетов сразу, а не у отдельной точки входа (`.dot`,
+     снятой этим заходом: её роль и её покойное положение (160,128) наследует
+     пара пакетов `src-form`/`src-landing`). */
+  .pkt { fill: var(--accent); }
 
   .lm, .lx { font-family: var(--font-mono); font-size: 1rem; } /* small — не мельче 14px, раздел 2.3 */
   .lm { fill: var(--text-muted); }
@@ -317,8 +364,8 @@ const ariaLabel =
      `@supports`, поверх статичного состояния, никогда наоборот. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      .d, .f {
-        animation-timeline: view();
+      .d, .f, .pkt {
+        animation-timeline: --case-flow;
         animation-range: entry 15% cover 65%;
         /* Раздельные свойства, не сокращение `animation:` — сборка сводит
            `animation` + `animation-timeline` в один шорткод, а собранный
@@ -340,9 +387,110 @@ const ariaLabel =
       .p4 { animation-duration: 220ms; }
       .p5 { animation-duration: 280ms; }
       .p6 { animation-duration: 340ms; }
+
+      /* Пакеты — оживают ПОСЛЕ того, как схема дорисована (бриф, раздел 5.7:
+         веса больше p6=340ms). Заявки пришли → разошлись по каналам → повтор
+         последним — та же логика очерёдности, что у фаз рисования выше. */
+      .p7 { animation-duration: 420ms; }  /* src-form */
+      .p8 { animation-duration: 480ms; }  /* src-landing */
+      .p9 { animation-duration: 560ms; }  /* ch-mail / mb-ch1 */
+      .p10 { animation-duration: 620ms; } /* ch-crm / mb-ch2 */
+      .p11 { animation-duration: 680ms; } /* ch-tables */
+      .p12 { animation-duration: 900ms; } /* retry / mb-retry, последним */
+
+      .k-sf { animation-name: sf; }
+      .k-sl { animation-name: sl; }
+      .k-cm { animation-name: cm; }
+      .k-cc { animation-name: cc; }
+      .k-ct { animation-name: ct; }
+      .k-rt { animation-name: rt; }
+      .k-ms { animation-name: ms; }
+      .k-c1 { animation-name: c1; }
+      .k-c2 { animation-name: c2; }
+      .k-mr { animation-name: mr; }
     }
   }
 
   @keyframes fdraw { to { stroke-dashoffset: 0; } }
   @keyframes ffade { to { opacity: 1; } }
+
+  /* Пакеты — раскрой А (бриф, раздел 5.2/5.3). Каждый кружок несёт СВОИМ
+     `cx`/`cy`-атрибутом конечное положение (докладка/покой); `translate`
+     ниже двигает его НАЗАД к точке отправления на 0% и возвращает к нулю на
+     100% — именно поэтому маршрут в комментариях читается «от узла», а числа
+     в keyframe идут в обратную сторону (0,0 — покой, отрицательные — старт).
+     Дельты — разности констант компонента выше (TRUNK_X 112, NODE_X 160,
+     NODE_W 128, NODE_CY 128, CHANNEL_XS [320,384,448,544], CHANNEL_NODE_Y
+     192, RETURN_X 224, RETURN_BUS_Y 256, NODE_Y+NODE_H 152); CSS не читает
+     JS-константы без `define:vars` — при изменении этих чисел выше дельты
+     пересчитываются вручную здесь же. */
+  @keyframes sf {           /* (96,64)→(112,64)→(112,128)→(160,128) */
+    0% { translate: -64px -64px; }    /* (96,64) — начало источника «ФОРМА» */
+    12.5% { translate: -48px -64px; } /* (112,64) — поворот на ствол */
+    62.5% { translate: -48px 0; }     /* (112,128) — спуск по стволу до узла */
+    100% { translate: 0 0; }          /* (160,128) — левая кромка узла, покой */
+  }
+  @keyframes sl {        /* (96,192)→(112,192)→(112,128)→(160,128) */
+    0% { translate: -64px 64px; }     /* (96,192) — начало источника «ЛЕНДИНГ» */
+    12.5% { translate: -48px 64px; }  /* (112,192) — поворот на ствол */
+    62.5% { translate: -48px 0; }     /* (112,128) — подъём по стволу до узла */
+    100% { translate: 0 0; }          /* (160,128) — левая кромка узла, покой */
+  }
+  @keyframes cm {           /* (288,128)→(320,128)→(320,192) */
+    0% { translate: -32px -64px; }  /* (288,128) — правая кромка узла */
+    33% { translate: 0 -64px; }     /* (320,128) — над отводом «ПОЧТА» */
+    100% { translate: 0 0; }        /* (320,192) — верх узла канала, покой */
+  }
+  @keyframes cc {           /* (288,128)→(384,128)→(384,192) */
+    0% { translate: -96px -64px; }  /* (288,128) — правая кромка узла */
+    60% { translate: 0 -64px; }     /* (384,128) — над отводом «CRM» */
+    100% { translate: 0 0; }        /* (384,192) — верх узла канала, покой */
+  }
+  @keyframes ct {            /* (288,128)→(448,128)→(448,192) */
+    0% { translate: -160px -64px; } /* (288,128) — правая кромка узла */
+    71% { translate: 0 -64px; }     /* (448,128) — над отводом «ТАБЛИЦЫ» */
+    100% { translate: 0 0; }        /* (448,192) — верх узла канала, покой */
+  }
+  /* Пакет-повтор — единственная неортогональная фаза во всей секции (бриф,
+     раздел 5.4): последний участок (86%→100%) — прямая от узла к каналу,
+     она читается как «то же самое ещё раз», а не как новый маршрут. Без
+     красного — направление и пауза несут отказ (раздел 5.4). Стопы 45% и
+     52% (пауза «не приняли») делят одно значение — один блок, не два. */
+  @keyframes rt {
+    0% { translate: -256px -64px; }  /* (288,128) — вышел из узла */
+    30% { translate: 0 -64px; }      /* (544,128) — дошёл по стволу до отвода */
+    45%, 52% { translate: 0 0; }     /* (544,192) — дошёл до узла канала, пауза */
+    62% { translate: 0 64px; }       /* (544,256) — спустился на шину возврата */
+    78% { translate: -320px 64px; }  /* (224,256) — прошёл шину назад */
+    86% { translate: -320px -40px; } /* (224,152) — вернулся к нижней кромке узла */
+    100% { translate: 0 0; }         /* (544,192) — дошёл со второй попытки, покой */
+  }
+
+  /* Пакеты — раскрой Б (бриф, раздел 5.3, «Раскрой Б»): та же логика,
+     дельты — от констант B_* выше (B_NODE_CX 144, B_NODE_Y 96, B_TRUNK_
+     START_Y 144, B_NODE_LEFT 188, B_BRANCH_YS [208,272,336,400], B_RETURN_X
+     104, B_RETURN_ARROW_TOP 150). */
+  @keyframes ms {        /* (144,48)→(144,96) */
+    0% { translate: 0 -48px; }  /* (144,48) — вход, единственный слитный источник */
+    100% { translate: 0 0; }    /* (144,96) — верх узла, покой */
+  }
+  @keyframes c1 {           /* (144,144)→(144,208)→(188,208) */
+    0% { translate: -44px -64px; } /* (144,144) — низ узла */
+    59% { translate: -44px 0; }    /* (144,208) — спуск по шине до первого отвода */
+    100% { translate: 0 0; }       /* (188,208) — узел канала «ПОЧТА», покой */
+  }
+  @keyframes c2 {            /* (144,144)→(144,272)→(188,272) */
+    0% { translate: -44px -128px; } /* (144,144) — низ узла */
+    74% { translate: -44px 0; }     /* (144,272) — спуск по шине до второго отвода */
+    100% { translate: 0 0; }        /* (188,272) — узел канала «CRM», покой */
+  }
+  @keyframes mr {
+    0% { translate: -44px -256px; } /* (144,144) — вышел из узла */
+    30% { translate: -44px 0; }     /* (144,400) — дошёл по шине до последнего отвода */
+    45%, 52% { translate: 0 0; }    /* (188,400) — дошёл до узла канала, пауза */
+    62% { translate: -84px 0; }     /* (104,400) — перешёл на шину возврата */
+    78% { translate: -84px -250px; }/* (104,150) — прошёл шину назад */
+    86% { translate: -84px -256px; }/* (104,144) — вернулся к низу узла */
+    100% { translate: 0 0; }        /* (188,400) — дошёл со второй попытки, покой */
+  }
 </style>
