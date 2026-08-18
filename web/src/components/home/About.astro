@@ -15,6 +15,17 @@
  * Особый режим текста (раздел 4 брифа): весь текст ниже — ДОСЛОВНО из
  * `data/about.ts`. Ни одно слово в самих текстах здесь не редактируется —
  * только их положение на странице.
+ *
+ * Объёмная вставка фото — пункт 6 списка правок 2026-08-14, приём взят у
+ * `portfolio-site/src/pages/home/Hero.jsx:13-45` (GSAP там), пересобран
+ * без GSAP (D-024) на CSS-анимациях + пятнадцать строк ванильного JS для
+ * наклона за курсором. Три части:
+ *   1. появление «шторкой» — `clip-path` + сдвиг по Y, на загрузке;
+ *   2. бесконечное дыхание — сдвиг по Y, `sine.inOut`-подобная кривая;
+ *   3. наклон за курсором — только `pointer: fine`, свой `<script>` ниже.
+ * `translate` (часть 1 и 2) и `transform: rotateX/rotateY` (часть 3, из
+ * скрипта) — разные CSS-свойства, компонуются браузером сами, конфликта
+ * между CSS-анимацией и JS-наклоном нет.
  */
 import Label from '../Label.astro';
 import Prose from '../Prose.astro';
@@ -28,15 +39,22 @@ if (ABOUT_BLOCKS.length !== 2) {
 ---
 <div class="layout">
   <div class="photo-col">
-    <img
-      class="photo"
-      src={ABOUT_PHOTO.src}
-      width={ABOUT_PHOTO.width}
-      height={ABOUT_PHOTO.height}
-      alt={ABOUT_PHOTO.alt}
-      loading="lazy"
-      decoding="async"
-    />
+    {/* `.photo-frame` несёт `perspective` для наклона `.photo` (часть 3) —
+        ровно как `data-hero-visual` у образца: перспектива на обёртке,
+        наклоняется только сам img. Подпись — вне обёртки, она не наклоняется
+        и не участвует в дыхании. */}
+    <div class="photo-frame" data-about-photo-wrap>
+      <img
+        class="photo"
+        data-about-photo
+        src={ABOUT_PHOTO.src}
+        width={ABOUT_PHOTO.width}
+        height={ABOUT_PHOTO.height}
+        alt={ABOUT_PHOTO.alt}
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
     {/* Подпись — моно, приглушённая, тире + неразрывный пробел перед
         текстом, как у образца (D-044: устройство, не формулировка). */}
     <p class="caption">— {ABOUT_LEAD}</p>
@@ -70,12 +88,71 @@ if (ABOUT_BLOCKS.length !== 2) {
     }
   }
 
+  /* Перспектива для наклона (часть 3) стоит на обёртке, не на самом `img` —
+     как `data-hero-visual` у образца: наклоняется только фото, подпись
+     остаётся плоской и не участвует в 3D-контексте. */
+  .photo-frame {
+    perspective: 1000px;
+  }
+
   .photo {
     display: block;
     width: 100%;
     height: auto;
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
+    /* Базовое (оно же конечное, оно же запасное без JS/при reduced-motion)
+       состояние: фото целиком видно, без сдвига и без наклона. Ничего из
+       движения ниже не переопределяет это вне своих условий — безголовый
+       Chromium (просит `reduce`) и страница без CSS-анимаций видят именно
+       эту разметку. */
+    clip-path: inset(0 0 0% 0 round var(--radius-md));
+    translate: 0 0;
+  }
+
+  /* Часть 3 — наклон за курсором, ставится своим `<script>` ниже через
+     `photo.style.transform`. Сглаживание — на CSS-переходе, а не в JS-цикле:
+     скрипт просто перезаписывает значение на каждом `mousemove`, браузер сам
+     анимирует переход между значениями. 0,5 с, приближение к `power2.out`. */
+  @media (prefers-reduced-motion: no-preference) {
+    .photo {
+      transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+  }
+
+  /* Части 1 и 2 — появление «шторкой» на загрузке и бесконечное дыхание.
+     Обе — по умолчанию (без `animation-timeline`): секция не всегда в первом
+     экране, а сдвиг по времени с `--reveal-i` здесь ни при чём — движения
+     всего одно на странице, координировать нечего. `--reveal-i`-механику
+     `.reveal` не переиспользуем: та обнуляет всё до `animation-timeline`,
+     этой анимации он не нужен.
+     Порядок в `animation-name` важен: `about-photo-breathe` идёт ВТОРЫМ,
+     чтобы после 1,5 с он забирал `translate` — обе анимации метят одно и то
+     же свойство, и в CSS при пересечении по времени побеждает последняя в
+     списке (part 1 к 1,5 с уже завершена и держит `to`, конфликта нет, но
+     порядок фиксирует победителя явно и обозримо). */
+  @media (prefers-reduced-motion: no-preference) {
+    .photo {
+      animation-name: about-photo-reveal, about-photo-breathe;
+      animation-duration: 1.1s, 3.8s;
+      animation-delay: 0.25s, 1.5s;
+      animation-timing-function:
+        cubic-bezier(0.215, 0.61, 0.355, 1),
+        cubic-bezier(0.445, 0.05, 0.55, 0.95);
+      animation-iteration-count: 1, infinite;
+      animation-direction: normal, alternate;
+      animation-fill-mode: both, both;
+    }
+  }
+
+  @keyframes about-photo-reveal {
+    from { clip-path: inset(0 0 100% 0 round var(--radius-md)); translate: 0 26px; }
+    to { clip-path: inset(0 0 0% 0 round var(--radius-md)); translate: 0 0; }
+  }
+
+  @keyframes about-photo-breathe {
+    from { translate: 0 0; }
+    to { translate: 0 -8px; }
   }
 
   /* Подпись под фото — `.t-small` моно, приглушённая, мера в символах (не
@@ -109,3 +186,35 @@ if (ABOUT_BLOCKS.length !== 2) {
      ним. */
   .closing { margin-top: 32px; }
 </style>
+
+<script>
+  /* Часть 3 — наклон фото за курсором (пункт 6). Минимальный ванильный
+     обработчик, без библиотек — GSAP не ставится (D-024), а слежение за
+     курсором на CSS невозможно. Условия обязательные:
+     - только `pointer: fine` — на телефоне наклона нет;
+     - выключен при `prefers-reduced-motion: reduce`;
+     - без JS ничего не выполняется — `.photo` уже стоит на месте по CSS
+       (см. `<style>` выше), скрипт только ДОБАВЛЯЕТ наклон поверх. */
+  const wrap = document.querySelector<HTMLElement>('[data-about-photo-wrap]');
+  const photo = wrap?.querySelector<HTMLElement>('[data-about-photo]');
+  const fine = window.matchMedia('(pointer: fine)').matches;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (wrap && photo && fine && !reduced) {
+    const MAX_X = 6; // deg, наклон по X (вверх-вниз курсора)
+    const MAX_Y = 8; // deg, наклон по Y (влево-вправо курсора)
+
+    const onMove = (e: MouseEvent) => {
+      const r = wrap.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      photo.style.transform = `rotateX(${py * -MAX_X}deg) rotateY(${px * MAX_Y}deg)`;
+    };
+    const onLeave = () => {
+      photo.style.transform = '';
+    };
+
+    wrap.addEventListener('mousemove', onMove);
+    wrap.addEventListener('mouseleave', onLeave);
+  }
+</script>
