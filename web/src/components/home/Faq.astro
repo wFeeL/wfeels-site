@@ -9,10 +9,23 @@
  * (`lib/schema.ts` → `faqPageSchema`), ровно один раз на странице: второй
  * `FAQPage` здесь не появится, даже если секцию скопируют — компонент один.
  *
- * Метка и заголовок секции ушли отсюда в `Section.astro` (правка владельца
- * 2026-08-18, пункт 11: заголовок секции — снаружи панели `.surface`, не
- * внутри неё). Константы ниже — единственный источник текста, читает их
- * `pages/index.astro`.
+ * Раскрой брифом `70-workshop/specs/site-v3/04-sections-brief.md`, раздел 5
+ * (пункт 16, D-044). У образца заголовок стоит в левой колонке, список
+ * вопросов — в узкой правой: приём работает именно здесь, вопрос — одна
+ * строка, и на полной ширине панели знак «+» уехал бы от текста почти на
+ * метр. Метка и заголовок формально остаются СНАРУЖИ панели (требование
+ * пункта 11 выполнено — DOM-дерево то же самое, что рисует `Section.astro`
+ * для `pain`/`process`), но раскладка от 900 px кладёт их РЯДОМ с панелью, а
+ * не НАД ней — единственный такой случай на странице, оплаченный функцией
+ * (короткая строка вопроса против гигантского зазора «+»). Это делает CSS
+ * этого файла через `:global(#faq)`, нацеленный на разметку, которую уже
+ * рисует `Section.astro` (`.t-label`, `.section-heading`, `.panel`) — саму
+ * эту разметку и её пропы (`GAP.faq` в `pages/index.astro`) трогать не
+ * пришлось: секция получает те же `surface`/`label`/`heading`, что и до
+ * этого брифа, меняется только раскладка их общего родителя.
+ *
+ * Метка и заголовок секции — константы ниже, единственный источник текста;
+ * читает их `pages/index.astro`.
  */
 import { FAQ_ITEMS } from '../../data/faq';
 import { faqPageSchema, serializeSchema } from '../../lib/schema';
@@ -56,12 +69,25 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
 <script type="application/ld+json" is:inline set:html={structured} />
 
 <style>
-  /* Раньше `.list` несла собственную отбивку от заголовка (`margin: 32px 0 0`)
-     — заголовок и список делили одну подложку. Теперь заголовок стоит
-     снаружи `.panel` (правка владельца 2026-08-18, пункт 11) и отбивается от
-     неё своим собственным полем (`Section.astro`, `.section-heading`), а
-     `.panel` несёт единое поле по всему периметру — второе поле здесь
-     оказалось бы третьим случайным числом, складывающимся с полем панели. */
+  /* Раскладка «заголовок слева — панель справа» от 900 px — нацелена на
+     разметку `Section.astro` через `:global()`, не переопределяет её:
+     `#faq` уже несёт `.t-label`, `.section-heading` и `.panel` как прямых
+     детей секции (в этом порядке в DOM), эта секция лишь раскладывает их по
+     двум колонкам грида вместо вертикального потока. Ниже 900 px секция не
+     тронута этим правилом вовсе — обычный поток `Section.astro` (метка,
+     заголовок, отбивка 32, панель). */
+  @media (min-width: 900px) {
+    :global(#faq) {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+      column-gap: 48px;
+      align-items: start;
+    }
+    :global(#faq > .t-label) { grid-column: 1; grid-row: 1; }
+    :global(#faq > .section-heading) { grid-column: 1; grid-row: 2; margin: 0; }
+    :global(#faq > .panel) { grid-column: 2; grid-row: 1 / span 2; }
+  }
+
   .list {
     margin: 0;
     border-top: 1px solid var(--border);
@@ -81,11 +107,16 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
   }
   summary::-webkit-details-marker { display: none; }
 
-  .question { font-weight: 700; }
+  /* Мобильная база — 18 px (`.t-body`); от 900 px растёт до 22 px
+     (`.t-body-lg`, раздел 5.1 брифа) — тот же приём, что и у остальных
+     секций (раздел 0.2). */
+  .question { font-weight: 500; font-size: 1.125rem; line-height: 1.65; color: var(--text); }
+  @media (min-width: 900px) {
+    .question { font-size: 1.375rem; line-height: 1.6; }
+  }
 
-  /* Плюс/минус вместо треугольника: тот же приём, что и раскрывашка меню
-     шапки, но здесь два штриха рисуют сам знак, а не псевдоэлемент с текстом
-     символа — устойчивее к шрифтам без глифа «−». */
+  /* Плюс/минус вместо треугольника: два штриха рисуют сам знак, а не
+     псевдоэлемент с текстом символа — устойчивее к шрифтам без глифа «−». */
   .chevron {
     position: relative;
     flex: none;
@@ -104,9 +135,6 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
   .chevron::after { width: 2px; height: 12px; }
   details[open] .chevron::after { transform: scaleY(0); }
 
-  /* 50ch — та же узкая колонка прозы, что и `Prose.astro` (часть 3 задания
-     «Контейнер обратно к 1180», замер ревью 2026-08-13): 68ch на 18px тексте
-     давал ≈60 высот прописной в строке, вдвое больше цели 42–45. */
   .answer p {
     margin: 0 0 20px;
     max-width: 50ch;
@@ -114,6 +142,43 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
     line-height: 1.65;
   }
   .answer strong { color: var(--text); }
+
+  /* Плавное раскрытие — раздел 5.2 брифа. Базовое (оно же конечное, оно же
+     запасной путь) состояние: раскрытие мгновенное, как у нативного
+     `<details>`, — ничего не объявлено, значит нечего ронять. Улучшение
+     целиком внутри двойного условия ниже: `interpolate-size` на панели, не
+     на `:root` (то свойство наследуется — на `:root` оно изменило бы
+     поведение любых чужих `height: auto`-переходов на всей странице). */
+  @supports (interpolate-size: allow-keywords) and (selector(::details-content)) {
+    @media (prefers-reduced-motion: no-preference) {
+      .list {
+        interpolate-size: allow-keywords;
+      }
+      /* `overflow: hidden` здесь допустим — он стоит на `::details-content`,
+         не на предке секции: ViewTimeline в этой секции нет, а фокусное
+         кольцо `<summary>` лежит вне `::details-content` и обрезано быть не
+         может. На саму панель и на любого её предка `overflow: hidden` не
+         вешать — только `overflow: clip`, если обрезка когда-нибудь
+         понадобится. */
+      .list details::details-content {
+        block-size: 0;
+        overflow: hidden;
+        /* Раздельные свойства transition — не шорткод, но и в шорткоде
+           `animation:`+`animation-timeline` здесь риска нет: в этой секции
+           нет ни одного `animation-timeline`, сторож
+           `css-no-animation-shorthand-with-timeline.test.ts` эту секцию не
+           задевает вовсе. `content-visibility` переходит дискретно
+           (`allow-discrete`) — иначе текст исчезал бы мгновенно в конце
+           закрытия и «моргал». */
+        transition:
+          block-size var(--dur-reveal) var(--ease),
+          content-visibility var(--dur-reveal) allow-discrete;
+      }
+      .list details[open]::details-content {
+        block-size: auto;
+      }
+    }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .chevron::before, .chevron::after { transition: none; }
