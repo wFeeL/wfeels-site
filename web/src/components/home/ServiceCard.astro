@@ -113,11 +113,15 @@ const { group } = Astro.props;
     margin: auto 0 0;
     padding-top: 4px;
   }
-  /* Было 13 px — самовольный кегль, вне шкалы. Строка стека — моно-пометка,
-     та же роль, что у меток `label` (11 px), правка 2026-08-13, свод к семи
-     объявленным. */
+  /* Было 13 px — самовольный кегль, вне шкалы, свод к семи объявленным
+     2026-08-13. Кегль поднят с 0.6875rem (ступень `label`, 11px) до 1rem
+     (ступень `small`, 16px) — правка 21 (03-redesign-2026-08-14.md).
+     Мелкий кегль был формально в шкале, но моношрифт при равном кегле с
+     наборным читается мельче (та же ступень уже применяется к другим
+     моно-подписям стека, `CaseWeightIllustration.astro`,
+     `CaseFactoryIllustration.astro`). */
   .stack code {
-    font: 400 0.6875rem/1.4 var(--font-mono);
+    font: 400 1rem/1.4 var(--font-mono);
     color: var(--text-muted);
     background: none;
     padding: 0;
