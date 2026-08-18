@@ -133,6 +133,48 @@ test.describe('секция «Цены» — три верхние карточ�
     }
   });
 
+  test('полка: наведение не двигает раскладку — ни карточку, ни текст под ней', async ({ page }) => {
+    // Правка владельца 2026-08-18: «при наведении изменяется размер и текст
+    // после всех карточек неуклюже скачет». Причина была не в анимации, а в
+    // росте толщины рамки: `border-box` держит внешний размер, но рамка
+    // съедает ВНУТРЕННЮЮ ширину — строки описания перебирались заново,
+    // высота карточки менялась, и всё, что ниже полки, дёргалось.
+    // Подсветка обязана оставаться чисто красочной: заливка, цвет рамки и
+    // внутренняя тень геометрию не трогают.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/#pricing');
+
+    const card = page.locator('#pricing .shelf > .card').first();
+    const below = page.locator('#contact');
+
+    const measure = async () => ({
+      card: await card.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { w: Math.round(r.width * 100), h: Math.round(r.height * 100) };
+      }),
+      // Координата от НАЧАЛА ДОКУМЕНТА, а не от окна: `hover()` доводит
+      // карточку до видимой области, то есть прокручивает страницу, и
+      // оконная координата уехала бы на величину прокрутки — сторож ловил бы
+      // собственное действие вместо дефекта раскладки.
+      belowTop: await below.evaluate(
+        (el) => Math.round((el.getBoundingClientRect().top + window.scrollY) * 100),
+      ),
+    });
+
+    const before = await measure();
+    await card.hover();
+    // Переход по `--dur-micro` успевает закончиться; ждём кадр отрисовки.
+    await page.waitForTimeout(400);
+    const after = await measure();
+
+    expect(after.card.w, 'ширина карточки поехала при наведении')
+      .toBe(before.card.w);
+    expect(after.card.h, 'высота карточки поехала при наведении')
+      .toBe(before.card.h);
+    expect(after.belowTop, 'текст под полкой сдвинулся при наведении')
+      .toBe(before.belowTop);
+  });
+
   test('в секции нет ни одной метки спроса, кроме разрешённой «Самый популярный» (отмена D-029 владельцем 2026-08-13, часть 2)', async ({ page }) => {
     await page.goto('/#pricing');
     const section = page.locator('#pricing');

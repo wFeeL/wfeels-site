@@ -1,0 +1,297 @@
+---
+/* Иллюстрация «Стеллаж» (кейс «Фабрика ботов»), схема Ф-2 — D-046, бриф
+ * `70-workshop/specs/site-v3/04-cases-brief.md`, раздел 6. Читать раздел 6
+ * целиком: этот файл реализует заданную геометрию, а не выбирает её.
+ *
+ * HTML/CSS, ноль <svg> (раздел 6.1, вариант Р-2): у SVG кегль подписи падает
+ * вместе с масштабом холста — измерено на «Заявке-Хаб» (11,6 px при правиле
+ * «не мельче 14»). В HTML кегль всегда настоящий, рисунок перетекает по
+ * ширине.
+ *
+ * Один узел («КАРКАС»), одна шина, четыре полки — каждая с подписью и рядом
+ * меток числом FACTORY[i].themes. Ни одно число и ни одна подпись не
+ * написаны в разметке руками — всё приходит из `data/factory.ts`. Пустых
+ * данных не бывает: модуль данных бросает исключение на сборке, если
+ * FACTORY или FACTORY_FRAME неполны (см. тот же модуль).
+ *
+ * D-036 — три приёма честности (раздел 6.1 брифа), все три обязательны:
+ *  1. подпись под узлом называет ГЛАГОЛ ДВИЖЕНИЯ («переезжает») — язык
+ *     копирования, не хаба (`FACTORY_CAPTIONS.moves`);
+ *  2. стрелки только наружу: узел → шина → полки, обратной линии нет —
+ *     геометрия ниже физически не рисует линию от полки к узлу;
+ *  3. запрещённые подписи пучка («используется всеми», «общий для четырёх»,
+ *     «подключается») нигде не встречаются — подпись жёстко равна
+ *     `FACTORY_CAPTIONS.moves`, вторым литералом не подменяется.
+ *
+ * Рисунок неинтерактивен: `pointer-events: none`, вне таб-порядка,
+ * `role="img"` с `aria-label`, собранным из тех же данных — весь визуальный
+ * слой (узел, шина, полки, метки) стоит внутри `aria-hidden`, чтобы не
+ * задвоить объявление программой чтения (тот же приём, что `role="img"` у
+ * `<svg>` в `CaseFlowIllustration.astro`: подписи внутри — презентационные,
+ * единственное произносимое — `aria-label`).
+ *
+ * Стили — `<style is:global>` с префиксом `cf-` (Case Factory), а не
+ * скоуп Astro по умолчанию: у схемы 51 элемент (4 полки × N меток), и
+ * скоуп-атрибут на каждом стоил бы ≈1,3 КБ разметки и CSS сверх бюджета
+ * задачи (раздел 16 брифа, потолок прироста +6 КБ) без единого визуального
+ * отличия. Префикс проверен на отсутствие коллизий с остальными
+ * компонентами (`grep '\.cf-' src/components` — пусто до этого файла).
+ */
+import { FACTORY, FACTORY_CAPTIONS } from '../../data/factory';
+
+if (FACTORY.length === 0) {
+  throw new Error('CaseFactoryIllustration: FACTORY пуст — рисовать нечего.');
+}
+
+// Вес фазы 3 (полки заполняются слева направо) — весом больше у полки с
+// бóльшим числом тем: длинная полка заполняется дольше короткой, картинка
+// не имеет права соврать о равенстве (раздел 6.6 брифа).
+function shelfFillDuration(themes: number): number {
+  return 140 + themes * 20;
+}
+
+const shelfWords = FACTORY
+  .map((t) => `${t.label.toLowerCase()} — ${t.themes} ${FACTORY_CAPTIONS.themes}`)
+  .join(', ');
+const ariaLabel =
+  `Схема каркаса фабрики ботов. Узел «${FACTORY_CAPTIONS.node}» ${FACTORY_CAPTIONS.moves} ` +
+  `у типов: ${shelfWords}.`;
+---
+<div class="cf-stellar" role="img" aria-label={ariaLabel}>
+  <div class="cf-visual" aria-hidden="true">
+    <div class="cf-rack">
+      <div class="cf-node">
+        <span class="cf-node-label">{FACTORY_CAPTIONS.node}</span>
+      </div>
+      <i class="cf-branch" />
+      <ul class="cf-shelves">
+        {FACTORY.map((t) => (
+          <li class="cf-shelf" style={`--cf-dur:${shelfFillDuration(t.themes)}ms`}>
+            <p class="cf-shelf-label">
+              <span class="cf-name">{t.label}</span> · {t.themes} {FACTORY_CAPTIONS.themes}
+            </p>
+            <div class="cf-marks">
+              {Array.from({ length: t.themes }).map(() => <span class="cf-mark" />)}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+    <p class="cf-caption">{FACTORY_CAPTIONS.moves}</p>
+  </div>
+</div>
+
+<style is:global>
+  .cf-stellar {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    pointer-events: none;
+  }
+  .cf-visual {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .cf-rack {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+
+  /* Узел — коробка 96×64, острые углы: чертёжный узел, не карточка (раздел
+     6.1/6.2). Акцент — ровно один объект рисунка: кромка узла, от которой
+     начинается пучок (раздел 6.2). */
+  .cf-node {
+    flex: 0 0 96px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: var(--stroke-bold) solid var(--text);
+    border-right-color: var(--accent);
+    background: var(--bg);
+  }
+  .cf-node-label {
+    font: 500 1rem/1.3 var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  /* Отрезок узел → шина (раздел 6.2: «от узла к шине — горизонтальный
+     отрезок»). Декоративный элемент — тот же приём, что `.fp-legs i` у
+     снятой плиты: соединительная графика не несёт текста. */
+  .cf-branch {
+    display: block;
+    flex: 0 0 32px;
+    height: 0;
+    border-top: var(--stroke-line) solid var(--text);
+    transform-origin: left center;
+  }
+
+  /* Шина — вертикальная линия слева от списка полок (`border-left`, раздел
+     6.2), от верхней полки до нижней. Стержни к каждой полке — `::before`
+     полки (`border-top`, 16px) — не отдельные элементы. */
+  .cf-shelves {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border-left: var(--stroke-line) solid var(--text);
+    transform-origin: top center;
+  }
+
+  .cf-shelf {
+    position: relative;
+    padding-left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .cf-shelf::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12px; /* примерный вертикальный центр строки подписи */
+    width: 16px;
+    height: 0;
+    border-top: var(--stroke-line) solid var(--text);
+    transform-origin: left center;
+  }
+
+  .cf-shelf-label {
+    margin: 0;
+    font: 500 1rem/1.3 var(--font-mono);
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+  }
+  .cf-shelf-label .cf-name {
+    color: var(--text);
+    text-transform: uppercase;
+  }
+
+  /* Метки тем — ряд из N квадратов 12×12, шаг 16 (gap 4). Длина ряда — не
+     литерал, а естественная сумма N элементов: лестница длин 12·8·6·6
+     (раздел 6.2) получается сама, без пересчёта пикселей в разметке.
+     Радиус 2 — не карточка (раздел 6.2), не путать с `--radius-sm`. */
+  .cf-marks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .cf-mark {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
+    border-radius: 2px;
+    background: var(--border);
+    border: 1px solid var(--text-muted);
+  }
+
+  /* Подпись пучка — несущая конструкция честности блока (D-036, раздел
+     6.3). Не сокращается, не прячется ни при каких условиях (раздел 9). */
+  .cf-caption {
+    margin: 0;
+    font: 500 1rem/1.4 var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* Раскрой Б — ниже 900 px (тот же порог, что у навигации и соседей).
+     Узел уходит наверх, шина становится вертикальной СВЯЗКОЙ под узлом:
+     `.cf-rack` меняет ось (`flex-direction: column`), отрезок узел → шина
+     поворачивается на 90° тем же элементом — не второй копией разметки
+     (раздел 6.5: «переключается медиазапросом на одном и том же HTML»). */
+  @media (max-width: 899px) {
+    .cf-rack {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+    }
+    .cf-branch {
+      flex: 0 0 16px;
+      width: 0;
+      height: 16px;
+      border-top: none;
+      border-left: var(--stroke-line) solid var(--text);
+      transform-origin: top center;
+      margin-left: 47px; /* вертикаль под серединой узла (96px / 2 − 1px) */
+    }
+    .cf-shelves {
+      width: 100%;
+    }
+
+    /* Раскрой Б поворачивает отрезок узел → шина на 90° (`.cf-branch` выше)
+       — фаза 2 обязана расти по той же оси, иначе линия «нарисуется» вбок,
+       пока сама лежит вертикально (раздел 8.1: анимация только поверх
+       готовой геометрии, никогда её не искажая). */
+    @supports (animation-timeline: view()) {
+      @media (prefers-reduced-motion: no-preference) {
+        .cf-branch {
+          transform: scaleY(0);
+          animation-name: cf-line-y-in;
+        }
+      }
+    }
+  }
+
+  /* Запасное состояние — состояние ПО УМОЛЧАНИЮ (раздел 8.1): без блока
+     ниже узел, шина, стержни и полки уже полностью нарисованы. Анимация —
+     только внутри `@supports`, поверх готового рисунка, никогда наоборот. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .cf-node,
+      .cf-caption {
+        opacity: 0;
+        animation-timeline: view();
+        animation-range: entry 15% cover 65%;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-name: cf-node-in;
+        animation-duration: 60ms;
+      }
+      .cf-branch,
+      .cf-shelves,
+      .cf-shelf::before {
+        animation-timeline: view();
+        animation-range: entry 15% cover 65%;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-duration: 140ms;
+      }
+      .cf-branch,
+      .cf-shelf::before {
+        transform: scaleX(0);
+        animation-name: cf-line-x-in;
+      }
+      .cf-shelves {
+        transform: scaleY(0);
+        animation-name: cf-line-y-in;
+      }
+      .cf-marks {
+        clip-path: inset(0 100% 0 0);
+        animation-timeline: view();
+        animation-range: entry 15% cover 65%;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-name: cf-marks-in;
+        animation-duration: var(--cf-dur);
+      }
+    }
+  }
+
+  @keyframes cf-node-in { to { opacity: 1; } }
+  @keyframes cf-line-x-in { to { transform: scaleX(1); } }
+  @keyframes cf-line-y-in { to { transform: scaleY(1); } }
+  @keyframes cf-marks-in { to { clip-path: inset(0 0 0 0); } }
+</style>
