@@ -78,14 +78,58 @@ test.describe('секция «Цены» — три верхние карточ�
     expect(overflow).toBeLessThanOrEqual(0);
   });
 
-  test('полка: ссылки ведут на ожидаемые посадочные (пока 404 до спеки 03 — важна сама разметка href)', async ({ page }) => {
+  test('полка: карточка ведёт к форме, а адрес будущей посадочной сохранён', async ({ page }) => {
+    // Решение владельца 2026-08-18. До него название карточки вело на
+    // `/services/<услуга>`, но посадочных не существует — все восемь адресов
+    // отдают 404. Пока рядом стояла кнопка «Рассчитать», у карточки был
+    // второй, рабочий выход; пункт 22 кнопку снял, и выхода не осталось.
+    // Тест охраняет ДВЕ вещи разом: что выход к форме есть у каждой карточки
+    // и что адрес будущей посадочной не выброшен, а сохранён атрибутом —
+    // иначе возврат к посадочным после спеки 03 потребовал бы выводить
+    // список заново.
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/#pricing');
     const section = page.locator('#pricing');
 
     for (const card of SHELF_CARDS) {
-      const link = section.locator(`a[href="${card.href}"]`);
+      const link = section.locator(`a[data-service-href="${card.href}"]`);
       await expect(link).toHaveCount(1);
+      await expect(link).toHaveAttribute('href', '#contact');
+    }
+  });
+
+  test('полка: цель нажатия — вся карточка, и ссылка в ней ровно одна', async ({ page }) => {
+    // Карточка подсвечивается целиком при наведении, то есть обещает, что
+    // нажимается вся. До 2026-08-18 нажималось только название высотой ~22 px.
+    // Приём — растянутая ссылка (`.shelf-label::after { inset: 0 }`), та же
+    // идиома, что принята для блоков кейсов вариантом В (D-047).
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/#pricing');
+    const cards = page.locator('#pricing .shelf > .card');
+    const count = await cards.count();
+    expect(count).toBe(SHELF_CARDS.length);
+
+    for (let i = 0; i < count; i += 1) {
+      const card = cards.nth(i);
+      // Второй фокусируемой цели внутри карточки не появилось.
+      await expect(card.locator('a')).toHaveCount(1);
+
+      const reach = await card.evaluate((el) => {
+        const link = el.querySelector('a');
+        if (!link) return null;
+        const c = el.getBoundingClientRect();
+        const after = getComputedStyle(link, '::after');
+        return {
+          h: c.height,
+          w: c.width,
+          stretched: after.position === 'absolute' && after.inset !== 'auto',
+        };
+      });
+      expect(reach, 'в карточке полки нет ссылки').not.toBeNull();
+      expect(reach!.stretched, 'ссылка карточки не растянута на карточку')
+        .toBe(true);
+      // Раз цель — вся карточка, минимум 44 px обеспечен её же размером.
+      expect(Math.min(reach!.h, reach!.w)).toBeGreaterThanOrEqual(44);
     }
   });
 
