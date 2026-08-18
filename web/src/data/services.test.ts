@@ -74,4 +74,16 @@ describe('services.ts — внутренняя целостность', () => {
   it('каталог услуг ведёт на /services', () => {
     expect(SERVICES_CATALOG_HREF).toBe('/services');
   });
+
+  // Задача 18 (правка 2026-08-19): выпадающий список услуг в `LeadForm.astro`
+  // берёт коды ОТСЮДА, а не из своего перечня. Бэкенд (`api/app/schemas.py`,
+  // `SERVICE_LABELS`) ждёт РОВНО коды S1…S9 — расхождение здесь молча ломало
+  // бы приём заявки (код вне каталога отвергается 422-й).
+  it('коды услуг — ровно S1…S9, без повторов и пропусков', () => {
+    const codes = SERVICE_GROUPS.flatMap((g) => g.links.map((l) => l.code));
+    expect(new Set(codes).size, 'код услуги задвоен').toBe(codes.length);
+    expect([...codes].sort()).toEqual(
+      Array.from({ length: 9 }, (_, i) => `S${i + 1}`).sort(),
+    );
+  });
 });

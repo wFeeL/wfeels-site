@@ -2,13 +2,15 @@
 import Field from './Field.astro';
 import Button from './Button.astro';
 import { TELEGRAM_URL } from '../lib/contacts';
+import { SERVICE_GROUPS } from '../data/services';
 
 const API_BASE = import.meta.env.PUBLIC_API_BASE ?? '';
 const SENDING = 'Отправляю…';
 ---
 <form id="lead-form" method="post" action={`${API_BASE}/api/lead`}
       data-sending-label={SENDING}>
-  <Field name="name" label="Как вас зовут" required={true} autocomplete="name" />
+  <Field name="name" label="Как вас зовут" required={true} autocomplete="name"
+         placeholder="Например, Мария" />
   <!-- `autocomplete` здесь намеренно НЕ задан. Атрибут объявляет браузеру, чем
        поле ЯВЛЯЕТСЯ, а это поле принимает два разных вида значения, и половина
        людей вводит `@handle`. Значения «почта или ник» в списке autofill нет:
@@ -17,10 +19,34 @@ const SENDING = 'Отправляю…';
        `off` тоже не выход: он выключает и подстановку тем, кто вводит почту.
        Без атрибута поле наследует `on` и получает историю ввода самого браузера
        — то есть ровно то, что человек писал сюда в прошлый раз, ник или почту. -->
-  <Field name="contact" label="Telegram или почта" required={true} />
-  <Field name="message" label="Что нужно сделать" textarea={true} required={true}
-         hint="Чем конкретнее задача, тем точнее смета." autocomplete="off" />
-  <Field name="budget" label="Бюджет, если он уже определён" autocomplete="off" />
+  <Field name="contact" label="Telegram или почта" required={true}
+         placeholder="@wfeels или почта" />
+
+  {/* Задача 18 (правка 2026-08-19): было текстовым полем «Что нужно
+      сделать» — стало выпадающим списком с тем же лейблом, поле обязательное
+      (бэкенд, `api/app/schemas.py`, отвергает код вне каталога, но не пустую
+      строку — старые открытые вкладки без этого поля не теряют заявку; сама
+      форма делает поле обязательным для НОВЫХ отправок). Список — не второй
+      перечень услуг: группы, подписи и коды читаются из `SERVICE_GROUPS`
+      (`data/services.ts`), откуда их уже берёт секция 3 «Что я делаю» —
+      второй ручной список здесь расходился бы молча (закреплено
+      `services.test.ts`, «коды услуг — ровно S1…S9»). */}
+  <Field name="service" label="Что нужно сделать" select={true} required={true}>
+    <option value="" disabled selected hidden>Выберите услугу</option>
+    {SERVICE_GROUPS.map((group) => (
+      <optgroup label={group.title}>
+        {group.links.map((link) => (
+          <option value={link.code}>{link.text}</option>
+        ))}
+      </optgroup>
+    ))}
+  </Field>
+
+  <Field name="message" label="О задаче (необязательно)" textarea={true}
+         hint="Чем конкретнее задача, тем точнее смета." autocomplete="off"
+         placeholder="Например: нужен лендинг, дедлайн через месяц" />
+  <Field name="budget" label="Бюджет (необязательно)" autocomplete="off"
+         placeholder="Порядок цифр, если уже прикинули" />
 
   <p class="consent">
     {/* Задача 19 (правка 2026-08-18): плавная анимация галочки согласия.

@@ -5,13 +5,23 @@ interface Props {
   type?: string;
   required?: boolean;
   textarea?: boolean;
+  /** Поле — выпадающий список: разметку `<option>`/`<optgroup>` несёт слот,
+   *  сам `Field` знает только про рамку, подпись и обязательность. Источник
+   *  вариантов — вызывающий компонент (задача 18: `LeadForm.astro` читает
+   *  каталог услуг из `data/services.ts`, второго списка здесь не заводится). */
+  select?: boolean;
   hint?: string;
+  /** Текст-подсказка внутри поля. У `select` браузер `placeholder` не знает —
+   *  туда его не передают; первым вариантом там стоит выключенный `<option>`
+   *  с тем же смыслом (собирает вызывающий компонент). */
+  placeholder?: string;
   /** Значение атрибута `autocomplete`. На телефоне это разница между одним
    *  касанием и ручным вводом ровно там, где заявку и бросают. */
   autocomplete?: string;
 }
 const {
-  name, label, type = 'text', required = false, textarea = false, hint, autocomplete,
+  name, label, type = 'text', required = false, textarea = false, select = false,
+  hint, placeholder, autocomplete,
 } = Astro.props;
 const id = `f-${name}`;
 ---
@@ -19,9 +29,11 @@ const id = `f-${name}`;
   <label for={id}>{label}{required && <span class="req" aria-hidden="true"> *</span>}</label>
   {textarea
     ? <textarea id={id} name={name} required={required} rows="5"
-                autocomplete={autocomplete}></textarea>
+                placeholder={placeholder} autocomplete={autocomplete}></textarea>
+    : select
+    ? <select id={id} name={name} required={required}><slot /></select>
     : <input id={id} name={name} type={type} required={required}
-             autocomplete={autocomplete} />}
+             placeholder={placeholder} autocomplete={autocomplete} />}
   {hint && <small>{hint}</small>}
 </p>
 
@@ -35,7 +47,7 @@ const id = `f-${name}`;
      звёздочки `aria-hidden`: озвучивать «звёздочка» поверх «обязательное поле»
      значит сказать одно и то же дважды. */
   .req { color: var(--danger); }
-  input, textarea {
+  input, textarea, select {
     font: 400 1.125rem/1.5 var(--font-text);
     color: var(--text);
     background: var(--surface);
@@ -45,12 +57,19 @@ const id = `f-${name}`;
     width: 100%;
     transition: border-color var(--dur-micro) var(--ease);
   }
+  select { min-height: 44px; cursor: pointer; }
   /* Поле обязано отвечать на наведение и на фокус, иначе форма ощущается
      нарисованной картинкой. Рамка — единственное, что здесь меняется:
      заливка и размер прыгали бы на глазах. */
-  input:hover, textarea:hover { border-color: var(--text-muted); }
-  input:focus, textarea:focus { border-color: var(--accent); }
+  input:hover, textarea:hover, select:hover { border-color: var(--text-muted); }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
   textarea { resize: vertical; }
+  /* Плейсхолдер обязан читаться, а не растворяться: браузерный дефолт (обычно
+     около 2,5:1 на белом) ниже AA. `--text-muted` — тот же токен, что уже
+     доказал 5,6:1/6,4:1 на `--surface` в обеих темах (подсказка под полем,
+     тот же файл ниже); `opacity: 1` снимает приглушение, которое Firefox
+     добавляет плейсхолдеру по умолчанию поверх цвета. */
+  input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; }
   /* Подсказка под полем — не декор, а единственная конверсионная инструкция
      формы, поэтому цвет читаемый: `--text-faint` даёт 2,73:1 и спека допускает
      его только для украшений. */

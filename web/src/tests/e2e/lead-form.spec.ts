@@ -3,6 +3,11 @@ import { test, expect, type Page } from '@playwright/test';
 const fill = async (page: Page) => {
   await page.fill('input[name="name"]', 'Мария');
   await page.fill('input[name="contact"]', '@maria');
+  // Правка владельца 2026-08-18, пункт 18: «Что нужно сделать» стало
+  // обязательным выпадающим списком услуг. Без выбора браузер не отпускает
+  // форму, и до отправки дело не доходит вовсе. Требование теста не
+  // изменилось — форма обязана отправляться, — прибавилось поле.
+  await page.selectOption('select[name="service"]', 'S1');
   await page.fill('textarea[name="message"]', 'Нужен сайт для груминг-салона с записью');
   await page.check('input[name="consent"]');
 };
@@ -23,6 +28,11 @@ test('та же форма в секции 11 главной страницы (�
   await page.goto('/');
   await page.fill('input[name="name"]', 'Мария');
   await page.fill('input[name="contact"]', '@maria');
+  // Правка владельца 2026-08-18, пункт 18: «Что нужно сделать» стало
+  // обязательным выпадающим списком услуг. Без выбора браузер не отпускает
+  // форму, и до отправки дело не доходит вовсе. Требование теста не
+  // изменилось — форма обязана отправляться, — прибавилось поле.
+  await page.selectOption('select[name="service"]', 'S1');
   await page.fill('textarea[name="message"]', 'Нужен сайт для груминг-салона с записью');
   // На главной чекбоксу далеко до верха (секция 11 — последняя на очень
   // длинной странице), а `html { scroll-behavior: smooth }` (`base.css`, не
