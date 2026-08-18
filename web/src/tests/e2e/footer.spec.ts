@@ -156,7 +156,12 @@ for (const scheme of ['light', 'dark'] as const) {
 
       expect(link.color, 'ссылка того же цвета, что текст рядом')
         .not.toBe(text.color);
-      expect(link.deco, 'ссылка подвала без подчёркивания').toContain('underline');
+      // Правка дизайн-ревью 2026-08-19: ссылка подвала — пункт меню/списка,
+      // не проза. Постоянного `text-decoration: underline` у неё больше нет
+      // (черту рисует псевдоэлемент `.link-label::after`, см. тест ниже) —
+      // до правки здесь стояло обратное ожидание, и это была часть дефекта.
+      expect(link.deco, 'ссылка подвала несёт постоянное подчёркивание в покое')
+        .not.toContain('underline');
       // Заголовок группы обязан отличаться и от текста под ним, и от ссылок:
       // иначе группы читаются как один общий список.
       expect(title.color, 'заголовок группы не отличить от текста')
@@ -165,3 +170,63 @@ for (const scheme of ['light', 'dark'] as const) {
         .not.toBe(link.color);
     });
 }
+
+/* Сторож на правило дизайн-ревью 2026-08-19: ссылка ВНУТРИ ПРОЗЫ обязана
+ * остаться подчёркнутой постоянно (единственный небуквенный отличитель от
+ * текста абзаца), а ссылка в СПИСКЕ/МЕНЮ — нести подчёркивание только на
+ * `:hover`/`:focus-visible` (роль читается местом, постоянная черта — шум).
+ * Ревью нашло двенадцать подчёркнутых ссылок на странице: восемь в подвале
+ * (пять «РАЗДЕЛЫ» + три юридические), два прямых канала в контактной секции
+ * («Расскажите о задаче» → «Не любите формы — напишите сразу») — им черта
+ * положена только под курсором/фокусом; и две ссылки внутри прозы формы
+ * (согласие на обработку персональных данных, запасной Telegram в сообщении
+ * об ошибке) — им черта положена всегда, их этот сторож не трогает.
+ *
+ * Красный прогон, которым это доказано: до правки `Footer.astro`/
+ * `Contact.astro` несли `.links a`/`.channels a` с постоянным
+ * `text-decoration: underline` — тест «в покое подчёркивания нет» падал на
+ * каждом из десяти пунктов меню, а `.link-label::after` не существовал
+ * вовсе — `getComputedStyle(label, '::after').transform` не матчился на
+ * `matrix(...)` и `scale` уходил в `null`, тест падал и на проверке
+ * наведения. Восстановлено правкой того же коммита. */
+test('подчёркивание живёт по месту ссылки: список молчит в покое, проза — нет',
+  async ({ page }) => {
+    await page.goto('/');
+
+    const underlineState = (selector: string) =>
+      page.locator(selector).first().evaluate((el) => {
+        const label = el.querySelector('.link-label') as Element | null;
+        const target = label ?? el;
+        const after = getComputedStyle(target, '::after');
+        const m = /matrix\(([^,]+),/.exec(after.transform);
+        return {
+          scale: m ? Number(m[1]) : null,
+          deco: getComputedStyle(el).textDecorationLine,
+        };
+      });
+
+    const menuLinks = [
+      'footer nav[aria-labelledby="footer-sections"] a',
+      'footer nav[aria-labelledby="footer-legal"] a',
+      '#contact .channels a',
+    ];
+    for (const selector of menuLinks) {
+      const idle = await underlineState(selector);
+      expect(idle.scale, `${selector}: черта видна в покое`).toBe(0);
+
+      const link = page.locator(selector).first();
+      await link.hover();
+      await page.waitForTimeout(200);
+      const hovered = await underlineState(selector);
+      expect(hovered.scale, `${selector}: под курсором черты нет`).toBe(1);
+    }
+
+    // Прямые ссылки в прозе — постоянно подчёркнуты нативным
+    // `text-decoration`, второй механики (`.link-label`) у них нет.
+    const proseLinks = ['#contact .consent a'];
+    for (const selector of proseLinks) {
+      const s = await underlineState(selector);
+      expect(s.deco, `${selector}: ссылка внутри прозы без подчёркивания`)
+        .toContain('underline');
+    }
+  });
