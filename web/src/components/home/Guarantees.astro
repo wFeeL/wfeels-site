@@ -5,8 +5,25 @@
  * «ГАРАНТИИ»; спека ещё несёт старую метку и разошлась с кодом. Числа
  * оплаты — «50%» и «70 000 ₽» — читаются из `data/process.ts`, а не вписаны
  * в разметку: правка PRICING.md обязана менять текст этой секции сама, а не
- * расходиться с ним молча (план `02-home-plan.md`, задача 11). Гарантии
- * срока деньгами нет; договор не упоминается — его не существует (D-019).
+ * расходиться с ним молча. Гарантии срока деньгами нет; договор не
+ * упоминается — его не существует (D-019).
+ *
+ * Раскрой брифом `70-workshop/specs/site-v3/04-sections-brief.md`, раздел 3
+ * (D-044): у образца гарантии — не карточки. Пять карточек `--surface` в
+ * сетке 2×3 сняты целиком (та самая форма «герой и три одинаковых
+ * карточки», к которой сводится половина сайтов, и пятая карточка с
+ * дополнительным абзацем в ней ломала ряд). Заголовок секции занимает левую
+ * колонку, список с галочками — правую; между пунктами нет линеек, только
+ * воздух — иначе секция стала бы третьей ведомостью подряд («Как обычно
+ * бывает» — линейка под пунктом, «Как я работаю» — линейка над рядом) и три
+ * соседние секции слились бы в одну форму.
+ *
+ * У этой секции сознательно нет панели `--surface` (пункт 11 называет ровно
+ * три секции с внешним заголовком — `pain`, `process`, `faq`; в `pages/
+ * index.astro` `GAP.guarantees` панель и не запрашивает): соседняя `#process`
+ * уже панель, а правило «три подложки, не подряд» запрещает две встык.
+ * Заголовок поэтому остаётся ЧАСТЬЮ раскроя, рисуется здесь же, как у
+ * образца, а не уходит наружу вслед за тремя панельными секциями.
  *
  * Пятая гарантия «Сколько это занимает» — перенос из снятой секции 6
  * (D-030, `02-case-illustrations.md`); её второй абзац рисуется отдельным
@@ -14,43 +31,109 @@
  * разного веса (утверждение и его пояснение), как было в исходной секции 6.
  */
 import Label from '../Label.astro';
-import Card from '../Card.astro';
 import { GUARANTEES } from '../../data/process';
 
 if (GUARANTEES.length !== 5) {
   throw new Error('home/Guarantees.astro: секция 8 несёт ровно пять гарантий.');
 }
 ---
-<Label>ГАРАНТИИ</Label>
-<h2 class="t-h2">Что я гарантирую</h2>
+<div class="layout">
+  <div class="heading">
+    <Label>ГАРАНТИИ</Label>
+    <h2 class="t-h2">Что я гарантирую</h2>
+  </div>
 
-<div class="grid">
-  {GUARANTEES.map((g) => (
-    <Card>
-      <h3 class="t-h3">{g.title}</h3>
-      <p>{g.text}</p>
-      {g.note && <p class="note">{g.note}</p>}
-    </Card>
-  ))}
+  <ul class="list">
+    {GUARANTEES.map((g) => (
+      <li class="reveal">
+        {/* Галочка нарисована рамкой — ни SVG, ни шрифтового глифа: ноль
+            байт ассетов, ноль зависимости от начертания шрифта. */}
+        <span class="check" aria-hidden="true"></span>
+        <div>
+          <h3 class="title">{g.title}</h3>
+          <p>{g.text}</p>
+          {g.note && <p class="note">{g.note}</p>}
+        </div>
+      </li>
+    ))}
+  </ul>
 </div>
 
 <style>
-  .grid {
-    margin: 32px 0 0;
+  /* Отбивка заголовка секции сама (нет панели, нет `Section.astro`) — та же
+     32 px, что и у остальных секций главной, но здесь она между заголовком
+     и списком, а не между заголовком и панелью. */
+  .layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
+    row-gap: 32px;
   }
-  @media (min-width: 700px) {
-    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
   }
-  /* Каскад — та же диагональ, что и у услуг в начале страницы (02-card-
-     motion.md, раздел 5, «Чем это красиво»): секция, закрывающая страх
-     «пропадёт», движется так же, как секция, с которой всё началось.
-     Правило одно на обе секции — `.grid > :nth-child(2n)` в `styles/
-     base.css`, не копия здесь: класс `.grid` уникален для этих двух
-     секций, второе правило платило бы весом за то же самое значение. */
-  .grid h3 { margin: 0 0 8px; }
-  .grid p { margin: 0; color: var(--text-muted); }
-  .grid .note { margin-top: 8px; }
+  .list li {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    column-gap: 16px;
+  }
+  /* Шаг 32 px между гарантиями — ряд «ростом» в собственный текст и
+     крупный вертикальный воздух вместо линейки (раздел 0.1 брифа: строка
+     1–2 строки текста и большой вертикальный шаг). */
+  .list li + li { margin-top: 32px; }
+
+  /* Знак-галочка — квадрат 24×24 на мягкой акцентной подложке (форма
+     заимствована у образца, краска — наш единственный акцент). Сама
+     галочка — угол рамки, повёрнутый на 45°. */
+  .check {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    display: grid;
+    place-items: center;
+  }
+  .check::before {
+    content: '';
+    width: 5px;
+    height: 10px;
+    border-right: 2px solid var(--accent);
+    border-bottom: 2px solid var(--accent);
+    rotate: 45deg;
+    margin-top: -2px;
+  }
+
+  /* Заголовок гарантии — элемент `<h3>` остаётся ради семантики оглавления,
+     но набор — `.t-body-lg` текстовым шрифтом, не `.t-h3` в Unbounded
+     (раздел 0.2 брифа, «ловушка вёрстки»): общий селектор `h1,h2,h3,.t-h3`
+     из `base.css` вешает заголовочный шрифт и трекинг на ЭЛЕМЕНТ `h3`, а не
+     только на класс, поэтому все три свойства объявлены здесь явно —
+     одного класса `.t-body-lg` для их отмены недостаточно. */
+  .title {
+    font-family: var(--font-text);
+    font-weight: 600;
+    font-size: 1.375rem;
+    line-height: 1.6;
+    letter-spacing: normal;
+    color: var(--text);
+    margin: 0 0 8px;
+  }
+  .list p {
+    margin: 0;
+    font-size: 1.125rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+    max-width: 34em; /* ≈612px на 18px тексте */
+  }
+  .list .note { margin-top: 8px; }
+
+  @media (min-width: 900px) {
+    .layout {
+      grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+      column-gap: 48px;
+      row-gap: 0;
+      align-items: start;
+    }
+  }
 </style>
