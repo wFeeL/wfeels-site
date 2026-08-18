@@ -53,3 +53,29 @@ export function emailLinkHtml(label: string): string {
   const enc = escapeAtDot(EMAIL);
   return `<a href="mailto:${enc}" rel="me">${label} · <strong>${enc}</strong></a>`;
 }
+
+/** Путь Material Design Icons «mail», набор `materialiconsoutlined`, 24px
+ *  (`google/material-design-icons`, `src/communication/mail/
+ *  materialiconsoutlined/24px.svg`) — тот же источник и лицензия (Apache
+ *  License 2.0), что у остальных значков сайта (`home/ServiceIcon.astro`),
+ *  этот комментарий — обязательство лицензии, не украшение. Родовой конверт,
+ *  а не цветной логотип Gmail: у «Чертежа» один акцент на весь сайт и
+ *  монохромные значки (тот же `TelegramMark.astro` рисует фирменный контур
+ *  ОДНИМ `currentColor`, не брендовым синим) — четырёхцветная буква «M»
+ *  ввела бы второй, третий и четвёртый цвет разом. */
+const MAIL_ICON_SVG =
+  '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">' +
+  '<path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/>' +
+  '</svg>';
+
+/** Ссылка-значок на почту, готовая для `set:html` (та же причина, что у
+ *  `emailLinkHtml` выше: обычная интерполяция Astro дважды экранировала бы
+ *  числовые ссылки в `href`). У значка нет видимого текста — только
+ *  доступное имя (`ariaLabel`), та же роль, что у `TelegramMark` в шапке и
+ *  подвале. `className` необязателен: подвалу нужен свой класс размера цели
+ *  нажатия, второму месту, если оно появится, он может не понадобиться. */
+export function emailIconLinkHtml(ariaLabel: string, className?: string): string {
+  const enc = escapeAtDot(EMAIL);
+  const cls = className ? ` class="${className}"` : '';
+  return `<a href="mailto:${enc}" rel="me"${cls} aria-label="${ariaLabel}">${MAIL_ICON_SVG}</a>`;
+}
