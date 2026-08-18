@@ -1,0 +1,117 @@
+/* Ручной набор @font-face вместо `import '@fontsource-variable/…'`.
+ *
+ * Зачем: полный CSS фонтсорса тянет за собой подмножества, которых страница
+ * не использует, — `latin-ext` (латиница расширенная: IPA, диакритика для
+ * французского/польского/т.д., надстрочные знаки — 110+ КБ ради того, что
+ * из всего блока странице нужен один знак ₽), `vietnamese` (не нужен ни
+ * одному языку сайта) и `greek` у JetBrains Mono (тоже не нужен). Это и
+ * увело вес страницы за предел 500 КБ (D-035) после перехода на Unbounded +
+ * Onest — разбор в отчёте к правке.
+ *
+ * Что оставлено на каждое семейство — три файла:
+ *   - cyrillic — файл фонтсорса как есть: весь русский алфавит в обоих
+ *     регистрах (U+0400-045F, включая Ё/ё) плюс №.
+ *   - latin — файл фонтсорса как есть: ASCII, Latin-1 Supplement (латиница,
+ *     цифры, пунктуация, © « » · и т.д.), блок General Punctuation
+ *     (тире — –, троеточие …), €, ™, ↑ ↓.
+ *   - symbols — НОВЫЙ файл, вырезан вручную (`pyftsubset` из исходного
+ *     переменного шрифта Google Fonts) под два знака, которых не хватало
+ *     в связке cyrillic+latin: ₽ (U+20BD, цена набрана заголовочным
+ *     шрифтом — `price-font.test.ts`) и → (U+2192, стрелка в CTA/списках
+ *     услуг). Ни то ни другое не входило даже в старый `latin-ext`
+ *     (у ₽ — входило, у → — нет ни в одном из подключавшихся подмножеств:
+ *     оно и до этой правки рисовалось системным шрифтом).
+ *
+ * Запас на будущий текст: русский алфавит и латиница остаются ПОЛНЫМИ (не
+ * урезаны под сегодняшние слова) — это единственная защита от того, что
+ * следующая правка текста добавит используемую сегодня, но отсутствующую в
+ * файле букву. Не входит в запас: диакритика вне ASCII/Latin-1 (á, ü, ą, ł
+ * и т.п. — старый `latin-ext`) и другие валютные знаки, кроме ₽/€/$ (€ и $
+ * уже покрыты `latin`). Если на странице понадобится акцентированная
+ * латиница или другой Unicode-блок (валюта, эмодзи-подобные символы) —
+ * добавлять новый маленький `symbols`-подобный файл тем же способом, а не
+ * возвращать `latin-ext` целиком. */
+
+@font-face {
+  font-family: 'Unbounded Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url('../fonts/unbounded-cyrillic-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Unbounded Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url('../fonts/unbounded-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Unbounded Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url('../fonts/unbounded-symbols-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+2192, U+20BD;
+}
+
+@font-face {
+  font-family: 'Onest Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('../fonts/onest-cyrillic-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Onest Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('../fonts/onest-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Onest Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('../fonts/onest-symbols-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+2192, U+20BD;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('../fonts/jetbrains-mono-cyrillic-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('../fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('../fonts/jetbrains-mono-symbols-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+2192, U+20BD;
+}
