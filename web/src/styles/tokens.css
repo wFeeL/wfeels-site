@@ -58,8 +58,8 @@
      проверено `styles/tokens.test.ts`. */
   --danger: #C01739;
 
-  --font-head: 'Manrope Variable', system-ui, sans-serif;
-  --font-text: 'Golos Text Variable', system-ui, sans-serif;
+  --font-head: 'Unbounded Variable', system-ui, sans-serif;
+  --font-text: 'Onest Variable', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
 
   --step: 32px;
