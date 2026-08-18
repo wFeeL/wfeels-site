@@ -218,6 +218,13 @@ const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
     const h = vbHOf('about');
     return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
   })(),
+  // faq — раздел 4.3: «прямая», 543 px. Карта 6.2: `.panel` 578…1270 ×
+  // +96…543 — закрыта правая половина, левая (< 578, наш причал 59)
+  // открыта целиком; прямая на левом доке остаётся в открытом поле.
+  faq: (() => {
+    const h = vbHOf('faq');
+    return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
+  })(),
 };
 
 export const LINE_PATHS: Readonly<Record<string, LinePathEntry>> = {
