@@ -182,7 +182,18 @@ const FACTS = [t.footerReply, t.footerCity, t.footerHours];
      одинаковый вид у соседних органов управления читается как один язык
      значков, а не как две разные вёрстки одного и того же приёма. */
   .icon-links { display: flex; gap: 12px; margin: 24px 0 0; }
-  .icon-link {
+  /* `:global` на самом значке — не небрежность, а единственный рабочий путь.
+     Почтовая ссылка выводится через `set:html` (`emailIconLinkHtml`,
+     `lib/contacts.ts`), потому что обычная интерполяция сломала бы защиту
+     адреса числовыми ссылками. Вставленной строке Astro НЕ проставляет
+     атрибут изоляции `data-astro-cid-…`, поэтому изолированное правило
+     `.icon-link` доставалось только ссылке Telegram: почтовый значок
+     оставался голой строчной ссылкой без коробки 44×44, без обвода и без
+     видимого фокуса. Дефект нашло e2e-ожидание цели нажатия 2026-08-18;
+     сборка и юнит-тесты его не видели. Область видимости несёт родитель
+     `.icon-links` — он свой атрибут получает, — а сам значок сопоставляется
+     глобально. */
+  .icon-links :global(.icon-link) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -194,8 +205,8 @@ const FACTS = [t.footerReply, t.footerCity, t.footerHours];
     transition: color var(--dur-micro) var(--ease),
                 border-color var(--dur-micro) var(--ease);
   }
-  .icon-link:hover,
-  .icon-link:focus-visible {
+  .icon-links :global(.icon-link:hover),
+  .icon-links :global(.icon-link:focus-visible) {
     color: var(--text);
     border-color: var(--text-faint);
   }

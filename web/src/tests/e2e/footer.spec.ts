@@ -37,40 +37,44 @@ test('там, где разделов нет, подвал не рисует п�
   // Юридическая группа и прямой выход остаются: подвал не пустеет.
   await expect(page.locator('footer nav[aria-labelledby="footer-legal"] a'))
     .toHaveCount(3);
-  await expect(page.locator('footer a.btn')).toHaveCount(1);
+  await expect(page.locator('footer a.icon-link')).toHaveCount(2);
 });
 
-test('в подвале есть кнопка в Telegram, и она ведёт на t.me/wfeels',
+test('в подвале два значка — Telegram и почта, и оба остаются ссылками',
   async ({ page }) => {
     await page.goto('/');
-    const cta = page.locator('footer a.btn');
+    // Правка владельца 2026-08-18, пункт 17: кнопка «Написать в Telegram»
+    // заменена двумя значками. Тест переписан вместе с разметкой — прежнее
+    // ожидание (`footer a.btn`, заливка, высота 44) описывало снятый элемент.
+    const links = page.locator('footer a.icon-link');
+    await expect(links).toHaveCount(2);
 
-    await expect(cta).toHaveCount(1);
-    await expect(cta).toBeVisible();
-    await expect(cta).toHaveAttribute('href', TELEGRAM);
+    const tg = links.filter({ has: page.locator('svg') }).first();
+    await expect(tg).toHaveAttribute('href', TELEGRAM);
 
-    const look = await cta.evaluate((el) => {
-      const s = getComputedStyle(el);
-      return {
-        bg: s.backgroundColor,
-        height: el.getBoundingClientRect().height,
-        target: el.getAttribute('target'),
-        rel: el.getAttribute('rel'),
-      };
-    });
+    const look = await links.evaluateAll((els) => els.map((el) => ({
+      name: el.getAttribute('aria-label') ?? el.textContent?.trim() ?? '',
+      w: el.getBoundingClientRect().width,
+      h: el.getBoundingClientRect().height,
+      target: el.getAttribute('target'),
+      href: el.getAttribute('href') ?? '',
+    })));
 
-    // Владелец просил именно кнопку: заливка и цель нажатия, а не строчная
-    // ссылка, набранная как соседние пункты.
-    expect(look.bg, 'кнопка без заливки — это ссылка')
-      .not.toBe('rgba(0, 0, 0, 0)');
-    expect(look.height, 'высота кнопки').toBeGreaterThanOrEqual(44);
+    for (const l of look) {
+      // Значок без подписи обязан нести доступное имя: иначе скринридер
+      // прочитает ссылку как «ссылка» и не скажет куда.
+      expect(l.name.length, `значок без доступного имени: ${l.href}`)
+        .toBeGreaterThan(0);
+      // Цель нажатия пальцем — то же правило, что и у прежней кнопки.
+      expect(Math.min(l.w, l.h), `цель нажатия значка ${l.href}`)
+        .toBeGreaterThanOrEqual(44);
+      // Новую вкладку не открываем — обоснование в `Footer.astro`.
+      expect(l.target, `значок уводит в новую вкладку: ${l.href}`).toBeNull();
+    }
 
-    // Новую вкладку кнопка не открывает намеренно: на телефоне ссылку
-    // перехватывает приложение, и `_blank` оставил бы пустую вкладку, а на
-    // десктопе возврат — одна кнопка «назад». Обоснование — в Footer.astro.
-    expect(look.target, 'кнопка уводит в новую вкладку').toBeNull();
-    expect(look.rel, 'у внешней ссылки на свой же профиль нет rel="me"')
-      .toBe('me');
+    // Один из двух — почтовый, и адрес собран защищённой строкой.
+    expect(look.some((l) => l.href.startsWith('mailto:')
+      || l.href.includes('&#')), 'почтовый значок пропал').toBe(true);
   });
 
 test('прямой канал на странице один и тот же везде', async ({ page }) => {
@@ -86,7 +90,7 @@ test('прямой канал на странице один и тот же ве
   expect(hrefs[0]).toBe(TELEGRAM);
 });
 
-test('три обязательства подвала стоят рядом с кнопкой', async ({ page }) => {
+test('три обязательства подвала стоят рядом со значками', async ({ page }) => {
   await page.goto('/');
   const facts = page.locator('footer .facts li');
   await expect(facts).toHaveCount(3);
