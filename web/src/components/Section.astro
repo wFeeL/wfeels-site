@@ -1,5 +1,6 @@
 ---
 import { lineDataFor } from '../lib/backgroundLine';
+import { LINE_PATHS } from '../lib/linePaths';
 import Label from './Label.astro';
 
 interface Props {
@@ -46,24 +47,31 @@ interface Props {
 const { id, label, heading, topGap, bottomGap, surface = false } = Astro.props;
 
 /* Линия на фоне — бриф `70-workshop/specs/site-v3/05-line.md`, раздел 10
- * шаг 2 (коробка) поверх раздела 7.2 брифа `02-background-line` (атрибуты
- * разметки, не тронуты). `lineDataFor` возвращает `null` для любого `id`,
- * которого нет в `lib/sections.ts` (контакт-страница, 404, согласие,
- * английская — все страницы вне главной, которые тоже собираются этим
- * компонентом): им атрибуты и слой линии не достаются, без отдельной ветки
- * кода здесь.
+ * шаг 6 («Подключить реестр путей к странице») поверх раздела 7.1 (коробка
+ * и разметка). `lineDataFor` даёт только МЕТАДАННЫЕ Ч-4 (сторона/переход,
+ * атрибуты `data-line-side`/`data-line-turn`) и возвращает `null` для
+ * любого `id`, которого нет в `lib/sections.ts` (контакт-страница, 404,
+ * согласие, английская — все страницы вне главной, которые тоже собираются
+ * этим компонентом). Сам ПУТЬ (`d`, `viewBox`) читается напрямую из
+ * `LINE_PATHS` (`lib/linePaths.ts`) — единственного источника геометрии;
+ * `backgroundLine.ts` её больше не считает (раздел 10 шаг 6: «Реестр —
+ * единственный источник геометрии; вторых функций порождения не остаётся»).
  *
- * Оба `<svg>` — инлайновые в DOM (раздел 3.1 брифа `02-background-line`:
- * «без элемента в DOM нет ни stroke-dashoffset, ни pathLength, а без них
- * линия не рисуется, а проявляется»). `viewBox` — теперь `0 0 1000 vbH`,
- * `vbH` в единицах, не пикселях (раздел 4.1 брифа `05-line`, `runVbH`/
- * `turnVbH` из `lineDataFor`) — раньше он был буквой в разметке (`0 0 100
- * 1000` / `0 0 1000 100`), сейчас числом, посчитанным из измеренной высоты.
+ * Элемента `.line-turn` больше нет (раздел 7.1 брифа: «траверс — часть
+ * пути секции, отдельного бокса ему не нужно»): один `<svg class="line">`
+ * на секцию, во всю её высоту, несёт ОДИН нарисованный путь — прогон,
+ * траверс и событие (там, где они есть) уже слиты в один `d` реестра.
+ *
+ * `<svg>` — инлайновый в DOM (раздел 3.1 брифа `02-background-line`: «без
+ * элемента в DOM нет ни stroke-dashoffset, ни pathLength, а без них линия
+ * не рисуется, а проявляется»). `viewBox` — `0 0 1000 vbH`, `vbH` в
+ * единицах, не пикселях (раздел 4.1 брифа `05-line`, `LINE_PATHS[id].vbH`).
  * `preserveAspectRatio` пишется здесь же, в разметке (геометрия SVG), а
  * `stroke`, `stroke-width` — оформление, в `BackgroundLine.astro`;
- * `vector-effect` там БОЛЬШЕ НЕ ставится вовсе (раздел 7.2 брифа
- * `05-line`, раздел 1.1 — он и ломал чернила). */
+ * `vector-effect` там не ставится вовсе (раздел 7.2 брифа `05-line`,
+ * раздел 1.1 — он и ломал чернила). */
 const line = lineDataFor(id);
+const linePath = id ? LINE_PATHS[id] : undefined;
 ---
 <section
   id={id}
@@ -72,24 +80,14 @@ const line = lineDataFor(id);
   data-line-side={line?.side}
   data-line-turn={line?.turn}
 >
-  {line?.turn !== 'none' && line?.turnD && line?.turnVbH != null && (
+  {linePath && (
     <svg
-      class="line-turn"
-      viewBox={`0 0 1000 ${line.turnVbH}`}
+      class="line"
+      viewBox={`0 0 1000 ${linePath.vbH}`}
       preserveAspectRatio="none"
       aria-hidden="true"
     >
-      <path d={line.turnD} pathLength="1" />
-    </svg>
-  )}
-  {line && (
-    <svg
-      class="line-run"
-      viewBox={`0 0 1000 ${line.runVbH}`}
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <path d={line.runD} pathLength="1" />
+      <path d={linePath.wide} pathLength="1" />
     </svg>
   )}
   {label && <Label>{label}</Label>}

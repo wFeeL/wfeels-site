@@ -38,7 +38,7 @@ import { test, expect } from '@playwright/test';
  *  как раздел 10 шага 4 перерисует все одиннадцать путей заново — тест не
  *  знает форму `d`, только то, что её конец закрашен. */
 
-const LINE_PATH_SELECTOR = '.line-run path, .line-turn path, .line path';
+const LINE_PATH_SELECTOR = '.line path';
 
 interface InkResult {
   label: string;
@@ -187,8 +187,8 @@ test.describe('линия на фоне — тест чернил (05-line.md, �
     await page.goto('/');
 
     const results = await measureInkAtPathEnds(page);
-    expect(results.length, 'на странице должно быть 14 путей линии (10 прогонов + 3 перехода + хвост подвала)')
-      .toBe(14);
+    expect(results.length, 'на странице должно быть 11 путей линии (10 секций + хвост подвала, раздел 10 шаг 4)')
+      .toBe(11);
 
     const failing = results.filter((r) => !r.hasInk);
     const report = failing
