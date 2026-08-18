@@ -1,6 +1,9 @@
 ---
-/* Секция 11 — контакт. Текст утверждён дословно
- * (`70-workshop/specs/site-v3/02-texts.md`, секция 11). Заголовок намеренно
+/* Секция 11 — контакт. Заголовок и первое предложение подводки — утверждённый
+ * текст (`70-workshop/specs/site-v3/02-texts.md`, секция 11), сокращённый до
+ * ОДНОГО предложения задачей 18 (правка 2026-08-19, «форму поднять на уровень
+ * текста»): второй абзац снят целиком, а не переписан своими словами —
+ * формулировки утверждает владелец, не эта правка. Заголовок намеренно
  * совпадает со страницей `/contact` (`pages/contact.astro`) — два входа в
  * одно действие обязаны называться одинаково.
  *
@@ -12,20 +15,26 @@
  * Две колонки — правка владельца 2026-08-13 («секция в одну колонку, форма
  * шириной 543 px внутри 980 — правые 45% последнего экрана пусты»). Слева
  * подводка, прямые контакты и строка про срок; справа форма, той же ширины,
- * что и раньше (34rem, `LeadForm.astro`), поэтому пустого поля справа от
- * неё больше нет — колонка под форму подогнана под ту же ширину.
+ * что и раньше (34rem, `LeadForm.astro`). Заголовок стоит НАД сеткой, общий
+ * для обеих колонок, поэтому форма уже начинается на одном уровне с текстом
+ * (`align-items: start` ниже) — задача 18 сокращает текст, а не меняет саму
+ * сетку.
  *
- * «Отвечу в течение дня.» вынесена из первого абзаца подводки отдельной
- * строкой в конец левой колонки. Слова не менялись ни на одну букву —
- * сдвинулась только граница между двумя предложениями абзаца, была точка
- * между ними и раньше («…не работает. Отвечу в течение дня.»). Порядок
- * «подводка → контакты → срок» — решение владельца: сначала способ связаться,
- * потом обещание про срок ответа.
+ * Задача 18: строка «Не любите формы — напишите сразу» и список прямых
+ * каналов (`.channels`) уступили место двум кнопкам со значками — тот же
+ * прямой путь, но не списком прозы, а действием. Значок Telegram — тот же
+ * `TelegramMark`, что в шапке и подвале (второй копии контура не рисуется);
+ * почта — тот же приём защиты адреса числовыми ссылками, что у подвала
+ * (`emailButtonHtml`, `lib/contacts.ts`), просто с подписью рядом со
+ * значком, а не одним значком. «Отвечу в течение дня.» остаётся последней
+ * строкой левой колонки — порядок «подводка → контакты → срок» тот же,
+ * что был решением владельца 2026-08-13.
  */
 import Label from '../Label.astro';
 import Prose from '../Prose.astro';
 import LeadForm from '../LeadForm.astro';
-import { TELEGRAM_URL, telegramHandle, emailLinkHtml } from '../../lib/contacts';
+import TelegramMark from '../TelegramMark.astro';
+import { TELEGRAM_URL, emailButtonHtml } from '../../lib/contacts';
 ---
 <Label>ПОСЛЕДНИЙ ШАГ</Label>
 <h2 class="t-h2">Расскажите о задаче</h2>
@@ -34,22 +43,14 @@ import { TELEGRAM_URL, telegramHandle, emailLinkHtml } from '../../lib/contacts'
   <div class="intro">
     <Prose>
       <p>Напишите пару строк: что нужно — или что сейчас не работает.</p>
-      <p>
-        Дальше несколько вопросов и вилка срока и цены. Ни к чему не обязывает:
-        если задача окажется не моя, скажу сразу.
-      </p>
     </Prose>
 
-    <div class="channels">
-      <p class="channels-label">Не любите формы — напишите сразу:</p>
-      <ul>
-        <li>
-          <a href={TELEGRAM_URL} rel="me">
-            <span class="link-label">Telegram · <strong>{telegramHandle()}</strong></span>
-          </a>
-        </li>
-        <li set:html={emailLinkHtml('Почта')} />
-      </ul>
+    <div class="direct-actions">
+      <a class="contact-action" href={TELEGRAM_URL} rel="me">
+        <TelegramMark size={20} />
+        <span>Написать в Telegram</span>
+      </a>
+      <Fragment set:html={emailButtonHtml('Написать на почту', 'contact-action')} />
     </div>
 
     <p class="reply">Отвечу в течение дня.</p>
@@ -78,68 +79,42 @@ import { TELEGRAM_URL, telegramHandle, emailLinkHtml } from '../../lib/contacts'
     }
   }
 
-  .channels {
+  .direct-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
     margin-top: 32px;
   }
-  .channels-label {
-    margin: 0 0 12px;
-    color: var(--text-muted);
-  }
-  .channels ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 4px;
-  }
-  /* `:global(a)` — не `a`: почтовая ссылка приходит через `set:html`
-     (`emailLinkHtml`, `lib/contacts.ts`), а Astro метит атрибутом области
-     видимости только элементы, отрисованные из собственного шаблона
-     компонента — разметка, вставленная сырой строкой, атрибут не получает
-     и под скоупленный селектор `.channels a` не попадает. Найдено дизайн-
-     ревью (мобильные дефекты, часть 2): «Почта · …» измерялась 22 px —
-     высотой голой строки без единого правила отсюда, включая `min-height`.
-     Ссылка Telegram рядом (обычная разметка компонента) под тем же
-     скоупленным селектором уже стояла на 44 px — потому в списке дефектов
-     её и не было. */
-  .channels :global(a) {
+  /* `:global(.contact-action)` — не `.contact-action`: почтовая кнопка
+     приходит через `set:html` (`emailButtonHtml`, `lib/contacts.ts`), а
+     Astro метит атрибутом области видимости только элементы, отрисованные
+     из собственного шаблона компонента — разметка, вставленная сырой
+     строкой, атрибут не получает и под скоупленный класс не попадает (тот
+     же дефект уже находило дизайн-ревью на почтовом значке подвала,
+     `Footer.astro`, «мобильные дефекты, часть 2»). `:global()` матчит класс
+     независимо от происхождения — одно правило сразу для кнопки Telegram
+     (обычная разметка) и кнопки почты (`set:html`). Вид — тот же пилюльный
+     контур, что у `.btn.secondary` (`Button.astro`), но не тот же класс:
+     компонент кнопки скопит свои правила своим атрибутом, а сюда, как и в
+     подвал, нужен класс, доступный ОБОИМ путям разметки разом. */
+  .direct-actions :global(.contact-action) {
     display: inline-flex;
     align-items: center;
+    gap: 8px;
     min-height: 44px;
-    color: var(--accent);
+    padding: 10px 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--text);
+    font: 600 1rem/1 var(--font-text);
     text-decoration: none;
+    transition: color var(--dur-micro) var(--ease),
+                border-color var(--dur-micro) var(--ease);
   }
-  /* Два прямых канала — список, не проза: подчёркивание в покое здесь шум,
-     та же правка дизайн-ревью 2026-08-19, что у `Footer.astro`. Черта —
-     тот же приём (`.link-label::after`, `NavLinks.astro`), псевдоэлемент
-     подписи, не `text-decoration` самой ссылки (та растёт до 44 px). Оба
-     потомка `.channels :global(a .link-label)` — тем же селектором сразу
-     для ссылки Telegram (обычная разметка) и ссылки почты (`set:html`,
-     без атрибута скоупа): `:global()` матчит класс независимо от его
-     происхождения, вторая пара правил не нужна. */
-  .channels :global(a .link-label) {
-    position: relative;
-  }
-  .channels :global(a .link-label)::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -2px;
-    height: 1px;
-    background: currentColor;
-    pointer-events: none;
-    transform: scaleX(0);
-    transform-origin: left center;
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .channels :global(a .link-label)::after {
-      transition: transform var(--dur-micro) var(--ease);
-    }
-  }
-  .channels :global(a:hover .link-label)::after,
-  .channels :global(a:focus-visible .link-label)::after {
-    transform: scaleX(1);
+  .direct-actions :global(.contact-action:hover),
+  .direct-actions :global(.contact-action:focus-visible) {
+    color: var(--accent);
+    border-color: var(--accent);
   }
 
   .reply {

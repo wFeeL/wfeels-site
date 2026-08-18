@@ -208,11 +208,38 @@ test('подчёркивание живёт по месту ссылки: спи
     const menuLinks = [
       'footer nav[aria-labelledby="footer-sections"] a',
       'footer nav[aria-labelledby="footer-legal"] a',
-      '#contact .channels a',
     ];
+
+    /* Прямые каналы секции контакта — не пункты меню, а КНОПКИ со значками
+       (правка владельца 2026-08-18, пункт 18: строчный список `.channels`
+       снят). Черты у них нет и не должно быть ни в одном состоянии: они
+       опознаются рамкой и значком, а наведение меняет их так же, как любую
+       кнопку. Поэтому они проверяются отдельно, а не тем же требованием,
+       что пункты меню, — натянуть на них «в покое scale 0, под курсором 1»
+       значило бы требовать механизма, который им не нужен. */
+    const actions = page.locator('#contact .contact-action');
+    const actionCount = await actions.count();
+    expect(actionCount, 'прямые каналы контакта пропали').toBeGreaterThan(0);
+    for (let i = 0; i < actionCount; i += 1) {
+      const deco = await actions.nth(i).evaluate(
+        (el) => getComputedStyle(el).textDecorationLine,
+      );
+      expect(deco, `кнопка канала #${i} подчёркнута`).not.toContain('underline');
+    }
     for (const selector of menuLinks) {
       const idle = await underlineState(selector);
-      expect(idle.scale, `${selector}: черта видна в покое`).toBe(0);
+      // Правило: вне прозы черты в покое нет. Носителей у неё два, и оба
+      // законны — приём с псевдоэлементом (пункты меню, где черта приходит
+      // при наведении) и полное её отсутствие (кнопки со значками, которым
+      // черта не нужна ни в каком состоянии). Требовать `scale === 0` от
+      // второго — требовать существования механизма, который там не нужен:
+      // `null` означает «псевдоэлемента нет», а не «черта видна».
+      expect(
+        idle.scale === 0 || idle.scale === null,
+        `${selector}: черта видна в покое (scale=${idle.scale})`,
+      ).toBe(true);
+      expect(idle.deco, `${selector}: подчёркнута текстом в покое`)
+        .not.toContain('underline');
 
       const link = page.locator(selector).first();
       await link.hover();
