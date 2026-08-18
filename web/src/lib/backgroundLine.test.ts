@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   computeActGroups,
   computeLineData,
+  computeVbH,
   footerLineData,
   isActStitch,
   lineDataFor,
@@ -88,11 +89,19 @@ describe('линия на фоне — Ч-4 «Акт» (раздел 4.2)', () =
     expect(lineDataFor('services')).toEqual(computeLineData().services);
   });
 
-  it('footerLineData несёт ту же сторону и тот же язык кривой, что и contact (раздел 7.2)', () => {
+  it('footerLineData несёт ту же сторону (тот же док), что и contact, но свой vbH', () => {
+    // Раздел 4.1 брифа `05-line`: `vbH` посчитан из ИЗМЕРЕННОЙ высоты
+    // своего бокса, а подвал (469 px) ниже `contact` (966 px) — буквально
+    // тот же `runD`, что у `contact`, был бы посчитан под чужой vbH и не
+    // достал бы до низа бокса подвала (или вышел бы за него). Совпадать
+    // обязаны сторона (док) и МАСШТАБ (`stroke-width` в единицах viewBox
+    // остаётся тем же 34 у обоих — раздел 7.2), не буквальная строка `d`.
     const data = computeLineData();
     const footer = footerLineData();
     expect(footer.side).toBe(data.contact.side);
-    expect(footer.runD).toBe(data.contact.runD);
+    expect(footer.runVbH).toBe(computeVbH(MEASURED_FOOTER_HEIGHT));
+    expect(footer.runVbH).not.toBe(data.contact.runVbH);
+    expect(footer.runD).not.toBe(data.contact.runD);
   });
 
   it('измеренные высоты — положительные числа для всех десяти секций и подвала', () => {
@@ -183,28 +192,64 @@ describe('линия на фоне — preserveAspectRatio на каждом SVG
   });
 });
 
-/* Сторож концов пути вне viewBox (раздел 3.6, приёмка п. 4): круглый торец
- * не должен быть виден ни на одном стыке — оба конца каждого `d` обязаны
- * лежать за пределами собственного viewBox. */
+/* Сторож концов пути вне viewBox (раздел 3.6 брифа `02-background-line`,
+ * приёмка п. 4; раздел 10 шаг 2 / Г-2 брифа `05-line`): круглый торец не
+ * должен быть виден ни на одном стыке — оба конца каждого `d` обязаны
+ * лежать за пределами СОБСТВЕННОГО `viewBox` (`0…vbH`, не фиксированного
+ * `0…1000`/`0…100` — раздел 4.1 брифа `05-line` дал каждому боксу СВОЙ
+ * `vbH`, второй фиксированной высоты в системе больше нет). */
 describe('линия на фоне — концы путей выходят за viewBox (раздел 3.6)', () => {
-  it('прогон: y начинается < 0 и кончается > 1000 (высота viewBox прогона)', () => {
+  it('прогон: y начинается < 0 и кончается > runVbH (высота viewBox прогона)', () => {
     const data = computeLineData();
     for (const id of Object.keys(data)) {
-      const d = data[id].runD;
+      const { runD: d, runVbH } = data[id];
       const ys = [...d.matchAll(/-?[\d.]+,(-?[\d.]+)/g)].map((m) => Number(m[1]));
       expect(Math.min(...ys), `${id}: ${d}`).toBeLessThan(0);
-      expect(Math.max(...ys), `${id}: ${d}`).toBeGreaterThan(1000);
+      expect(Math.max(...ys), `${id}: ${d}`).toBeGreaterThan(runVbH);
     }
   });
 
-  it('переход: y начинается < 0 и кончается > 100 (высота viewBox перехода)', () => {
+  it('переход: y начинается < 0 и кончается > turnVbH (высота viewBox перехода)', () => {
     const data = computeLineData();
     for (const id of turnOwners()) {
-      const d = data[id].turnD;
+      const { turnD: d, turnVbH } = data[id];
       expect(d, id).not.toBeNull();
+      expect(turnVbH, id).not.toBeNull();
       const ys = [...d!.matchAll(/-?[\d.]+,(-?[\d.]+)/g)].map((m) => Number(m[1]));
       expect(Math.min(...ys), `${id}: ${d}`).toBeLessThan(0);
-      expect(Math.max(...ys), `${id}: ${d}`).toBeGreaterThan(100);
+      expect(Math.max(...ys), `${id}: ${d}`).toBeGreaterThan(turnVbH!);
+    }
+  });
+});
+
+/* Сторож доков (раздел 4.2 брифа `05-line`): прогон стоит РОВНО на своём
+ * доке (x=59 слева, x=941 справа) на всех точках пути, переход идёт
+ * строго от одного дока к другому. Ловит, если кто-то в будущем случайно
+ * подвинет `x` при рефакторинге `runD`/`turnD`. */
+describe('линия на фоне — доки (раздел 4.2)', () => {
+  it('прогон: обе точки на x=59 (левый) или x=941 (правый) по стороне', () => {
+    const data = computeLineData();
+    for (const id of Object.keys(data)) {
+      const { runD: d, side } = data[id];
+      const expectedX = side === 'left' ? 59 : 941;
+      const xs = [...d.matchAll(/(-?[\d.]+),-?[\d.]+/g)].map((m) => Number(m[1]));
+      for (const x of xs) expect(x, `${id}: ${d}`).toBe(expectedX);
+    }
+  });
+
+  it('переход: первая и последняя точка на доках 59/941 (по направлению)', () => {
+    const data = computeLineData();
+    for (const id of turnOwners()) {
+      const { turnD: d, turn } = data[id];
+      const xs = [...d!.matchAll(/(-?[\d.]+),-?[\d.]+/g)].map((m) => Number(m[1]));
+      const [startX, endX] = [xs[0], xs[xs.length - 1]];
+      if (turn === 'lr') {
+        expect(startX, id).toBe(59);
+        expect(endX, id).toBe(941);
+      } else {
+        expect(startX, id).toBe(941);
+        expect(endX, id).toBe(59);
+      }
     }
   });
 });
