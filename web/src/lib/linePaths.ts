@@ -1,23 +1,25 @@
 /** Реестр путей линии на фоне главной — бриф `70-workshop/specs/site-v3/
  *  05-line.md`, раздел 10, шаг 4: «Нарисовать одиннадцать путей по
  *  назначению 4.3, шаблону 4.4 и карте перекрытия 6.2. Рисуются руками,
- *  по одному, каждый — со снимком своей секции».
+ *  по одному, каждый — со снимком своей секции». Раздел 10, шаг 6:
+ *  «Подключить реестр к странице» — `Section.astro` и `Footer.astro`
+ *  читают `LINE_PATHS` напрямую, второго источника геометрии в кодовой
+ *  базе больше нет (`backgroundLine.ts` считает только сторону/переход,
+ *  метаданные Ч-4, не `d`).
  *
- *  Файл несёт ДВА слоя, и это сделано намеренно, а не по небрежности:
- *
- *  1. `FALLBACK` — механический пересчёт сегодняшней (шаг 2) геометрии в
- *     целевой формат, как этот файл был устроен после шага 3. Он остаётся
- *     здесь для секций, которые ЕЩЁ не нарисованы: контракт-тест обязан
- *     показывать их красными («на ненарисованных записях — честно красный»,
- *     раздел 10 плана), а не молчать о них, выкинув ключ из реестра.
- *  2. `HAND_DRAWN` — одиннадцать путей, дорисованных вручную один за
- *     другим (раздел 4.3 назначение, раздел 4.4 шаблон траверса, раздел 6.2
- *     карта перекрытия). Каждая запись здесь — отдельный коммит. `LINE_PATHS`
- *     — слияние: `HAND_DRAWN` перекрывает `FALLBACK` по мере рисования.
+ *  До этой правки файл нёс ВТОРОЙ слой, `FALLBACK`, — механический
+ *  пересчёт геометрии шага 2 для секций, ещё не нарисованных вручную.
+ *  Он снят: `HAND_DRAWN` ниже покрывает все десять секций главной и
+ *  подвал (раздел 10 шаг 4 завершён полностью), второй геометрии в
+ *  системе не остаётся ни для одной записи. Появится одиннадцатая секция
+ *  без своего пути — `LINE_PATHS[id]` будет `undefined`, и потребитель
+ *  (`Section.astro`) обязан молча пропустить рисунок для неё, а не читать
+ *  чужую геометрию (раздел 8: «секция без данных рисует прямую нитку в
+ *  левом поле» — отдельная работа, не эта правка).
  *
  *  Три помощника (`straightPath`, `traversePath`, `dipPath`) — не общая
- *  формула вместо рисунка, а инструмент того же рода, что уже несёт
- *  `backgroundLine.ts` (`mirrorD`): каждый вызов — решение, куда идёт путь
+ *  формула вместо рисунка, а инструмент того же рода, что нёс прежний
+ *  `mirrorD` в `backgroundLine.ts`: каждый вызов — решение, куда идёт путь
  *  ИМЕННО этой секции; числа (доки, амплитуда, точка пика) подобраны рукой
  *  под карту перекрытия конкретной секции и проверены контракт-тестом плюс
  *  снимком на живой странице, а не выведены единой формулой на всех.
@@ -26,20 +28,11 @@
  *  событий — раздел 8 «секция без данных рисует прямую нитку в левом поле»,
  *  тот же приём здесь для КАЖДОЙ секции: мобильная ширина ниже порога 900 px
  *  (раздел 6), на котором вообще стоит рисунок, событий там нет по Г-4
- *  («промежуточных значений нет»).
+ *  («промежуточных значений нет»). Пока не подключена к разметке (раздел 10
+ *  шаг 6 подключает только `wide`, порог видимости остаётся прежним, 480 px)
+ *  — отдельная работа шага 6 плана, не эта правка.
  */
-import {
-  computeLineData,
-  computeVbH,
-  DOCK_LEFT as OLD_DOCK_LEFT,
-  DOCK_RIGHT as OLD_DOCK_RIGHT,
-  END_OVERHANG as OLD_END_OVERHANG,
-  footerLineData,
-  MEASURED_FOOTER_HEIGHT,
-  MEASURED_SECTION_HEIGHT,
-  type LineDatum,
-} from './backgroundLine';
-import { HOME_SECTIONS } from './sections';
+import { computeVbH, MEASURED_FOOTER_HEIGHT, MEASURED_SECTION_HEIGHT } from './backgroundLine';
 
 /** Толщина штриха линии в единицах `viewBox` (раздел 7.2 брифа `05-line`):
  *  `stroke-width: 34` в `BackgroundLine.astro`. Единственный источник числа
@@ -58,30 +51,7 @@ export interface LinePathEntry {
   narrow: string;
 }
 
-/* ─────────────────────── 1. FALLBACK (шаг 3, не рисунок) ───────────────
- * Дословно переносится из состояния файла после шага 3 — механический
- * пересчёт `computeLineData()`/`footerLineData()` в формат реестра. */
-
-function widePathForFallback(entry: LineDatum): string {
-  if (entry.turn === 'none' || entry.turnD === null) return entry.runD;
-  const dockX = entry.side === 'left' ? OLD_DOCK_LEFT : OLD_DOCK_RIGHT;
-  return `${entry.turnD} L${dockX},${entry.runVbH + OLD_END_OVERHANG}`;
-}
-
-function toFallbackEntry(entry: LineDatum): LinePathEntry {
-  return { vbH: entry.runVbH, wide: widePathForFallback(entry), narrow: entry.runD };
-}
-
-const FALLBACK: Readonly<Record<string, LinePathEntry>> = (() => {
-  const data = computeLineData();
-  const result: Record<string, LinePathEntry> = {};
-  for (const s of HOME_SECTIONS) result[s.id] = toFallbackEntry(data[s.id]);
-  const footer = footerLineData();
-  result.footer = { vbH: footer.runVbH, wide: footer.runD, narrow: footer.runD };
-  return result;
-})();
-
-/* ─────────────────────── 2. Рисование (раздел 4.3/4.4/6.2) ─────────────── */
+/* ─────────────────────── Рисование (раздел 4.3/4.4/6.2) ─────────────── */
 
 /** Раздел 4.2: левый и правый причал, одинаковы для всех секций. */
 const DOCK_LEFT = 59;
@@ -158,9 +128,11 @@ function dipPath(vbH: number, dock: number, peakX: number, peakYFrac: number): s
 
 const vbHOf = (id: string) => computeVbH(MEASURED_SECTION_HEIGHT[id]);
 
-/** Одиннадцать нарисованных путей (раздел 10, шаг 4). Ключ появляется
- *  здесь по мере рисования — один за другим, каждый со своим коммитом. */
-const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
+/** Одиннадцать нарисованных путей (раздел 10, шаг 4) — все десять секций
+ *  главной плюс подвал, полный реестр. Ключ появился здесь по мере
+ *  рисования — один за другим, каждый со своим коммитом; сейчас это
+ *  единственный и полный слой (см. шапку файла). */
+const HAND_DRAWN: Readonly<Record<string, LinePathEntry>> = {
   // hero — раздел 4.3: «прямая, левый причал»; первая секция страницы, с
   // неё начинается линия левым доком ([[00-overview]]).
   hero: (() => {
@@ -268,6 +240,5 @@ const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
 };
 
 export const LINE_PATHS: Readonly<Record<string, LinePathEntry>> = {
-  ...FALLBACK,
   ...HAND_DRAWN,
 };

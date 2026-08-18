@@ -5,6 +5,7 @@ import { dict } from '../i18n/locales';
 import { TELEGRAM_URL, emailIconLinkHtml } from '../lib/contacts';
 import { samePath, sections } from '../lib/nav';
 import { footerLineData } from '../lib/backgroundLine';
+import { LINE_PATHS } from '../lib/linePaths';
 
 interface Props {
   lang: 'ru' | 'en';
@@ -47,16 +48,17 @@ const LEGAL = [
 const FACTS = [t.footerReply, t.footerCity, t.footerHours];
 
 const tail = line ? footerLineData() : null;
+const tailPath = line ? LINE_PATHS.footer : undefined;
 ---
 <footer data-line-side={tail?.side} data-line-last={tail ? '' : undefined}>
-  {tail && (
+  {tail && tailPath && (
     <svg
-      class="line-run"
-      viewBox={`0 0 1000 ${tail.runVbH}`}
+      class="line"
+      viewBox={`0 0 1000 ${tailPath.vbH}`}
       preserveAspectRatio="none"
       aria-hidden="true"
     >
-      <path d={tail.runD} pathLength="1" />
+      <path d={tailPath.wide} pathLength="1" />
     </svg>
   )}
   <Container>

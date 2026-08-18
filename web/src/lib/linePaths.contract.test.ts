@@ -64,7 +64,7 @@ describe('реестр линии — толщина штриха сверена
   it('LINE_STROKE_WIDTH_VB совпадает со `stroke-width` в BackgroundLine.astro', () => {
     const url = new URL('../components/BackgroundLine.astro', import.meta.url);
     const css = readFileSync(url, 'utf8');
-    const match = css.match(/\.line-run path,\s*\.line-turn path\s*\{[^}]*stroke-width:\s*([\d.]+);/s);
+    const match = css.match(/\.line path\s*\{[^}]*stroke-width:\s*([\d.]+);/s);
     expect(match, 'stroke-width не найден в BackgroundLine.astro').not.toBeNull();
     expect(Number(match![1])).toBe(LINE_STROKE_WIDTH_VB);
   });

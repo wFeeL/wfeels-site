@@ -1,23 +1,30 @@
 import { test, expect } from '@playwright/test';
 
-/** Линия на фоне главной — бриф `70-workshop/specs/site-v3/
- *  02-background-line.md`. Механика переписана 2026-08-18 (раздел 7) на
- *  инлайновые `<svg><path pathLength="1"/></svg>` внутри каждой
- *  `<section data-line-side>` — прогон несёт класс `.line-run`, переход на
- *  верхнем стыке (когда он есть) — `.line-turn`. Прежний класс `.bg-line` и
- *  приём `clip-path` этой правкой снят целиком (раздел 7.1, «`clip-path:
- *  inset()` открывал горизонтальную полосу — линия появлялась, а не
- *  рисовалась»); тесты ниже проверяют разметку и мотор ПОСЛЕ этой правки.
- *  Анимация (`animation-name`, `stroke-dashoffset`) сидит на `<path>` внутри
- *  каждого `<svg>`, не на самом `<svg>` — элемент-обёртка её не несёт.
+/** Линия на фоне главной — бриф `70-workshop/specs/site-v3/05-line.md`,
+ *  раздел 10 шаг 6. Механика — инлайновые `<svg class="line"><path
+ *  pathLength="1"/></svg>` внутри каждой `<section data-line-side>`/
+ *  `<footer data-line-side>` — ОДИН класс `.line` на бокс, ОДИН путь на
+ *  секцию: прогон, траверс и событие уже слиты реестром (`lib/
+ *  linePaths.ts`) в один `d`. Элемента `.line-turn` больше нет (раздел 7.1
+ *  брифа `05-line`: «отдельного бокса ему не нужно») — до этой правки
+ *  переход на границе акта был отдельным `<svg class="line-turn">` со
+ *  своим боксом высотой `--line-gap`; теперь он живёт внутри `d` того же
+ *  `.line`, что и прогон. Тесты ниже проверяют разметку и мотор ПОСЛЕ этой
+ *  правки. Анимация (`animation-name`, `stroke-dashoffset`) сидит на
+ *  `<path>` внутри `<svg>`, не на самом `<svg>` — элемент-обёртка её не
+ *  несёт.
  *
  *  ЛОВУШКА headless-Chromium: по умолчанию он отдаёт `prefers-reduced-
  *  motion: reduce`, даже когда тест явно этого не просил — любая проверка
  *  движения обязана эмулировать `no-preference` явно, иначе «обычный путь»
  *  тихо тестирует то же самое запасное состояние, что и тест на reduce. */
 
-const LINE_SELECTOR = '.line-run, .line-turn';
-const LINE_PATH_SELECTOR = '.line-run path, .line-turn path';
+const LINE_SELECTOR = '.line';
+const LINE_PATH_SELECTOR = '.line path';
+// Десять секций главной + хвост подвала — раздел 10 шаг 4 брифа `05-line`:
+// «одиннадцать путей». До подключения реестра (раздел 10 шаг 6) их было
+// 14 (10 прогонов + 3 перехода + хвост) — переход был отдельным элементом.
+const LINE_ELEMENT_COUNT = 11;
 
 async function findLineStylesheetHref(page: import('@playwright/test').Page) {
   const hrefs = await page.locator('link[rel="stylesheet"]')
@@ -25,9 +32,9 @@ async function findLineStylesheetHref(page: import('@playwright/test').Page) {
   for (const href of hrefs) {
     const res = await page.request.get(href);
     const css = await res.text();
-    if (css.includes('.line-run')) return { href, css };
+    if (css.includes('.line path')) return { href, css };
   }
-  throw new Error('стиль .line-run не найден ни в одном подключённом файле');
+  throw new Error('стиль .line не найден ни в одном подключённом файле');
 }
 
 test.describe('линия на фоне — запасное состояние без поддержки animation-timeline', () => {
@@ -110,7 +117,7 @@ test.describe('линия на фоне — уменьшенное движен�
 });
 
 test.describe('линия на фоне — обычный путь (поддержка есть, движение разрешено)', () => {
-  test('каждый .line-run/.line-turn получает анимацию, завязанную на view()', async ({ browser }) => {
+  test('каждый .line path получает анимацию, завязанную на view()', async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: 'no-preference' });
     const page = await ctx.newPage();
     await page.goto('/');
@@ -119,9 +126,9 @@ test.describe('линия на фоне — обычный путь (подде�
         const s = getComputedStyle(el);
         return { animationName: s.animationName, timeline: s.animationTimeline };
       }));
-    // Десять прогонов (по одному на секцию главной) + три перехода
-    // (Ч-4, раздел 4.2) + хвост подвала = 14 путей (раздел 8, «14 элементов»).
-    expect(styles.length).toBe(14);
+    // Десять секций главной + хвост подвала = 11 путей (раздел 10 шаг 4:
+    // «одиннадцать путей»). Переход больше не отдельный элемент (раздел 7.1).
+    expect(styles.length).toBe(LINE_ELEMENT_COUNT);
     for (const s of styles) {
       expect(s.animationName).not.toBe('none');
     }
@@ -132,10 +139,10 @@ test.describe('линия на фоне — обычный путь (подде�
     const res = await request.get('/');
     const html = await res.text();
     // Десять секций главной + подвал (`footerLineData()`, раздел 7.2:
-    // «подвал получает один элемент line-run с той же стороной, что у
+    // «подвал получает тот же класс `.line`, ту же сторону, что у
     // contact») — источник lib/sections.ts + Footer.astro.
     expect((html.match(/data-line-side="(left|right)"/g) ?? []).length).toBe(11);
-    expect(html).toContain('class="line-run"');
+    expect(html).toContain('class="line"');
   });
 
   test('линия — не орган управления: вне таб-порядка и указателя', async ({ page }) => {
@@ -181,9 +188,10 @@ test.describe('линия на фоне — порог 480 px (раздел 6, D
 });
 
 /* Раздел 9, пункт 7 — ни на одной ширине из числа проверяемых линия не
- * порождает горизонтальную прокрутку: вынос .line-run/.line-turn за кромку секции
- * (--line-out / --line-out-right, раздел 3.4) ограничен clamp()'ом,
- * границу проверяем измерением, а не полагаемся на формулу. */
+ * порождает горизонтальную прокрутку: холст `.line` ограничен `--line-canvas`
+ * (`min(100vw, 1440px)`, сужен до 1252px на 1324…1439 ради рельса — раздел
+ * 4.2 брифа `05-line`), границу проверяем измерением, а не полагаемся на
+ * формулу. */
 test.describe('линия на фоне — не создаёт горизонтальной прокрутки', () => {
   for (const width of [480, 768, 900, 1220, 1324, 1440, 1920]) {
     test(`${width}px: scrollWidth === clientWidth`, async ({ page }) => {
@@ -332,7 +340,7 @@ test.describe('линия на фоне — непрерывность рисо�
       samples.push({ y, mid: counts.mid, total: counts.total });
     }
 
-    expect(samples[0].total, 'пути линии не найдены на странице').toBe(14);
+    expect(samples[0].total, 'пути линии не найдены на странице').toBe(LINE_ELEMENT_COUNT);
 
     // Ноль путей в промежуточном состоянии допустим только на самом верху
     // (до начала первого прогона) и на самом низу (после конца хвоста) —
