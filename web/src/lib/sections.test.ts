@@ -10,7 +10,7 @@ import { HOME_SECTIONS, hasHomeSection, homeSectionIds } from './sections';
  *  покраснеет раньше, чем рельс задачи 4 подсветит не ту точку. */
 const RAIL_MAP: Record<string, number[]> = {
   'НАЧАЛО': [1],
-  'БОЛЬ': [2],
+  'КАК БЫВАЕТ': [2],
   'УСЛУГИ': [3],
   'ЦЕНЫ': [4],
   'КЕЙСЫ': [5],

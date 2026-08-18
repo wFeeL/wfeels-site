@@ -9,14 +9,14 @@ describe('railPoints — группировка HOME_SECTIONS в точки ре
 
   it('метки точек и их порядок — дословно по sections.ts (правка владельца 2026-08-18: «pain» и «faq» расцеплены с соседями)', () => {
     expect(railPoints().map((p) => p.label)).toEqual([
-      'НАЧАЛО', 'БОЛЬ', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ГАРАНТИИ', 'ОБО МНЕ', 'FAQ', 'КОНТАКТ',
+      'НАЧАЛО', 'КАК БЫВАЕТ', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ГАРАНТИИ', 'ОБО МНЕ', 'FAQ', 'КОНТАКТ',
     ]);
   });
 
   it('каждая точка несёт все секции своей группы, в порядке страницы', () => {
     const byLabel = new Map(railPoints().map((p) => [p.label, p.sectionIds]));
     expect(byLabel.get('НАЧАЛО')).toEqual(['hero']);
-    expect(byLabel.get('БОЛЬ')).toEqual(['pain']);
+    expect(byLabel.get('КАК БЫВАЕТ')).toEqual(['pain']);
     // Точка «КЕЙСЫ» больше не парная — секция «Что можно проверить» снята
     // (D-030, `02-case-illustrations.md`, раздел 0).
     expect(byLabel.get('КЕЙСЫ')).toEqual(['cases']);
@@ -48,7 +48,7 @@ describe('railPoints — группировка HOME_SECTIONS в точки ре
 describe('sectionToRailLabel', () => {
   it('каждый из десяти якорей отображается на ожидаемую метку', () => {
     const expected: Record<string, string> = {
-      hero: 'НАЧАЛО', pain: 'БОЛЬ',
+      hero: 'НАЧАЛО', pain: 'КАК БЫВАЕТ',
       services: 'УСЛУГИ',
       pricing: 'ЦЕНЫ',
       cases: 'КЕЙСЫ',
