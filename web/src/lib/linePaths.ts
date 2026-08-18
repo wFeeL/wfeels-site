@@ -241,12 +241,15 @@ const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
       narrow: narrowPath(h),
     };
   })(),
+  // footer — раздел 4.3: «прямая, за нижнюю кромку» (Л-2). Продолжает
+  // contact с ТОЙ ЖЕ точки x=499 («сход к середине») — раздел 11, п. 3:
+  // «на каждом стыке… горизонтальное расстояние 0 px».
+  footer: (() => {
+    const h = computeVbH(MEASURED_FOOTER_HEIGHT);
+    const xMid = DOCK_LEFT + 440;
+    return { vbH: h, wide: straightPath(h, xMid), narrow: narrowPath(h) };
+  })(),
 };
-
-/** Раздел 4.3 `contact`: x, на котором «сход к середине» заканчивается —
- *  `footer` обязан продолжить путь с ТОЙ ЖЕ точки (раздел 11, п. 3: «на
- *  каждом стыке секций горизонтальное расстояние… 0 px»). */
-const CONTACT_MID_X = DOCK_LEFT + 440;
 
 export const LINE_PATHS: Readonly<Record<string, LinePathEntry>> = {
   ...FALLBACK,
