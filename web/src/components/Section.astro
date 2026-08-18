@@ -46,12 +46,16 @@ interface Props {
 const { id, label, heading, topGap, bottomGap, surface = false } = Astro.props;
 
 /* Линия на фоне — бриф `70-workshop/specs/site-v3/02-background-line.md`,
- * раздел 7.1. `lineDataFor` возвращает `null` для любого `id`, которого нет
- * в `lib/sections.ts` (контакт, 404, согласие, английская — все страницы вне
- * главной, которые тоже собираются этим компонентом): им атрибуты и слой
- * линии не достаются, без отдельной ветки кода здесь. Вся стилистика слоя —
- * в `BackgroundLine.astro` (`<style is:global>`), этот файл несёт только
- * разметку и атрибуты, которые эта стилистика читает. */
+ * раздел 7.2. `lineDataFor` возвращает `null` для любого `id`, которого нет
+ * в `lib/sections.ts` (контакт-страница, 404, согласие, английская — все
+ * страницы вне главной, которые тоже собираются этим компонентом): им
+ * атрибуты и слой линии не достаются, без отдельной ветки кода здесь.
+ *
+ * Оба `<svg>` — инлайновые в DOM (раздел 3.1: «без элемента в DOM нет ни
+ * stroke-dashoffset, ни pathLength, а без них линия не рисуется, а
+ * проявляется»). `viewBox` и `preserveAspectRatio` пишутся здесь, в
+ * разметке (геометрия SVG), а не в CSS `BackgroundLine.astro`
+ * (`vector-effect`, `stroke`, `stroke-width` — оформление, там же). */
 const line = lineDataFor(id);
 ---
 <section
@@ -59,10 +63,18 @@ const line = lineDataFor(id);
   data-top-gap={topGap}
   data-bottom-gap={bottomGap}
   data-line-side={line?.side}
-  data-line-cross={line?.cross}
-  data-line-cross-top={line?.crossTop}
+  data-line-turn={line?.turn}
 >
-  {line && <span class="bg-line" aria-hidden="true"></span>}
+  {line?.turn !== 'none' && line?.turnD && (
+    <svg class="line-turn" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
+      <path d={line.turnD} pathLength="1" />
+    </svg>
+  )}
+  {line && (
+    <svg class="line-run" viewBox="0 0 100 1000" preserveAspectRatio="none" aria-hidden="true">
+      <path d={line.runD} pathLength="1" />
+    </svg>
+  )}
   {label && <Label>{label}</Label>}
   {heading && <h2 class="t-h2 section-heading">{heading}</h2>}
   {surface ? <div class="panel"><slot /></div> : <slot />}

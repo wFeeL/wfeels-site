@@ -1,252 +1,207 @@
 ---
-/* Линия на фоне главной — бриф '70-workshop/specs/site-v3/
- * 02-background-line.md'. Разметку и атрибуты (data-line-side,
- * data-line-cross, data-line-cross-top, элемент .bg-line) несёт
- * Section.astro (раздел 7.1) — этот файл подключается один раз (Base.astro,
- * проп line) и несёт ТОЛЬКО глобальные правила: он не рендерит видимой
- * разметки сам, потому что рисовать теперь нечего — каждая секция несёт
- * свой собственный отрезок и свой собственный таймлайн view() (раздел 2), а
- * не общий на всю страницу путь.
+/* Линия на фоне главной — бриф `70-workshop/specs/site-v3/
+ * 02-background-line.md`, переписан целиком 2026-08-18 (исполнение D-043 и
+ * ответ на пункт 2 списка правок владельца). Разметку (оба `<svg>`,
+ * `data-line-side`, `data-line-turn`) несёт `Section.astro` (раздел 7.2) —
+ * этот файл подключается один раз (`Base.astro`, проп `line`) и несёт
+ * ТОЛЬКО глобальные правила: своей видимой разметки он не рендерит.
  *
- * Раздел 2 «Механика»: animation-timeline: view() + animation-range: entry
- * даёт «фронт рисования всегда стоит на нижней кромке вьюпорта» —
- * арифметическое следствие формулы p = (s + V − T) / H, не подобранное
- * число. Три детали реализации из раздела 2, каждая обязательна:
- *   - animation-fill-mode: both — без него секции ниже окна показали бы
- *     базовое состояние (линия видна целиком), то есть ровно тот дефект,
- *     который чинится;
- *   - animation-timing-function: linear — иначе фронт отвязывается от
- *     кромки окна;
+ * ЗАМЕР ПЕРЕД ВЁРСТКОЙ (раздел 3.2-бис, риск композиции) — сделан первым,
+ * до этого файла: `vector-effect: non-scaling-stroke` вместе с
+ * `pathLength="1"` и `stroke-dasharray: 1 1` в целевом Chromium ДЕРЖИТСЯ —
+ * штрих остаётся сплошным (не превращается в пунктир `1px 1px`), несмотря
+ * на то что `getComputedStyle(path).strokeDasharray` вводит в заблуждение
+ * («1px, 1px» — это сериализация CSSOM, не то, как путь красится).
+ * Проверено рендером (скриншот и построчный замер закрашенных пикселей),
+ * не только вычисленным стилем — см. отчёт исполнителя. Значит используется
+ * ОСНОВНОЙ приём раздела 3.2-бис, а не запасной (компенсированный
+ * `stroke-width`).
+ *
+ * Раздел 7.3 «Синхронность»: ОДНО правило диапазона на все элементы —
+ * `animation-range: cover var(--line-lead) cover calc(100% - var(--line-trail))`,
+ * `--line-lead: 33vh`, `--line-trail: 67vh` (сумма ровно 100vh). Конец
+ * рисования стоит на 67% высоты окна на любом элементе, на любой высоте
+ * страницы, при любом составе секций — арифметическое следствие, не
+ * подобранное число (раздел 7.3 брифа разбирает вывод). Последний элемент
+ * (хвост подвала, `[data-line-last]`) — исключение: `exit 0%` вместо
+ * `cover calc(100% - var(--line-trail))`, иначе последние 0.33 высоты окна
+ * рисунка недостижимы (раздел 7.3).
+ *
+ * Три детали реализации, каждая обязательна (раздел 2 и 7.3):
+ *   - animation-fill-mode: both — без него элементы вне своего окна
+ *     показали бы базовое состояние (линия нарисована целиком), то есть
+ *     ровно тот дефект, который чинится;
+ *   - animation-timing-function: linear — иначе конец отвязывается от
+ *     постоянной высоты экрана;
  *   - РАЗДЕЛЬНЫЕ longhand-свойства, не сокращение animation: — сборка
  *     сводит animation + animation-timeline в один шорткод, и собранный
  *     Chromium этой формы не понимает: animationName молча уходит в none.
- *     Проверено на прежней версии этого файла (git-история) и тестом
- *     background-line.spec.ts.
+ *     Тест: `css-no-animation-shorthand-with-timeline.test.ts`.
  *
- * Раздел 7.3 «Запасное состояние»: приём FactoryCore.astro (строки 283–294
- * на момент брифа) — состояние ПО УМОЛЧАНИЮ уже целиком видимо (clip-path
- * не задан), анимация навешивается СВЕРХУ внутри @supports, никогда
- * наоборот. Это закрывает оба случая одним и тем же состоянием:
- * prefers-reduced-motion: reduce и браузер без animation-timeline.
+ * Раздел 7.4 «Загрузка» (пункт 2б): `#hero .line-run path` дополнительно
+ * несёт `line-load` — однократное вычерчивание при монтировании, от
+ * `stroke-dashoffset: 1` БЕЗ кадра `to` (конечным берётся подлежащее —
+ * фактическое положение конца от `view()`, раздел 7.4 объясняет, почему
+ * дописывать `to` нельзя: линия дочертится до низа `hero` и скачком
+ * вернётся назад).
  *
- * УПРОЩЕНИЕ ПРОТИВ РАЗДЕЛА 7.2, названное прямо (см. отчёт исполнителя,
- * «Допущения»): бриф делит плитку перехода на верхнюю и нижнюю половины
- * поровну (H/2 каждой секции) — формула верна, ПОКА обе секции стыка
- * отдают одинаковый отступ. Действующий ритм «Три акта» (index.astro, GAP,
- * коммит edc7e47) в шести переходах из семи отдаёт верхней секции
- * bottomGap:'none' (0 px) и всю полосу — нижней (topGap:'stitch'/
- * 'interior', 96…128 px); симметричны только «FAQ → Контакт» (96+96).
- * Раздел 10 брифа предупреждал ровно об этом («зависит — одно число, высота
- * перехода») применительно к развилке 2.1, но не знал о «Трёх актах» —
- * которые тоже меняют это число, уже сегодня и не через развилку 2.1.
- * Решение: ВЕСЬ переход рисует секция, владеющая верхним стыком
- * (data-line-cross-top), высотой РОВНО в её собственный измеренный отступ
- * (data-top-gap, те же 48/64/96/128, что и в Section.astro — второй шкалы
- * не заводится). Секция сверху (data-line-cross) переход не рисует вовсе —
- * её прогон идёт прямо до своего нижнего края той же стороной. Непрерывность
- * (раздел 9, пункт 3/15) от этого не рвётся: обе половины по построению
- * встречаются в одной и той же точке (сторона верхней секции на её нижней
- * кромке), нижняя лишь несёт всю кривизну одна. Плата — переход там, где
- * 96/128 px это ВЕСЬ бюджет высоты (не половина 192/256), чуть круче
- * заявленных в разделе 3.2 5,5°; на единственном симметричном стыке
- * (FAQ→Контакт) используется тот же принцип (все 96 px — секции «Контакт»),
- * то есть тоже площе заявленного. Это стоит того же самого одного токена
- * --cross-h, о котором предупреждал раздел 10: как только ритм страницы
- * станет симметричным, разница исчезнет сама.
- *
- * URL ПЛИТОК (mask-image ниже) — не написаны руками: это литеральный вывод
- * lib/backgroundLine.ts → tileUrl(LR_TILE) / tileUrl(RL_TILE), вписанный в
- * этот <style> как текст. Так, а не через define:vars: у компонента нет
- * своего рендерящегося элемента (рисовать саму линию тут больше нечего),
- * define:vars на голом <style> вешать переменную некуда — правило есть,
- * var(--x) не резолвится нигде, штрих перехода пропадает молча, без единой
- * ошибки сборки (поймано руками на этом самом файле, см. отчёт). Разошлись
- * — сторожит `backgroundLine.test.ts`: он пересчитывает tileUrl() заново и
- * сверяет со строкой ниже, а не доверяет глазу.
- *
- * ЧТО В ЭТОМ ПРОХОДЕ НЕ СДЕЛАНО: волна вдоль прогона (раздел 3.1-бис,
- * правка владельца 2026-08-13); -webkit-mask-* дубли слоя перехода (Safari)
- * — веса ради, каждый URL плитки 249 байт, дубль на вебкит удвоил бы его без
- * пользы для целевого Chromium. Прогон сейчас прямой на всех ширинах
- * ≥ 480 px, а не только ниже 900 (раздел 6.1). Названо в отчёте
- * исполнителя, не спрятано в код тихо.
+ * Раздел 7.5 «Состояния»: запасное — линия нарисована ЦЕЛИКОМ уже в базовом
+ * правиле (`stroke-dashoffset: 0` вне `@supports`/`@media`), анимация
+ * навешивается СВЕРХУ внутри `@supports (animation-timeline: view()) и
+ * @media (prefers-reduced-motion: no-preference)`, никогда наоборот. Это
+ * закрывает и `prefers-reduced-motion: reduce`, и браузер без
+ * `animation-timeline`, и безголовый Chromium (который сам просит `reduce`)
+ * одним и тем же состоянием по умолчанию.
  */
 ---
 <style is:global>
-  /* Точка отсчёта: только секции, у которых Section.astro насчитал данные
-     линии (lib/backgroundLine.ts), получают точку отсчёта для position:
-     absolute слоя — раздел 7.2, «секции нужен position: relative». Другие
-     страницы (Section без id из HOME_SECTIONS) этот блок не задевает вовсе
-     — у них нет [data-line-side]. */
-  section[data-line-side] {
-    position: relative;
-    /* Раздел 3.4 — вынос наружу от кромки контейнера. Формула ссылается на
-       var(--container) живьём, поэтому не завязана на число из раздела 0
-       брифа (контейнер там взят устаревшим — 1060 вместо действующих
-       1180 px, см. отчёт). Медиазапрос-надбавка на волну (раздел 3.4,
-       правка 2026-08-13, минимум 32 вместо 16) в этом проходе не введена —
-       волны здесь нет. */
-    --line-out: clamp(16px, calc((100vw - var(--container)) / 4), 120px);
-    --line-out-right: var(--line-out);
+  /* ── Токены геометрии (раздел 3.4, 3.3) ────────────────────────────── */
+  :root {
+    --line-amp: 4px;
+    --line-x: 16px;
+    --line-x-right: 16px;
+    /* Раздел 7.3 — сумма ровно 100vh, вторая половина правила диапазона. */
+    --line-lead: 33vh;
+    --line-trail: 67vh;
   }
-  /* Развод с рельсом (раздел 3.4, «Правое поле делится с рельсом») — порог
-     измерен по факту (Rail.astro, @media (min-width: 1324px)), а не взят
-     из брифа: там записано 1220 px для контейнера 1060, действующий
-     контейнер 1180 сдвигает порог рельса на 1324 (см. отчёт). */
-  @media (min-width: 1324px) {
-    section[data-line-side] {
-      --line-out-right: min(
-        var(--line-out),
-        calc((100vw - var(--container)) / 2 - var(--rail) - 16px)
-      );
+  @media (min-width: 900px) {
+    :root {
+      --line-amp: 8px;
+      /* Порог появления рельса читается из Rail.astro (@media 1324px), не
+         назначается здесь. Число 97 — раздел 3.4: «Правое поле делится с
+         рельсом» (72 px полоса рельса + просвет 12 + A + stroke/2 = 97). */
+      --line-x: clamp(21px, calc((100vw - var(--container)) / 4 + 20px), 120px);
+      --line-x-right: var(--line-x);
     }
   }
+  @media (min-width: 1324px) {
+    :root { --line-x-right: max(var(--line-x), 97px); }
+  }
 
-  .bg-line {
+  /* Высота перехода — равна ИЗМЕРЕННОЙ полосе пустоты нижней секции
+     (раздел 3.3): совпадает буквально с числами `Section.astro`
+     (`data-top-gap`), второй шкалы не заводится. Задана на каждой секции с
+     данными линии (не только на владеющих переходом — дешевле не ветвить),
+     читают её только `.line-turn`/сдвинутый `.line-run` секций-владельцев. */
+  [data-line-side] { --line-gap: 48px; }
+  @media (min-width: 480px) { [data-line-side] { --line-gap: 64px; } }
+  @media (min-width: 900px) { [data-line-side] { --line-gap: 96px; } }
+  [data-line-side][data-top-gap="stitch"] { --line-gap: 64px; }
+  @media (min-width: 480px) {
+    [data-line-side][data-top-gap="stitch"] { --line-gap: 96px; }
+  }
+  @media (min-width: 900px) {
+    [data-line-side][data-top-gap="stitch"] { --line-gap: 128px; }
+  }
+
+  /* ── Горизонтальный вынос (раздел 3.4) ─────────────────────────────── */
+  /* `--container-pad` — тот же `padding-inline`, что и у `Container.astro`
+     (16/24/40), задан там переменной и наследуется вниз до секции.
+     `--line-out`/`--line-out-right` — расстояние от кромки СЕКЦИИ (=кромки
+     содержимого контейнера, где начинается текст) до дока прогона наружу:
+     `поле_до_текста − line-x`, где поле_до_текста = отступ контейнера +
+     половина разницы окна и контейнера (0, пока окно уже контейнера). */
+  [data-line-side] {
+    position: relative;
+    --line-out: calc(
+      var(--container-pad) + max(0px, (100vw - var(--container)) / 2) - var(--line-x)
+    );
+    --line-out-right: calc(
+      var(--container-pad) + max(0px, (100vw - var(--container)) / 2) - var(--line-x-right)
+    );
+  }
+
+  /* ── Видимость: порог 480 px (раздел 6, D-026 отменён) ─────────────── */
+  .line-run, .line-turn {
     display: none;
     position: absolute;
-    top: 0;
-    bottom: 0;
-    left: calc(-1 * var(--line-out));
-    right: calc(-1 * var(--line-out-right));
+    overflow: visible;
     z-index: -1;
     pointer-events: none;
   }
-  /* Порог 480 px (раздел 6) — заменяет D-026 (900 px). Шкала полей страницы
-     перестаёт вмещать штрих с просветом ≥ 12 px ниже 480, не выше. */
   @media (min-width: 480px) {
-    .bg-line { display: block; }
+    .line-run, .line-turn { display: block; }
   }
   @media print, (forced-colors: active) {
-    .bg-line { display: none; }
+    .line-run, .line-turn { display: none; }
   }
 
-  /* Слой 1 — прогон: прямой штрих (волна — отдельный проход, не в этой
-     версии). Ширина — своя переменная --stroke-bg-line (раздел 11: не
-     трогать --stroke-line, которым несёт ядро тизера фабрики). */
-  .bg-line::before {
-    content: '';
-    position: absolute;
+  /* ── Прогон: мощение по умолчанию inset-block:0 (раздел 3.5) ───────── */
+  .line-run {
     top: 0;
     bottom: 0;
-    width: var(--stroke-bg-line);
-    background-color: color-mix(in srgb, var(--accent) 36%, transparent);
+    width: var(--line-amp);
   }
-  section[data-line-side="left"] .bg-line::before { left: 0; }
-  section[data-line-side="right"] .bg-line::before { right: 0; }
-
-  /* Отступы прогона — это определение L (раздел 7.2): секция, владеющая
-     верхним переходом, отдаёт ему свой верх целиком (padding-top прогона =
-     её собственный измеренный отступ, data-top-gap). Секция, владеющая
-     нижним переходом (data-line-cross), НИЧЕГО не отдаёт снизу — упрощение
-     против раздела 7.2, обоснование во фронтматтере выше. */
-  section[data-line-cross-top="lr"] .bg-line::before,
-  section[data-line-cross-top="rl"] .bg-line::before {
-    top: 48px;
+  /* Секция, владеющая переходом, отдаёт ему свой верх целиком — прогон
+     начинается НИЖЕ бокса перехода (раздел 3.5, «два бокса: переход и
+     прогон»). */
+  [data-line-turn="lr"] .line-run,
+  [data-line-turn="rl"] .line-run {
+    top: var(--line-gap);
   }
-  @media (min-width: 480px) {
-    section[data-line-cross-top="lr"] .bg-line::before,
-    section[data-line-cross-top="rl"] .bg-line::before { top: 64px; }
+  [data-line-side="left"] .line-run {
+    left: calc(-1 * (var(--line-out) + var(--line-amp)));
   }
-  @media (min-width: 900px) {
-    section[data-line-cross-top="lr"] .bg-line::before,
-    section[data-line-cross-top="rl"] .bg-line::before { top: 96px; }
-  }
-  section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::before,
-  section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::before {
-    top: 64px;
-  }
-  @media (min-width: 480px) {
-    section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::before,
-    section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::before { top: 96px; }
-  }
-  @media (min-width: 900px) {
-    section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::before,
-    section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::before { top: 128px; }
+  [data-line-side="right"] .line-run {
+    right: calc(-1 * (var(--line-out-right) + var(--line-amp)));
   }
 
-  /* Слой 2 — переход: одна плитка (раздел 3.2, кубическая S-кривая,
-     вертикальная касательная на обоих концах), растянутая маской на всю
-     ширину .bg-line (= от левого поля до правого — «во всю ширину экрана»,
-     раздел 4.1) и на измеренную высоту стыка. mask-size: 100% 100% — то
-     самое место, где ОДНА плитка обслуживает любую высоту стыка без
-     второго файла на каждую комбинацию. */
-  .bg-line::after {
-    content: '';
-    position: absolute;
+  /* ── Переход: во всю ширину, бокс высотой в измеренную полосу (3.5) ── */
+  .line-turn {
     top: 0;
-    left: 0;
-    right: 0;
-    height: 0;
-    background-color: color-mix(in srgb, var(--accent) 36%, transparent);
-    mask-repeat: no-repeat;
-    mask-size: 100% 100%;
-    mask-mode: alpha;
-  }
-  section[data-line-cross-top="lr"] .bg-line::after {
-    height: 48px;
-    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%201000%20192'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M0%2C0%20C0%2C96%201000%2C96%201000%2C192'%20stroke%3D'%23000'%20stroke-width%3D'2'%20fill%3D'none'%2F%3E%3C%2Fsvg%3E");
-  }
-  section[data-line-cross-top="rl"] .bg-line::after {
-    height: 48px;
-    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%201000%20192'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M1000%2C0%20C1000%2C96%200%2C96%200%2C192'%20stroke%3D'%23000'%20stroke-width%3D'2'%20fill%3D'none'%2F%3E%3C%2Fsvg%3E");
-  }
-  @media (min-width: 480px) {
-    section[data-line-cross-top="lr"] .bg-line::after,
-    section[data-line-cross-top="rl"] .bg-line::after { height: 64px; }
-  }
-  @media (min-width: 900px) {
-    section[data-line-cross-top="lr"] .bg-line::after,
-    section[data-line-cross-top="rl"] .bg-line::after { height: 96px; }
-  }
-  section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::after,
-  section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::after {
-    height: 64px;
-  }
-  @media (min-width: 480px) {
-    section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::after,
-    section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::after { height: 96px; }
-  }
-  @media (min-width: 900px) {
-    section[data-top-gap="stitch"][data-line-cross-top="lr"] .bg-line::after,
-    section[data-top-gap="stitch"][data-line-cross-top="rl"] .bg-line::after { height: 128px; }
+    height: var(--line-gap);
+    left: calc(-1 * var(--line-out));
+    right: calc(-1 * var(--line-out-right));
   }
 
-  /* Раскрытие — раздел 7.2, одно свойство красит и прогон, и переход разом:
-     clip-path на .bg-line клипует и сам элемент, и оба псевдоэлемента.
-     По умолчанию свойство не задано — линия видна целиком (раздел 7.3). */
+  /* ── Штрих (раздел 5, 3.2-бис) ──────────────────────────────────────
+     `vector-effect: non-scaling-stroke` — штрих рисуется в пикселях
+     экрана и не тянется вместе с неравномерным масштабом
+     `preserveAspectRatio="none"` (ловушка 2, раздел 3.2-бис). Замер
+     композиции с `pathLength="1"` + `stroke-dasharray` — во фронтматтере
+     выше: держится, запасной путь не используется. */
+  .line-run path, .line-turn path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-opacity: var(--line-opacity);
+    stroke-width: var(--stroke-bg-line);
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 0; /* ПО УМОЛЧАНИЮ — нарисовано целиком (раздел 7.5) */
+  }
+
+  /* ── Рисование (раздел 7.3, 7.4) ────────────────────────────────────── */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      .bg-line {
-        clip-path: inset(0 0 100% 0);
-        animation-name: bg-line-draw;
+      .line-run path, .line-turn path {
+        stroke-dashoffset: 1;
+        animation-name: line-draw;
         animation-duration: 1ms;
         animation-timing-function: linear;
         animation-fill-mode: both;
         animation-timeline: view();
-        /* `cover`, а не `entry` — правка 2026-08-14 по замечанию владельца
-           «она даже не рисуется, а просто появляется».
-
-           Замер прежнего поведения: при `entry` отрезок дорисован НА 100% в
-           тот момент, когда верх секции доходит до верха окна (прогон клипа
-           100% → 78% → 56% → 33% → 11% → 0% на пути секции снизу вверх).
-           Дальше читатель листает уже готовую линию: фронт рисования
-           обгоняет его на всю высоту секции и заканчивается за кадром.
-           Формально анимация работала, зрительно её не существовало.
-
-           Причина арифметическая: длина диапазона `entry` равна высоте окна
-           (900 px), а рисовать надо высоту секции (1500 px у «Услуг») — фронт
-           шёл в 1,67 раза быстрее прокрутки. `cover` даёт длину
-           «высота секции + высота окна», и на середине пути фронт оказывается
-           ровно в середине окна: секция высотой H, прогресс
-           (scroll − top + 900) / (H + 900); при scroll = top + H/2 − 450 он
-           равен 0,5, то есть нарисовано H/2 — ровно там, куда смотрит глаз.
-           Линия дочерчивается рядом с читателем, а не до его прихода. */
-        animation-range: cover;
+        animation-range: cover var(--line-lead) cover calc(100% - var(--line-trail));
+      }
+      /* Последний элемент мощения (хвост подвала, `Footer.astro`) —
+         исключение раздела 7.3: без него последние 0.33 высоты окна
+         рисунка недостижимы, потому что прокрутка упирается раньше, чем
+         окно элемента успевает закрыться. */
+      [data-line-last] .line-run path {
+        animation-range: cover var(--line-lead) exit 0%;
+      }
+      /* Пункт 2б: первый экран ВЫЧЕРЧИВАЕТСЯ при загрузке, а не появляется
+         готовым. Кадра `to` у `line-load` нет и не должно быть — см.
+         фронтматтер. */
+      #hero .line-run path {
+        animation-name: line-draw, line-load;
+        animation-timeline: view(), auto;
+        animation-duration: 1ms, 1400ms;
+        animation-timing-function: linear, cubic-bezier(.2, .6, .2, 1);
+        animation-fill-mode: both, none;
       }
     }
   }
-  @keyframes bg-line-draw {
-    to { clip-path: inset(0 0 0 0); }
-  }
+  @keyframes line-draw { to { stroke-dashoffset: 0; } }
+  @keyframes line-load { from { stroke-dashoffset: 1; } }
 </style>
