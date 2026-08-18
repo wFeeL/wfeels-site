@@ -3,25 +3,27 @@ import { railPoints, sectionToRailLabel } from './rail';
 import { HOME_SECTIONS } from './sections';
 
 describe('railPoints — группировка HOME_SECTIONS в точки рельса', () => {
-  it('ровно восемь точек', () => {
-    expect(railPoints().length).toBe(8);
+  it('ровно десять точек (правка владельца 2026-08-18: pain и faq получили свою точку)', () => {
+    expect(railPoints().length).toBe(10);
   });
 
-  it('метки точек и их порядок — дословно по sections.ts (правка владельца 2026-08-13: «Процесс» и «Гарантии» расцеплены)', () => {
+  it('метки точек и их порядок — дословно по sections.ts (правка владельца 2026-08-18: «pain» и «faq» расцеплены с соседями)', () => {
     expect(railPoints().map((p) => p.label)).toEqual([
-      'НАЧАЛО', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ГАРАНТИИ', 'ОБО МНЕ', 'КОНТАКТ',
+      'НАЧАЛО', 'БОЛЬ', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ГАРАНТИИ', 'ОБО МНЕ', 'FAQ', 'КОНТАКТ',
     ]);
   });
 
   it('каждая точка несёт все секции своей группы, в порядке страницы', () => {
     const byLabel = new Map(railPoints().map((p) => [p.label, p.sectionIds]));
-    expect(byLabel.get('НАЧАЛО')).toEqual(['hero', 'pain']);
+    expect(byLabel.get('НАЧАЛО')).toEqual(['hero']);
+    expect(byLabel.get('БОЛЬ')).toEqual(['pain']);
     // Точка «КЕЙСЫ» больше не парная — секция «Что можно проверить» снята
     // (D-030, `02-case-illustrations.md`, раздел 0).
     expect(byLabel.get('КЕЙСЫ')).toEqual(['cases']);
     expect(byLabel.get('ПРОЦЕСС')).toEqual(['process']);
     expect(byLabel.get('ГАРАНТИИ')).toEqual(['guarantees']);
-    expect(byLabel.get('ОБО МНЕ')).toEqual(['about', 'faq']);
+    expect(byLabel.get('ОБО МНЕ')).toEqual(['about']);
+    expect(byLabel.get('FAQ')).toEqual(['faq']);
     expect(byLabel.get('КОНТАКТ')).toEqual(['contact']);
   });
 
@@ -46,12 +48,12 @@ describe('railPoints — группировка HOME_SECTIONS в точки ре
 describe('sectionToRailLabel', () => {
   it('каждый из десяти якорей отображается на ожидаемую метку', () => {
     const expected: Record<string, string> = {
-      hero: 'НАЧАЛО', pain: 'НАЧАЛО',
+      hero: 'НАЧАЛО', pain: 'БОЛЬ',
       services: 'УСЛУГИ',
       pricing: 'ЦЕНЫ',
       cases: 'КЕЙСЫ',
       process: 'ПРОЦЕСС', guarantees: 'ГАРАНТИИ',
-      about: 'ОБО МНЕ', faq: 'ОБО МНЕ',
+      about: 'ОБО МНЕ', faq: 'FAQ',
       contact: 'КОНТАКТ',
     };
     for (const [id, label] of Object.entries(expected)) {
