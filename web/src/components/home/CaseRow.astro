@@ -7,6 +7,11 @@
  * брифа). Порядок в DOM у всех блоков одинаковый — текст, потом рисунок;
  * зеркалятся только колонки грида (раздел 2.3 брифа), не разметка.
  *
+ * Переход — вариант В «Цель — весь блок» (D-047, бриф раздел 3.1): заголовок
+ * становится ЕДИНСТВЕННОЙ ссылкой блока, растянутой на весь блок приёмом
+ * `a::after { inset: 0 }`. Бывшая ссылка «Разобрать кейс →» стала меткой
+ * `.mark`, `aria-hidden`: без атрибута у ссылки задвоилось бы доступное имя.
+ *
  * Описание кейса не обрезается — не переписанным текстом, а полным
  * абзацем (`02-texts.md`, секция 5 / `data/cases.ts`): второй ручной копии
  * текста здесь не заводится, полный абзац остаётся в разметке для
@@ -23,19 +28,20 @@ interface Props {
   illustrationHeight: number;
   /** Высота поля ниже 899 px, если отличается — см. `CaseIllustrationField`. */
   illustrationMobileHeight?: number;
+  /** Строка «что переезжает» — только у четвёртой строки (бриф, раздел 6.4). */
+  frame?: string;
 }
 const {
-  item, mirrored = false, illustrationHeight, illustrationMobileHeight,
+  item, mirrored = false, illustrationHeight, illustrationMobileHeight, frame,
 } = Astro.props;
 ---
 <div class:list={['row', { mirror: mirrored }]}>
   <div class="text">
-    <h3 class="t-h3">{item.title}</h3>
+    <h3 class="t-h3"><a href={`/cases/${item.slug}`}>{item.title}</a></h3>
     {item.description && <p class="description">{item.description}</p>}
+    {frame && <p class="frame">{frame}</p>}
     {item.stack && <p class="stack"><code>{item.stack}</code></p>}
-    <p class="link">
-      <a href={`/cases/${item.slug}`}>Разобрать кейс <span aria-hidden="true">→</span></a>
-    </p>
+    <p class="mark" aria-hidden="true">Разобрать кейс <span>→</span></p>
   </div>
   <div class="illustration">
     <CaseIllustrationField height={illustrationHeight} mobileHeight={illustrationMobileHeight}>
@@ -47,11 +53,24 @@ const {
 
 <style>
   .row {
+    /* Точка отсчёта растянутой ссылки `a::after` (бриф, раздел 3.1). */
+    position: relative;
     display: grid;
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
     gap: 32px;
     padding: 48px 0;
     border-bottom: 1px solid var(--border);
+    /* Грань слева — метит блок как ссылку, во всех четырёх строках,
+       включая зеркальные (бриф, раздел 3.1: «грань слева во всех четырёх
+       блоках — она метит блок, а не колонку»). Существует всегда,
+       прозрачна в покое, чтобы наведение не двигало раскладку. Блок
+       компенсирует свою ширину и отступ, чтобы текст остался выровнен по
+       краю контейнера: 2 px грани + 16 px отступа = 18 px отрицательного
+       поля. */
+    border-left: 2px solid transparent;
+    padding-left: 16px;
+    margin-left: -18px;
+    transition: border-left-color var(--dur-micro) var(--ease);
   }
   /* Колонка рисунка остаётся широкой (7fr) в обеих раскладках — зеркалится
      сторона, а не пропорция (бриф, раздел 2.3). `direction: rtl` и
@@ -72,6 +91,22 @@ const {
 
   .text { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 
+  /* Заголовок — единственная ссылка блока. Цвет наследует `--text`
+     (правило `.t-h3` своего цвета не задаёт), меняется на `--accent`
+     только при наведении на ЛЮБУЮ точку блока (правило ниже). */
+  .text h3 a {
+    color: inherit;
+    text-decoration: none;
+    transition: color var(--dur-micro) var(--ease);
+  }
+  /* Растянутая ссылка — цель нажатия весь блок 1180×~380 (бриф, раздел
+     3.1). Подложка не появляется: заливать блок акцентом слишком громко. */
+  .text h3 a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
   /* Обрезка `-webkit-line-clamp: 2` снята дизайн-ревью 2026-08-13: обрыв
      предложения посреди слова читался как битая вёрстка, хотя полный текст
      уже был в HTML. Описание переносится свободно — текст утверждён
@@ -79,6 +114,14 @@ const {
      ширине текстовой колонки. */
   .description {
     margin: 0;
+    color: var(--text-muted);
+  }
+
+  /* Строка «что переезжает» (только четвёртая строка, бриф раздел 6.4) —
+     основной шрифт, не моно: две моно-строки подряд (каркас и стек)
+     слились бы в серую кашу. */
+  .frame {
+    margin: 4px 0 0;
     color: var(--text-muted);
   }
 
@@ -92,21 +135,55 @@ const {
     padding: 0;
   }
 
-  .link { margin: 8px 0 0; }
-  .link a {
-    color: var(--accent);
-    font-weight: 600;
-    text-decoration: none;
+  /* Метка «Разобрать кейс →» — больше не ссылка (D-047): моно, капслок
+     через CSS (в данных — обычный регистр, программа чтения не читает
+     `aria-hidden`, но капслок в разметке пришлось бы менять при правке
+     текста руками), `--text-muted` в покое, `--text` при наведении на блок.
+     Стоит последней строкой текстовой колонки, выровненная по её началу —
+     во всех четырёх блоках одинаково (бриф, раздел 3.1: у зеркальной
+     раскладки правый нижний угол блока — это угол поля рисунка, метка
+     оторвалась бы от слов). */
+  .mark {
+    margin: 8px 0 0;
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    /* Цель нажатия пальцем — дизайн-ревью (мобильные дефекты, часть 2):
-       было 30 px (высота строки текста, замер ревью), не цель нажатия.
-       `align-items: center` уже стоял выше — коробка выросла, текст
-       остался на середине. */
-    min-height: 44px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    transition: color var(--dur-micro) var(--ease);
   }
-  .link a:hover { text-decoration: underline; }
+  .mark span {
+    display: inline-block;
+    transition: translate var(--dur-micro) var(--ease);
+  }
+
+  /* Наведение — на любую точку блока, не на заголовок отдельно (вариант В).
+     `hover: hover` обязателен: иначе на телефоне состояние залипает после
+     касания (бриф, раздел 3.1). */
+  @media (hover: hover) {
+    .row:hover { border-left-color: var(--accent); }
+    .row:hover .text h3 a { color: var(--accent); }
+    .row:hover .mark { color: var(--text); }
+    .row:hover .mark span { translate: 2px 0; }
+  }
+  /* 390 px — наведения нет вовсе; грань остаётся видимой в покое прозрачной
+     и акцентной в `:focus-within` (клавиатурный эквивалент, бриф, раздел
+     3.1, «390 px»). */
+  .row:focus-within { border-left-color: var(--accent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* Сдвиг стрелки не применяется — движение снято. Перекраска грани,
+       заголовка и метки остаётся: это не движение (бриф, раздел 3.1). */
+    .mark span { transition: none; }
+    .row:hover .mark span,
+    .row:focus-within .mark span {
+      translate: 0 0;
+    }
+  }
 
   .illustration { min-width: 0; }
   .illustration :global(.field) { width: 100%; }

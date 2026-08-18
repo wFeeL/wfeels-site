@@ -8,6 +8,7 @@
  * нет.
  */
 import Label from '../Label.astro';
+import Button from '../Button.astro';
 import CaseRow from './CaseRow.astro';
 import CaseWeightIllustration from './CaseWeightIllustration.astro';
 import CaseFlowIllustration from './CaseFlowIllustration.astro';
@@ -89,8 +90,14 @@ const ILLUSTRATIONS: Record<string, any> = {
   })}
 </div>
 
+{/* Класс 2 «В каталог» (D-047, бриф раздел 3.3) — ровно та форма, что
+    принята для «Все услуги» (`Services.astro`): контурная кнопка
+    `Button.astro`, без стрелки — два разных вида одной роли (стрелка уже
+    занята меткой класса 1 «Разобрать кейс →») были бы той самой болезнью,
+    которую вариант В лечит. Собственных стилей `.all-cases a` не остаётся:
+    цвет, радиус, контур, кегль и высота 44 приходят из `Button.astro`. */}
 <p class="all-cases">
-  <a href={CASES_CATALOG_HREF}>Все кейсы <span aria-hidden="true">→</span></a>
+  <Button href={CASES_CATALOG_HREF} variant="secondary">Все кейсы</Button>
 </p>
 
 <FactoryTeaser />
@@ -105,18 +112,4 @@ const ILLUSTRATIONS: Record<string, any> = {
   .all-cases {
     margin: 32px 0 0;
   }
-  .all-cases a {
-    color: var(--accent);
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    /* Цель нажатия пальцем — тот же приём и та же причина, что у ссылок
-       строк кейсов (`CaseRow.astro`): было 30 px, то есть высота строки
-       текста, а не цель. В список дизайн-ревью эта ссылка не попала —
-       найдена собственным замером при приёмке правки. */
-    min-height: 44px;
-  }
-  .all-cases a:hover { text-decoration: underline; }
 </style>
