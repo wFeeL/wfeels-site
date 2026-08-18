@@ -1,11 +1,14 @@
 ---
-/* Секция 5 — кейсы. Три полноширинных блока (D-030, бриф `02-case-
- * illustrations.md`), не карточки: слева короткий текст и ссылка на страницу
- * кейса, справа — иллюстрация. Плюс тизер фабрики под ними
- * (`FactoryTeaser.astro`). Текст читается из `data/cases.ts` — единственного
- * источника, второй ручной копии здесь нет.
+/* Секция 5 — кейсы. Четыре полноширинных блока (бриф `70-workshop/specs/
+ * site-v3/04-cases-brief.md`, D-048), не карточки: слева короткий текст,
+ * справа — иллюстрация. Стороны чередуются (раздел 2.1 брифа) — рисуется
+ * циклом по `homeCases()`, а не четырьмя ручными блоками, чтобы порядок и
+ * зеркало читались из данных, а не дублировались в разметке. Текст читается
+ * из `data/cases.ts` — единственного источника, второй ручной копии здесь
+ * нет.
  */
 import Label from '../Label.astro';
+import Button from '../Button.astro';
 import CaseRow from './CaseRow.astro';
 import CaseWeightIllustration from './CaseWeightIllustration.astro';
 import CaseFlowIllustration from './CaseFlowIllustration.astro';
@@ -14,27 +17,18 @@ import FactoryTeaser from './FactoryTeaser.astro';
 import { homeCases, CASES_CATALOG_HREF } from '../../data/cases';
 
 const cases = homeCases();
-const [siteV3, zayavkaHub, aiConsultant] = cases;
 
 /* Высота поля иллюстрации — своя у каждого блока, кратная 32, в коридоре
- * 288…448 (бриф, раздел 2.1). Число здесь, а не в `data/cases.ts`: это
- * решение вёрстки секции 5, а не факт о кейсе.
+ * 288…448 (бриф `70-workshop/specs/site-v3/02-case-illustrations.md`, раздел
+ * 2.1). Число здесь, а не в `data/cases.ts`: это решение вёрстки секции 5, а
+ * не факт о кейсе.
  *
- * НАХОДКА дизайн-ревью 2026-08-13 (снятие цикла с диалога, см. `CaseDialogue
- * Illustration.astro`): «Пример диалога» — единственный блок, который не
- * укладывается в этот коридор. Раньше цикл показывал одну пару реплик за
- * раз, и 416 px хватало; без цикла все четыре реплики стоят одновременно, и
- * даже в лучшем случае (все сообщения в одну строку, без переносов) контенту
- * нужно ≈390 px при 384 px доступной высоты (448 − 64 паспарту) — рамка
- * коридора тесна для контента математически, не по недосмотру вёрстки.
- * Замер собранной страницы (`getBoundingClientRect`, ширина поля от 900 px):
- * содержимое требует 476 px в худшей точке диапазона (900…930 px, до того как
- * колонка иллюстрации разъезжается). 576 = 476 + 64 паспарту, округлено вверх
- * до кратного 32 с запасом на разницу рендеринга шрифта между браузерами.
- * Ритм 14/4/12/8 и отступ пузыря 12 px остались нетронуты (правка предыдущего
- * захода, ужимавшая их, была отменена) — уступил коридор, не ритм. Решение
- * владельца об этом расширении не запрошено этим заходом (не блокер по
- * брифу задачи) — см. отчёт, раздел «Влияние на базу». */
+ * Исключение — «Пример диалога»: `70-workshop/specs/site-v3/
+ * 04-cases-brief.md`, раздел 4.7, задаёт 576 (от 900 px) дословно, по составу
+ * — шапка окна (метка + линия) + четыре пузыря переписки (пузырь бота с
+ * блоком источника — самый высокий) + строка ввода 48. Число проверено
+ * замером собранной страницы (раздел 13, пункт 9 брифа): поле не
+ * прокручивается и ни одна реплика не обрезана на 900…1440 px. */
 const ILLUSTRATION_HEIGHT: Record<string, number> = {
   'site-v3': 384,
   'zayavka-hub': 352,
@@ -46,38 +40,58 @@ const ILLUSTRATION_HEIGHT: Record<string, number> = {
  * Иллюстрация 1 перетекает внутри одной и той же высоты (раздел 2.2). */
 const ZAYAVKA_HUB_MOBILE_HEIGHT = 544;
 
-/* «Пример диалога» ниже 899 px: та же находка, что выше, только глубже — на
- * ширине 390 px поле уже, реплики переносятся сильнее, и замеру нужно 535 px
- * контента (535 + 64 паспарту = 599, кратное 32 впритык — 608). 640 выбрано
- * тем же запасом на разницу рендеринга шрифта, что и десктопная высота
- * выше. */
-const AI_CONSULTANT_MOBILE_HEIGHT = 640;
+/* «Пример диалога» ниже 899 px: высота задана брифом дословно (`70-workshop/
+ * specs/site-v3/04-cases-brief.md`, раздел 4.7) — 672, а не расчётом от
+ * прежнего устройства (список цитат без шапки и строки ввода). Состав
+ * изменился — четыре пузыря мессенджера плюс статичные шапка (метка + линия)
+ * и строка ввода — и число пересчитано под новый состав. Кратно 32,
+ * проверяется замером после вёрстки (раздел 13, пункт 9): поле не
+ * прокручивается и ни одна реплика не обрезана. */
+const AI_CONSULTANT_MOBILE_HEIGHT = 672;
+
+const MOBILE_HEIGHT: Record<string, number | undefined> = {
+  'zayavka-hub': ZAYAVKA_HUB_MOBILE_HEIGHT,
+  'ai-consultant': AI_CONSULTANT_MOBILE_HEIGHT,
+};
+
+/* Компонент иллюстрации по slug — читается циклом, не четырьмя ручными
+ * блоками (бриф, раздел 2.1: чередование сторон выражается формулой, а не
+ * четырьмя флагами). Четвёртый кейс (`bot-factory`) добавляется отдельной
+ * задачей (пункт 10) вместе со своей иллюстрацией. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ILLUSTRATIONS: Record<string, any> = {
+  'site-v3': CaseWeightIllustration,
+  'zayavka-hub': CaseFlowIllustration,
+  'ai-consultant': CaseDialogueIllustration,
+};
 ---
 <Label>ЧТО УЖЕ СДЕЛАНО</Label>
 <h2 class="t-h2">Кейсы</h2>
 
 <div class="rows">
-  <CaseRow item={siteV3} illustrationHeight={ILLUSTRATION_HEIGHT[siteV3.slug]}>
-    <CaseWeightIllustration />
-  </CaseRow>
-  <CaseRow
-    item={zayavkaHub}
-    illustrationHeight={ILLUSTRATION_HEIGHT[zayavkaHub.slug]}
-    illustrationMobileHeight={ZAYAVKA_HUB_MOBILE_HEIGHT}
-  >
-    <CaseFlowIllustration />
-  </CaseRow>
-  <CaseRow
-    item={aiConsultant}
-    illustrationHeight={ILLUSTRATION_HEIGHT[aiConsultant.slug]}
-    illustrationMobileHeight={AI_CONSULTANT_MOBILE_HEIGHT}
-  >
-    <CaseDialogueIllustration />
-  </CaseRow>
+  {cases.map((item) => {
+    const Illustration = ILLUSTRATIONS[item.slug];
+    return (
+      <CaseRow
+        item={item}
+        mirrored={(item.homeOrder ?? 0) % 2 === 0}
+        illustrationHeight={ILLUSTRATION_HEIGHT[item.slug]}
+        illustrationMobileHeight={MOBILE_HEIGHT[item.slug]}
+      >
+        {Illustration && <Illustration />}
+      </CaseRow>
+    );
+  })}
 </div>
 
+{/* Класс 2 «В каталог» (D-047, бриф раздел 3.3) — ровно та форма, что
+    принята для «Все услуги» (`Services.astro`): контурная кнопка
+    `Button.astro`, без стрелки — два разных вида одной роли (стрелка уже
+    занята меткой класса 1 «Разобрать кейс →») были бы той самой болезнью,
+    которую вариант В лечит. Собственных стилей `.all-cases a` не остаётся:
+    цвет, радиус, контур, кегль и высота 44 приходят из `Button.astro`. */}
 <p class="all-cases">
-  <a href={CASES_CATALOG_HREF}>Все кейсы <span aria-hidden="true">→</span></a>
+  <Button href={CASES_CATALOG_HREF} variant="secondary">Все кейсы</Button>
 </p>
 
 <FactoryTeaser />
@@ -92,18 +106,4 @@ const AI_CONSULTANT_MOBILE_HEIGHT = 640;
   .all-cases {
     margin: 32px 0 0;
   }
-  .all-cases a {
-    color: var(--accent);
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    /* Цель нажатия пальцем — тот же приём и та же причина, что у ссылок
-       строк кейсов (`CaseRow.astro`): было 30 px, то есть высота строки
-       текста, а не цель. В список дизайн-ревью эта ссылка не попала —
-       найдена собственным замером при приёмке правки. */
-    min-height: 44px;
-  }
-  .all-cases a:hover { text-decoration: underline; }
 </style>
