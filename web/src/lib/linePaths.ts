@@ -203,6 +203,14 @@ const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
       narrow: narrowPath(h),
     };
   })(),
+  // guarantees — раздел 4.3: «прямая». Карта 6.2: «нет ни одной»
+  // непрозрачной коробки — линия открыта целиком, поэтому она обязана
+  // быть спокойной (раздел 6.2: «иначе два открытых экрана подряд
+  // превратятся в единственное место, где фон кричит»).
+  guarantees: (() => {
+    const h = vbHOf('guarantees');
+    return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
+  })(),
 };
 
 export const LINE_PATHS: Readonly<Record<string, LinePathEntry>> = {
