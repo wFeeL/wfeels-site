@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { homeCases, FACTORY_TEASER, CASES_CATALOG_HREF } from '../data/cases';
+import { homeCases, CASES_CATALOG_HREF } from '../data/cases';
 import { PAGE_WEIGHT_KB } from '../data/pageWeight';
 
 /* Тот же паттерн, что `dist-home-sections.test.ts`: читает `dist/index.html`
@@ -12,7 +12,11 @@ import { PAGE_WEIGHT_KB } from '../data/pageWeight';
  *
  * Секция 6 «Что можно проверить» снята 2026-08-13 (D-030, бриф
  * `02-case-illustrations.md`) — её проверки отсюда удалены, а не
- * закомментированы: файл раньше назывался `dist-home-cases-proof.test.ts`. */
+ * закомментированы: файл раньше назывался `dist-home-cases-proof.test.ts`.
+ *
+ * Тизер фабрики (`FactoryTeaser.astro`) снят 2026-08-18 (D-048, бриф
+ * `04-cases-brief.md`): «Фабрика ботов» стала четвёртым блоком секции —
+ * проверки её текста и плиты переехали в `dist-factory-shelf.test.ts`. */
 const DIST_INDEX = fileURLToPath(new URL('../../dist/index.html', import.meta.url));
 
 describe('dist/index.html — секция 5', () => {
@@ -29,7 +33,7 @@ describe('dist/index.html — секция 5', () => {
   if (!existsSync(DIST_INDEX)) return;
   const html = readFileSync(DIST_INDEX, 'utf8');
 
-  it('секция 5: метка, заголовок, три блока кейсов дословно на странице', () => {
+  it('секция 5: метка, заголовок, четыре блока кейсов дословно на странице', () => {
     expect(html).toContain('ЧТО УЖЕ СДЕЛАНО');
     expect(html).toContain('>Кейсы<');
     for (const c of homeCases()) {
@@ -59,10 +63,11 @@ describe('dist/index.html — секция 5', () => {
     const end = html.indexOf('id="process"');
     const section = html.slice(start, end);
     // Задачи 4–5 плана (`02-case-illustrations.md`) построили «Одну трубу» и
-    // «Пример диалога» — с этой правки наполнены все три поля секции 5.
+    // «Пример диалога»; D-048 (бриф `04-cases-brief.md`) добавила
+    // «Стеллаж» — с этой правки наполнены все четыре поля секции 5.
     expect((section.match(/class="field"/g) || []).length,
-      'в секции кейсов сегодня три наполненных поля иллюстрации')
-      .toBe(3);
+      'в секции кейсов сегодня четыре наполненных поля иллюстрации')
+      .toBe(4);
     expect(section, 'вес страницы не найден внутри поля «Замер»')
       .toContain(String(PAGE_WEIGHT_KB));
   });
@@ -88,14 +93,12 @@ describe('dist/index.html — секция 5', () => {
     expect(forbidden.test(casesSectionHtml)).toBe(false);
   });
 
-  it('тизер фабрики: текст, метка и плита на месте (вариант владельца А «Плита»)', () => {
-    expect(html).toContain('ФАБРИКА БОТОВ');
-    expect(html).toContain(FACTORY_TEASER.title);
-    expect(html).toContain(FACTORY_TEASER.text);
-    expect(html).toContain(FACTORY_TEASER.linkText);
-    expect(html).toContain(FACTORY_TEASER.href);
-    // Плита — в разметке без выполнения JavaScript. Подробный разбор её
-    // содержимого и байтового веса — `tests/dist-factory-plate.test.ts`.
-    expect(html).toContain('class="factory-plate"');
+  it('четвёртый блок «Фабрика ботов»: адрес /cases/bot-factory, ровно один <a>, схема «Стеллаж» на месте', () => {
+    const start = html.indexOf('id="cases"');
+    const end = html.indexOf('id="process"');
+    const section = html.slice(start, end);
+    expect(section).toContain('/cases/bot-factory');
+    expect(section).toContain('class="cf-stellar"');
+    // Подробный разбор содержимого и чисел схемы — `dist-factory-shelf.test.ts`.
   });
 });

@@ -13,8 +13,9 @@ import CaseRow from './CaseRow.astro';
 import CaseWeightIllustration from './CaseWeightIllustration.astro';
 import CaseFlowIllustration from './CaseFlowIllustration.astro';
 import CaseDialogueIllustration from './CaseDialogueIllustration.astro';
-import FactoryTeaser from './FactoryTeaser.astro';
+import CaseFactoryIllustration from './CaseFactoryIllustration.astro';
 import { homeCases, CASES_CATALOG_HREF } from '../../data/cases';
+import { FACTORY_FRAME_TEXT } from '../../data/factory';
 
 const cases = homeCases();
 
@@ -29,10 +30,13 @@ const cases = homeCases();
  * блоком источника — самый высокий) + строка ввода 48. Число проверено
  * замером собранной страницы (раздел 13, пункт 9 брифа): поле не
  * прокручивается и ни одна реплика не обрезана на 900…1440 px. */
+/* «Стеллаж» — 352 (288 рисунка + 64 паспарту), как «Заявка-Хаб» (бриф
+ * `04-cases-brief.md`, раздел 6.1). */
 const ILLUSTRATION_HEIGHT: Record<string, number> = {
   'site-v3': 384,
   'zayavka-hub': 352,
   'ai-consultant': 576,
+  'bot-factory': 352,
 };
 
 /* Раскрой Б «Заявки-Хаба» (ниже 899 px) — вертикальная схема 288×480 (бриф,
@@ -49,20 +53,33 @@ const ZAYAVKA_HUB_MOBILE_HEIGHT = 544;
  * прокручивается и ни одна реплика не обрезана. */
 const AI_CONSULTANT_MOBILE_HEIGHT = 672;
 
+/* «Стеллаж» ниже 899 px — 416, самая низкая иллюстрация секции (бриф,
+ * раздел 6.5): узел уходит наверх, шина становится вертикальной связкой,
+ * полки идут одна под другой — состав ниже, чем у раскроя А. */
+const FACTORY_MOBILE_HEIGHT = 416;
+
 const MOBILE_HEIGHT: Record<string, number | undefined> = {
   'zayavka-hub': ZAYAVKA_HUB_MOBILE_HEIGHT,
   'ai-consultant': AI_CONSULTANT_MOBILE_HEIGHT,
+  'bot-factory': FACTORY_MOBILE_HEIGHT,
 };
 
 /* Компонент иллюстрации по slug — читается циклом, не четырьмя ручными
  * блоками (бриф, раздел 2.1: чередование сторон выражается формулой, а не
- * четырьмя флагами). Четвёртый кейс (`bot-factory`) добавляется отдельной
- * задачей (пункт 10) вместе со своей иллюстрацией. */
+ * четырьмя флагами). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ILLUSTRATIONS: Record<string, any> = {
   'site-v3': CaseWeightIllustration,
   'zayavka-hub': CaseFlowIllustration,
   'ai-consultant': CaseDialogueIllustration,
+  'bot-factory': CaseFactoryIllustration,
+};
+
+/* Строка «что переезжает» — только у четвёртой строки (бриф, раздел 6.4):
+ * шесть частей каркаса перечисляет ТЕКСТ, а не рисунок — это то, на чём
+ * держится честность схемы Ф-2 «Стеллаж» (D-046). */
+const FRAME_TEXT: Record<string, string | undefined> = {
+  'bot-factory': FACTORY_FRAME_TEXT,
 };
 ---
 <Label>ЧТО УЖЕ СДЕЛАНО</Label>
@@ -77,6 +94,7 @@ const ILLUSTRATIONS: Record<string, any> = {
         mirrored={(item.homeOrder ?? 0) % 2 === 0}
         illustrationHeight={ILLUSTRATION_HEIGHT[item.slug]}
         illustrationMobileHeight={MOBILE_HEIGHT[item.slug]}
+        frame={FRAME_TEXT[item.slug]}
       >
         {Illustration && <Illustration />}
       </CaseRow>
@@ -93,8 +111,6 @@ const ILLUSTRATIONS: Record<string, any> = {
 <p class="all-cases">
   <Button href={CASES_CATALOG_HREF} variant="secondary">Все кейсы</Button>
 </p>
-
-<FactoryTeaser />
 
 <style>
   .rows {
