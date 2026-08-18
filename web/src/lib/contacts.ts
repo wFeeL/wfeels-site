@@ -87,3 +87,15 @@ export function emailIconLinkHtml(ariaLabel: string, className?: string): string
   const cls = className ? ` class="${className}"` : '';
   return `<a href="mailto:${enc}" rel="me"${cls} aria-label="${ariaLabel}">${MAIL_ICON_SVG}</a>`;
 }
+
+/** Ссылка-кнопка на почту: значок и подпись рядом, готовая для `set:html`
+ *  (та же причина, что у `emailIconLinkHtml` выше — обычная интерполяция
+ *  Astro дважды экранировала бы числовые ссылки в `href`). Нужна секции
+ *  «Расскажите о задаче» (`home/Contact.astro`, задача 18): «Написать на
+ *  почту» рядом с кнопкой «Написать в Telegram», а не голый значок подвала.
+ *  Тот же `MAIL_ICON_SVG`, второго знака не рисуется. */
+export function emailButtonHtml(label: string, className?: string): string {
+  const enc = escapeAtDot(EMAIL);
+  const cls = className ? ` class="${className}"` : '';
+  return `<a href="mailto:${enc}" rel="me"${cls}>${MAIL_ICON_SVG}<span>${label}</span></a>`;
+}
