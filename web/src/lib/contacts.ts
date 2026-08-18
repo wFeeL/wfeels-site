@@ -48,10 +48,18 @@ function escapeAtDot(value: string): string {
  *  стала отдавать тег целиком). `set:html` — единственный путь Astro вывести
  *  уже готовую разметку без второго прохода экранирования, а значит здесь
  *  должен быть собран весь тег сразу, а не только текст внутри него.
- */
+ *
+ *  `<span class="link-label">` внутри — тот же приём, что у соседней ссылки
+ *  Telegram (`home/Contact.astro`) и у ссылок подвала (`Footer.astro`,
+ *  правка дизайн-ревью 2026-08-19): черта под ссылкой рисуется псевдо-
+ *  элементом подписи и появляется только на `:hover`/`:focus-visible` — этот
+ *  тег собирается строкой именно потому, что `set:html` не позволяет Astro
+ *  дописать атрибут скоупа стилей, но класс `.link-label`, заданный здесь
+ *  буквально, работает с родительским `:global(...)`-селектором так же, как
+ *  на обычной разметке. */
 export function emailLinkHtml(label: string): string {
   const enc = escapeAtDot(EMAIL);
-  return `<a href="mailto:${enc}" rel="me">${label} · <strong>${enc}</strong></a>`;
+  return `<a href="mailto:${enc}" rel="me"><span class="link-label">${label} · <strong>${enc}</strong></span></a>`;
 }
 
 /** Путь Material Design Icons «mail», набор `materialiconsoutlined`, 24px
