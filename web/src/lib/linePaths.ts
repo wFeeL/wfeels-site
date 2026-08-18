@@ -168,6 +168,12 @@ const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
     const h = vbHOf('hero');
     return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
   })(),
+  // pain — раздел 4.3: «прямая», 663 px < 850 (Г-3) — событие не
+  // помещается; продолжает левый док, на котором закончился hero.
+  pain: (() => {
+    const h = vbHOf('pain');
+    return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
+  })(),
 };
 
 export const LINE_PATHS: Readonly<Record<string, LinePathEntry>> = {
