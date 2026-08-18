@@ -79,10 +79,15 @@ const hasData = FACTORY.length > 0 && FACTORY_FRAME.length > 0;
     color: var(--text-muted);
   }
 
-  /* Четыре типа в ряд. */
+  /* Четыре типа в ряд. `minmax(0, 1fr)`, не голый `1fr` — колонка держит
+     текст (`.fp-name`/`.fp-own`/`.fp-themes`), и голый `1fr` фактически
+     `minmax(auto, 1fr)`: нижняя граница колонки равна минимальной ширине
+     содержимого, что мешает колонке сжаться на широком шрифте Unbounded
+     (правка смены шрифта, тот же дефект, что чинился в `Services.astro`,
+     коммит cb46219). */
   .fp-types {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 32px;
     margin: 0;
     padding: 0;
@@ -163,9 +168,12 @@ const hasData = FACTORY.length > 0 && FACTORY_FRAME.length > 0;
     color: var(--text);
     border-bottom: var(--stroke-hair) solid var(--border);
   }
+  /* `minmax(0, 1fr)` тем же приёмом, что и `.fp-types` выше — ячейки несут
+     текст (`FACTORY_FRAME`), хотя и моноширинным `--font-mono` (шрифт не
+     менялся в этой правке), а не голым `1fr`. */
   .fp-cells {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     margin: 0;
     padding: 0;
     list-style: none;
@@ -213,7 +221,7 @@ const hasData = FACTORY.length > 0 && FACTORY_FRAME.length > 0;
        перенеслось на лишнюю строку из-за 16 px, отнятых у колонки текста
        (тест «высота не больше 560px», критерий 12, ловит именно это). */
     .fp-types {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 8px;
       position: relative;
     }
@@ -264,7 +272,7 @@ const hasData = FACTORY.length > 0 && FACTORY_FRAME.length > 0;
     }
 
     .fp-cells {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .fp-cells li {
       padding: 12px;

@@ -61,7 +61,7 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
         {card.recommended && (
           <span class="badge"><span class="badge-star" aria-hidden="true">★</span>{card.recommended.label}</span>
         )}
-        <h3 class="t-h3">{card.showcaseName}</h3>
+        <h3 class="t-h3"><span>{card.showcaseName}</span></h3>
         <p class="price">
           <span class="from">от</span> <code>{card.price}</code>
           <span class="timeframe">{card.timeframe}</span>
@@ -153,7 +153,7 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
   .top-grid {
     margin: 32px 0 0;
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 20px;
   }
   @media (min-width: 700px) {
@@ -271,7 +271,22 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
      не меняется, а видимый зазор между названием и ценой становится равен
      ровно `gap` родителя (`.top-body`, 4px — шаг шкалы) у всех трёх карточек,
      не только у двухстрочной. */
-  h3 { margin: 0; min-height: 2.6em; display: flex; align-items: flex-end; }
+  /* `min-width: 0` на h3 (как flex-элементе `.top-body`) и на вложенном
+     `span` (как flex-элементе самого h3) — без обоих автоматический
+     `min-width: auto` флекс-элемента не даёт тексту сжаться ниже
+     min-content (правка смены шрифта на Unbounded, заметно шире Manrope: у
+     «Корпоративный сайт» слово «Корпоративный» одно перестало помещаться в
+     колонку карточки на 320 px, и вместо переноса строки h3 раздувался вбок
+     за пределы карточки — classic flexbox-ловушка). `span` — обязательная
+     обёртка текста: `min-width: 0` на самом h3 убирает эту ловушку только
+     на уровне ЕГО родителя, а не внутри собственного `display: flex` строки
+     h3 — сам текстовый узел остаётся анонимным флекс-элементом без
+     возможности адресовать его отдельным правилом; обёртка даёт такой
+     адрес. Перенос слова внутри `span` при нехватке места берёт на себя уже
+     существующий `overflow-wrap: break-word` типографики (`styles/
+     base.css`), не отдельное правило здесь. */
+  h3 { margin: 0; min-height: 2.6em; min-width: 0; display: flex; align-items: flex-end; }
+  h3 span { min-width: 0; }
 
   .price {
     margin: 0;
@@ -357,7 +372,7 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
   .shelf {
     margin: 32px 0 0;
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 20px;
   }
   @media (min-width: 700px) {

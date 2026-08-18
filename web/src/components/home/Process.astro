@@ -128,7 +128,7 @@ if (PROCESS_STEPS.length !== 5) {
   .step {
     position: relative;
     display: grid;
-    grid-template-columns: 32px 1fr;
+    grid-template-columns: 32px minmax(0, 1fr);
     column-gap: 24px;
     padding-bottom: 32px; /* расстояние между шагами держит сама ось — кратно шагу сетки 32px, не волосяные линейки */
   }
