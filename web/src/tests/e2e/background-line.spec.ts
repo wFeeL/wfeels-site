@@ -195,17 +195,63 @@ test.describe('линия на фоне — не создаёт горизонт
  * источник, второй список переходов не заводится), а не поломка. Проверка
  * идёт по data-атрибутам (lib/backgroundLine.ts, раздел 4, схема Ч-3), не по
  * картинке — картинка проверяется юнит-тестом геометрии. */
-test.describe('линия на фоне — переходы стоят на границах точек рельса (схема Ч-3)', () => {
-  test('девять секций несут cross, ровно на границах, сторона финиша — правая', async ({ page }) => {
+test.describe('линия на фоне — переходы стоят на границах актов (схема Ч-4)', () => {
+  /* Прежний сторож кодировал схему Ч-3 («переход на границе каждой точки
+   * рельса») и требовал девять переходов. Ч-3 умерла от арифметики: D-048
+   * дал десять точек рельса на десять секций, и правило выродилось в
+   * «переход на каждом стыке» — то, что бриф линии сам отверг словами
+   * «событие на каждом стыке — значит событий нет». Действует Ч-4 (D-049):
+   * переход стоит на границе АКТОВ, а переход, оставляющий прогон короче
+   * экрана, поглощается предыдущим актом.
+   *
+   * Проверяется правило, а не список: набор переходов выводится из
+   * замеренной раскладки заново и сверяется с разметкой. Список секций в
+   * тесте не зашит — смени состав главной, и ожидание пересчитается само. */
+  const MIN_RUN = 900;
+
+  test('переходы стоят там, где меняется акт, и нигде больше', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
     const sections = await page.locator('section[data-line-side]').evaluateAll((els) =>
       els.map((el) => ({
         id: el.id,
         side: el.getAttribute('data-line-side'),
-        cross: el.getAttribute('data-line-cross'),
+        turn: el.getAttribute('data-line-turn'),
+        top: el.getBoundingClientRect().top + window.scrollY,
+        bottom: el.getBoundingClientRect().bottom + window.scrollY,
       })));
-    const crossings = sections.filter((s) => s.cross !== 'none');
-    expect(crossings.length).toBe(9);
+
+    expect(sections.length, 'секции линии не найдены').toBeGreaterThan(0);
+
+    const turning = sections.filter((s) => s.turn !== 'none');
+
+    // 1. Сторона меняется РОВНО на переходах и нигде больше.
+    sections.forEach((s, i) => {
+      if (i === 0) return;
+      const flipped = s.side !== sections[i - 1].side;
+      expect(
+        flipped,
+        `секция «${s.id}»: сторона ${flipped ? 'сменилась' : 'не сменилась'}, ` +
+        `а переход ${s.turn === 'none' ? 'не объявлен' : `объявлен (${s.turn})`}`,
+      ).toBe(s.turn !== 'none');
+    });
+
+    // 2. Направление перехода согласовано со стороной, на которую он ведёт.
+    turning.forEach((s) => {
+      expect(s.turn, `переход в «${s.id}» ведёт не на свою сторону`)
+        .toBe(s.side === 'right' ? 'lr' : 'rl');
+    });
+
+    // 3. Ни один прогон не короче экрана — вторая половина правила Ч-4.
+    const bounds = [0, ...turning.map((s) => s.top), sections[sections.length - 1].bottom];
+    for (let i = 1; i < bounds.length; i += 1) {
+      const run = bounds[i] - bounds[i - 1];
+      expect(run, `прогон ${i} короче экрана: ${Math.round(run)}px`)
+        .toBeGreaterThanOrEqual(MIN_RUN);
+    }
+
+    // 4. Начало слева, финиш справа — линия приходит к подвалу с той же
+    //    стороны, с которой он рисует свой хвост.
     expect(sections[0].side).toBe('left');
     expect(sections[sections.length - 1].side).toBe('right');
   });
