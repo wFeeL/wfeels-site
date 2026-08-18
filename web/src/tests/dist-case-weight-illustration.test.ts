@@ -80,6 +80,18 @@ describe('dist/index.html — иллюстрация «Замер»', () => {
     expect(Math.round(ratio)).toBe(WEIGHT_ILLUSTRATION.multiplier);
   });
 
+  it('якорь гейта и коэффициент — правый нижний угол блока, число из WEIGHT_ILLUSTRATION.multiplier', () => {
+    // `data-illustration="case-weight"` — машинный признак, по которому
+    // `check-budget.mjs` вырезает именно эту иллюстрацию из собранной
+    // страницы (решение владельца 2026-08-14, пункт 7 списка правок).
+    expect(weightHtml, 'data-illustration="case-weight"').toContain(
+      'data-illustration="case-weight"',
+    );
+    expect(weightHtml, `×${WEIGHT_ILLUSTRATION.multiplier}`).toContain(
+      `×${WEIGHT_ILLUSTRATION.multiplier}`,
+    );
+  });
+
   it('единственный акцент рисунка — на полосе «этот сайт», не на полосе медианы', () => {
     const oursRow = weightHtml.slice(weightHtml.indexOf('class="bar-row ours"'), weightHtml.indexOf('class="bar-row typical"'));
     const typicalRow = weightHtml.slice(weightHtml.indexOf('class="bar-row typical"'));

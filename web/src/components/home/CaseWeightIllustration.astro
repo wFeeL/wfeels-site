@@ -18,16 +18,28 @@
  * `70-workshop/specs/site-v3/02-case-illustrations.md`, раздел 3.3, — решение
  * владельца сменилось в тот же день. Спека не переписана этим заходом (не
  * моя область правок) — см. отчёт задачи, раздел «Влияние на базу».
+ *
+ * Коэффициент в правом нижнем углу (решение владельца 2026-08-14, пункт 7
+ * списка правок, [[03-redesign-2026-08-14]] раздел 1) заменяет прозаическую
+ * фразу «Она весит 398 КБ… в шесть раз больше», раньше стоявшую подписью под
+ * полем (`Cases.astro`, `WEIGHT_CLAIM`). `.weight` несёт машинный признак
+ * `data-illustration="case-weight"` — по нему `check-budget.mjs` вырезает
+ * именно эту иллюстрацию из собранной страницы и сверяет вес, медиану и
+ * кратность внутри среза, а не по фразе где-то на странице (та же причина,
+ * по которой у этого гейта уже дважды находили «проверка есть, проверяет не
+ * то»: флаг `i` у регулярки и кратность вне таблицы слов, `pageWeight.ts`).
+ * Без этого атрибута на главной гейт обязан упасть, а не пройти молча.
  */
 import { WEIGHT_ILLUSTRATION } from '../../data/case-illustrations';
 
-const { ourKb, typicalKb, typicalMbText, jsGzipKbText, thirdPartyScriptsCount } = WEIGHT_ILLUSTRATION;
+const { ourKb, typicalKb, typicalMbText, jsGzipKbText, thirdPartyScriptsCount, multiplier } =
+  WEIGHT_ILLUSTRATION;
 
 // Доля полосы «этот сайт» от полосы медианы — не второй литерал длины, а
 // вычисление из тех же двух чисел, что стоят рядом текстом.
 const ourPct = (ourKb / typicalKb) * 100;
 ---
-<div class="weight">
+<div class="weight" data-illustration="case-weight">
   <p id="weight-lbl" class="lbl">СКОЛЬКО ВЕСИТ ЭТА СТРАНИЦА</p>
   <div class="bars" aria-labelledby="weight-lbl">
     <div class="bar-row ours">
@@ -53,10 +65,22 @@ const ourPct = (ourKb / typicalKb) * 100;
     <span class="dot" aria-hidden="true">·</span>
     <span>{thirdPartyScriptsCount} сторонних скриптов</span>
   </p>
+  {/* Коэффициент — правый нижний угол блока (решение владельца 2026-08-14,
+      пункт 7). Число берётся из WEIGHT_MULTIPLIER (через WEIGHT_ILLUSTRATION
+      .multiplier), второго литерала кратности здесь нет: полоса сравнения,
+      подпись и коэффициент — три чтения одного и того же вычисления. */}
+  <p class="coefficient">
+    <span class="value">×{multiplier}</span>
+    <span class="unit">легче медианы</span>
+  </p>
 </div>
 
 <style>
   .weight {
+    /* relative — только чтобы дать точку отсчёта коэффициенту в правом
+       нижнем углу (`.coefficient`, absolute); саму раскладку строк это
+       свойство не меняет. */
+    position: relative;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -156,6 +180,34 @@ const ourPct = (ourKb / typicalKb) * 100;
   /* `--text-faint` не используется ни в одном из трёх рисунков секции
      кейсов (бриф `02-case-illustrations.md`, раздел 2.3) — разделитель
      остаётся на `--text-muted`, как и сами метрики рядом. */
+
+  /* Коэффициент — правый нижний угол поля. `--accent` здесь не второй акцент
+     (бриф раздела 2.3 разрешает «ровно одну роль на рисунок»): число — это
+     та же кратность, что уже доказывает залитая полоса `.fill.accent`, а не
+     новый объект внимания. */
+  .coefficient {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .coefficient .value {
+    font: 700 1.75rem/1.3 var(--font-mono);
+    color: var(--accent);
+  }
+  /* 1rem — та же роль шкалы («small», `dist-typography-scale.test.ts`), что
+     `.bar-label` и `.metrics` рядом: 0.875rem в собранном CSS вне
+     объявленных восьми ролей и роняет сторожа шкалы кеглей. */
+  .coefficient .unit {
+    font: 500 1rem/1.3 var(--font-mono);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
 
   /* Запасное состояние — состояние ПО УМОЛЧАНИЮ (бриф раздела 2.4): без
      этого блока обе полосы уже нарисованы в полную длину (`.fill { width:
