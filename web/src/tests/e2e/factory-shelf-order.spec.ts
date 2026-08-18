@@ -91,7 +91,27 @@ async function measureStarts(page: import('@playwright/test').Page) {
   const from = Math.max(0, anchor - viewportHeight);
   const to = anchor + fieldHeight;
 
-  await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' as ScrollBehavior }), from);
+  // Тот же двойной rAF, что и у каждого шага цикла ниже (не голый `scrollTo`
+  // без ожидания) — правка 2026-08-19, найдено при переносе анимации на
+  // `contain`. `anchor` стоит ГЛУБОКО внутри `contain`-окна (готовая
+  // картинка), а `from` — далеко ДО него (ещё не начиналось): это прыжок
+  // почти на всю высоту вьюпорта в одну сторону. Без ожидания кадра
+  // `getComputedStyle` после такого прыжка иногда возвращает УСТАРЕВШИЙ
+  // прогресс вьюпорт-таймлайна (замер `.tmp/diagnose-race.mjs` вне
+  // репозитория: currentTime после прыжка − сотни процентов не там, где
+  // должен быть, и досчитывается только на следующих кадрах) — «resting»
+  // тогда ошибочно читает ещё не осевшее «готово» состояние вместо
+  // истинного «ещё не начато», и первый же шаг цикла ниже (та же позиция,
+  // но с ожиданием) ложно засчитывается как «фаза уже пошла». У прежней
+  // `entry`-хореографии эта гонка была не видна: там что устаревшее, что
+  // истинное значение в точке `from` совпадали («ещё не начато» в обоих
+  // случаях, всего 286px поля прогресса позади anchor). Точный триггер —
+  // расстояние и направление прыжка, а не сам факт `contain`, поэтому
+  // синхронизация ожидания — правильное место чинить, не хореография.
+  await page.evaluate((top) => new Promise<void>((resolve) => {
+    window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }), from);
   const resting = await sample(page);
 
   const starts: Record<keyof Sample, number | null> = {
