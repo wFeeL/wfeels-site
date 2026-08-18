@@ -85,6 +85,26 @@ function tokenRaw(selector: string, name: string): string {
   return found![1].trim();
 }
 
+// Задача 18 (правка 2026-08-19): плейсхолдеры полей формы (`Field.astro`,
+// `input::placeholder`/`textarea::placeholder`) набраны `--text-muted` по
+// `--surface` (фон самого поля, не страницы) — считается отдельно, потому
+// что браузерный дефолт плейсхолдера обычно ниже AA, а «на глаз» это не
+// проверить: цвет один и тот же токен, но фон другой, чем у `--danger` выше.
+describe('плейсхолдер поля (--text-muted на --surface)', () => {
+  it.each([
+    ['светлая', ':root {'],
+    ['тёмная по выбору', ':root[data-theme="dark"]'],
+    ['тёмная по системе', ':root:not([data-theme="light"])'],
+  ] as const)('в теме «%s» проходит AA на фоне поля', (_, selector) => {
+    const muted = token(selector, '--text-muted');
+    const surface = token(selector, '--surface');
+    expect(
+      contrast(muted, surface),
+      `${muted} на ${surface} — ниже AA (4.5:1)`,
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 describe('токены обводки ядра фабрики (02-home-core.md, раздел 8)', () => {
   // Общесистемные — заведены задачей 14, ими пользуется вычерченное ядро
   // тизера фабрики, а позже и линия фона, и схемы на посадочных.
