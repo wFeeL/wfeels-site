@@ -8,6 +8,7 @@ from app.main import create_app
 VALID = {
     "name": "Мария",
     "contact": "@maria",
+    "service": "S1",
     "message": "Нужен сайт для груминг-салона с записью",
     "page": "/services/sajt",
     "website": "",
@@ -291,3 +292,55 @@ def test_browser_may_send_the_lead_from_the_site_origin(client):
     )
     assert r.status_code == 200
     assert r.headers["access-control-allow-origin"] == "http://localhost:4321"
+
+
+def test_lead_with_service_shows_human_readable_label_in_message(client, sent):
+    """Владелец получает заявку в мессенджер и должен сразу видеть, о чём речь:
+    код `S4` ему ничего не говорит, нужно название услуги из каталога."""
+    r = client.post(
+        "/api/lead", json={**VALID, "service": "S4", "elapsed_seconds": 90.0}
+    )
+    assert r.status_code == 202
+    assert "S4" not in sent[0]
+    assert "ИИ-консультант" in sent[0]
+
+
+def test_lead_without_service_is_still_accepted(client, sent):
+    """Заявка без `service` может прийти со старой открытой вкладки формы —
+    отвергать её нельзя, теряется живой лид. Поле просто не несёт названия
+    услуги в сообщении."""
+    payload = {**VALID, "elapsed_seconds": 90.0}
+    payload.pop("service")
+    r = client.post("/api/lead", json=payload)
+    assert r.status_code == 202
+    assert len(sent) == 1
+
+
+def test_lead_with_unknown_service_code_is_rejected(client, sent):
+    """`service` — код из каталога `SERVICES.md`, а не произвольная строка:
+    код вне каталога — ошибка запроса, а не повод записать что попало."""
+    r = client.post(
+        "/api/lead", json={**VALID, "service": "S99", "elapsed_seconds": 90.0}
+    )
+    assert r.status_code == 422
+    assert sent == []
+
+
+def test_lead_without_message_is_accepted(client, sent):
+    """Свободный текст переехал в необязательное поле «О задаче»: заявка без
+    текста обязана проходить."""
+    payload = {**VALID, "elapsed_seconds": 90.0}
+    payload.pop("message")
+    r = client.post("/api/lead", json=payload)
+    assert r.status_code == 202
+    assert len(sent) == 1
+
+
+def test_short_message_is_still_rejected_when_provided(client):
+    """`message` необязателен, но если он присутствует, прежние границы длины
+    (10…4000) продолжают действовать — ослаблена только обязательность поля."""
+    r = client.post(
+        "/api/lead",
+        json={**VALID, "message": "привет", "elapsed_seconds": 90.0},
+    )
+    assert r.status_code == 422

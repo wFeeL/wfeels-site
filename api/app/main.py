@@ -12,7 +12,7 @@ from pydantic import ValidationError
 # `create_app`, а она вычисляется в момент определения функции.
 from .config import Settings, settings
 from .ratelimit import RateLimiter
-from .schemas import LeadIn
+from .schemas import SERVICE_LABELS, LeadIn
 from .telegram import send_lead
 
 Sender = Callable[[str], Awaitable[bool]]
@@ -51,14 +51,19 @@ def client_ip(request: Request, trust_proxy: bool) -> str:
 
 
 def format_lead(lead: LeadIn) -> str:
+    # Код услуги ничего не говорит владельцу в мессенджере — попадает
+    # название из каталога. Пустой `service` (заявка со старой формы) даёт
+    # «—», а не пустую строку: молчание о поле неотличимо от сбоя вёрстки.
+    service_label = SERVICE_LABELS.get(lead.service, "—")
     parts = [
         "Новая заявка с сайта",
         f"Имя: {lead.name}",
         f"Связь: {lead.contact}",
+        f"Услуга: {service_label}",
         f"Страница: {lead.page or '—'}",
         f"Бюджет: {lead.budget or '—'}",
         "",
-        lead.message,
+        lead.message or "—",
     ]
     return "\n".join(parts)
 
