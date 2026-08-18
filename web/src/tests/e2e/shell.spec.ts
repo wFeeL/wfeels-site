@@ -136,21 +136,37 @@ test('под курсором у пункта навигации появляе�
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/');
 
+    /* Механизм черты сменился 2026-08-18. Прежде она рисовалась постоянным
+       `text-decoration` и пряталась плашкой цвета подложки — плашка
+       промахивалась мимо черты на 1–2 px, потому что отсчитывалась от коробки
+       ССЫЛКИ высотой 44 px, а черта — от базовой линии ТЕКСТА. На экране у
+       всех пунктов всегда стояло синее подчёркивание. Теперь черту рисует
+       псевдоэлемент подписи, привязанный к тексту. Намерение сторожа не
+       изменилось: в покое черты нет, под курсором есть, и она акцентная. */
     const style = (selector: string) =>
       page.locator(selector).first().evaluate((el) => {
-        const s = getComputedStyle(el);
-        return { line: s.textDecorationLine, decoColor: s.textDecorationColor };
+        const label = el.querySelector('.nav-label') ?? el;
+        const a = getComputedStyle(label, '::after');
+        const m = /matrix\(([^,]+),/.exec(a.transform);
+        return {
+          scale: m ? Number(m[1]) : null,
+          color: a.backgroundColor,
+          deco: getComputedStyle(el).textDecorationLine,
+        };
       });
 
     const link = 'header nav.nav-wide a';
     const idle = await style(link);
-    // До правки наведение меняло только цвет. Владелец просил ту же черту.
-    expect(idle.line, 'в покое пункт подчёркнут — черта перестала что-то значить')
+    expect(idle.deco, 'в покое пункт подчёркнут текстовым подчёркиванием')
       .not.toContain('underline');
+    expect(idle.scale, 'в покое черта видна — она перестала что-то значить')
+      .toBe(0);
 
     await page.locator(link).first().hover();
+    await page.waitForTimeout(700);
     const hovered = await style(link);
-    expect(hovered.line, 'под курсором черты нет').toContain('underline');
+    expect(hovered.scale, 'под курсором черты нет').toBe(1);
+    expect(hovered.color, 'черта не акцентного цвета').not.toBe('rgba(0, 0, 0, 0)');
     // Акцентный цвет черты — тот же токен, что красит саму ссылку в фокусе,
     // а не первый попавшийся: `oklch`/`rgb` значение читаем напрямую у DOM,
     // а не переизобретаем константу в тесте.
@@ -195,9 +211,10 @@ test.describe('расчерчивание акцентной черты под �
 
     const midflight = await link.evaluate((el) => new Promise<number[]>((resolve) => {
       const seen: number[] = [];
+      const label = el.querySelector('.nav-label') ?? el;
       const start = performance.now();
       (function tick() {
-        const m = getComputedStyle(el, '::after').transform;
+        const m = getComputedStyle(label, '::after').transform;
         const match = /matrix\(([^,]+),/.exec(m);
         if (match) seen.push(Number(match[1]));
         if (performance.now() - start < 180) requestAnimationFrame(tick);
@@ -207,7 +224,7 @@ test.describe('расчерчивание акцентной черты под �
 
     expect(
       midflight.some((scale) => scale > 0.02 && scale < 0.98),
-      `маска ни разу не была в промежуточном состоянии — расчерчивание не ` +
+      `черта ни разу не была в промежуточном состоянии — расчерчивание не ` +
       `происходит, черта появляется скачком: ${JSON.stringify(midflight)}`,
     ).toBe(true);
     await ctx.close();
@@ -226,14 +243,15 @@ test.describe('расчерчивание акцентной черты под �
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 3 });
     await page.waitForTimeout(20);
 
-    const deco = await link.evaluate((el) => getComputedStyle(el).textDecorationLine);
-    expect(deco, 'при reduce черта обязана появиться сразу').toContain('underline');
     const scale = await link.evaluate((el) => {
-      const m = getComputedStyle(el, '::after').transform;
+      const label = el.querySelector('.nav-label') ?? el;
+      const m = getComputedStyle(label, '::after').transform;
       const match = /matrix\(([^,]+),/.exec(m);
       return match ? Number(match[1]) : null;
     });
-    expect(scale, 'при reduce маска не должна закрывать черту').toBe(0);
+    // При `reduce` перехода нет вовсе — черта обязана стоять раскрытой сразу,
+    // без единого промежуточного кадра.
+    expect(scale, 'при reduce черта не появилась сразу целиком').toBe(1);
     await ctx.close();
   });
 });
