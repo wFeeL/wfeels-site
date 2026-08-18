@@ -1,41 +1,42 @@
 /** Реестр путей линии на фоне главной — бриф `70-workshop/specs/site-v3/
- *  05-line.md`, раздел 10, шаг 3: «Реестр `lib/linePaths.ts` по образцу
- *  `50-code/portfolio-site/src/components/ribbonPaths.js`: ключ — id
- *  секции, значение — `{ vbH, wide, narrow }`».
+ *  05-line.md`, раздел 10, шаг 4: «Нарисовать одиннадцать путей по
+ *  назначению 4.3, шаблону 4.4 и карте перекрытия 6.2. Рисуются руками,
+ *  по одному, каждый — со снимком своей секции».
  *
- *  ЭТОТ ШАГ НЕ РИСУЕТ ПУТИ. Одиннадцать путей по назначению 4.3/шаблону 4.4
- *  и карте перекрытия 6.2 рисуются шагом 4 («большая работа», раздел 10).
- *  Здесь в реестр кладутся СЕГОДНЯШНИЕ пути (шаг 2, `computeLineData()` /
- *  `footerLineData()`), механически пересчитанные в целевой формат: одна
- *  запись на секцию, один `vbH`, один путь `wide`, один путь `narrow` —
- *  вместо двух раздельных боксов (`.line-run` + `.line-turn`), которые несёт
- *  сегодняшняя разметка (`BackgroundLine.astro`, `Section.astro`).
+ *  Файл несёт ДВА слоя, и это сделано намеренно, а не по небрежности:
  *
- *  Пересчёт, не рисование: `vbH` каждой записи — тот же `runVbH`, что уже
- *  считает `computeLineData()` из измеренной высоты секции (раздел 4.1,
- *  таблица «vbH действующего состава» — те же числа, второй раз не
- *  измерены). `narrow` — прогон-нитка секции как есть (`runD`), он уже
- *  докован и уже покрывает весь `vbH` (раздел 4.3: «прямая» — единственная
- *  форма, которую прогон несёт до шага 4). `wide` для секций БЕЗ перехода —
- *  та же нитка (второго рисунка для неё сегодня не существует); для трёх
- *  секций-владельцев перехода (`services`, `process`, `contact`,
- *  `turnOwners()`) — сегодняшняя кривая перехода (`turnD`), С ПРОДОЛЖЕНИЕМ
- *  прямой линией до низа бокса секции ПО ТОМУ ЖЕ ДОКУ, на котором переход
- *  заканчивается (`entry.side`): сегодня переход и прогон физически рисуются
- *  друг под другом в одной секции (`BackgroundLine.astro`: `.line-turn` —
- *  `top:0`, `.line-run` — `top: var(--line-gap)`), и это ровно то же самое
- *  событие, изображённое в одном пути вместо двух. Ни радиус, ни скорость
- *  этой кривой не меняются — числа берутся из уже существующего `turnD`.
+ *  1. `FALLBACK` — механический пересчёт сегодняшней (шаг 2) геометрии в
+ *     целевой формат, как этот файл был устроен после шага 3. Он остаётся
+ *     здесь для секций, которые ЕЩЁ не нарисованы: контракт-тест обязан
+ *     показывать их красными («на ненарисованных записях — честно красный»,
+ *     раздел 10 плана), а не молчать о них, выкинув ключ из реестра.
+ *  2. `HAND_DRAWN` — одиннадцать путей, дорисованных вручную один за
+ *     другим (раздел 4.3 назначение, раздел 4.4 шаблон траверса, раздел 6.2
+ *     карта перекрытия). Каждая запись здесь — отдельный коммит. `LINE_PATHS`
+ *     — слияние: `HAND_DRAWN` перекрывает `FALLBACK` по мере рисования.
  *
- *  Считается на импорте из `backgroundLine.ts` — второго списка секций,
- *  доков или высот здесь не заводится.
+ *  Три помощника (`straightPath`, `traversePath`, `dipPath`) — не общая
+ *  формула вместо рисунка, а инструмент того же рода, что уже несёт
+ *  `backgroundLine.ts` (`mirrorD`): каждый вызов — решение, куда идёт путь
+ *  ИМЕННО этой секции; числа (доки, амплитуда, точка пика) подобраны рукой
+ *  под карту перекрытия конкретной секции и проверены контракт-тестом плюс
+ *  снимком на живой странице, а не выведены единой формулой на всех.
+ *
+ *  `narrow` — мобильная нитка (< 900 px, раздел 8): всегда левый док, без
+ *  событий — раздел 8 «секция без данных рисует прямую нитку в левом поле»,
+ *  тот же приём здесь для КАЖДОЙ секции: мобильная ширина ниже порога 900 px
+ *  (раздел 6), на котором вообще стоит рисунок, событий там нет по Г-4
+ *  («промежуточных значений нет»).
  */
 import {
   computeLineData,
-  DOCK_LEFT,
-  DOCK_RIGHT,
-  END_OVERHANG,
+  computeVbH,
+  DOCK_LEFT as OLD_DOCK_LEFT,
+  DOCK_RIGHT as OLD_DOCK_RIGHT,
+  END_OVERHANG as OLD_END_OVERHANG,
   footerLineData,
+  MEASURED_FOOTER_HEIGHT,
+  MEASURED_SECTION_HEIGHT,
   type LineDatum,
 } from './backgroundLine';
 import { HOME_SECTIONS } from './sections';
@@ -57,29 +58,119 @@ export interface LinePathEntry {
   narrow: string;
 }
 
-/** Продолжает `turnD` прямой линией до низа бокса секции на том же доке,
- *  на котором переход заканчивается (`entry.side` — сторона ПОСЛЕ
- *  переворота, см. `computeLineData()`). Тот же приём выноса за `viewBox`
- *  (`END_OVERHANG`), что несёт `runD` — второго числа не заводится. */
-function widePathFor(entry: LineDatum): string {
+/* ─────────────────────── 1. FALLBACK (шаг 3, не рисунок) ───────────────
+ * Дословно переносится из состояния файла после шага 3 — механический
+ * пересчёт `computeLineData()`/`footerLineData()` в формат реестра. */
+
+function widePathForFallback(entry: LineDatum): string {
   if (entry.turn === 'none' || entry.turnD === null) return entry.runD;
-  const dockX = entry.side === 'left' ? DOCK_LEFT : DOCK_RIGHT;
-  return `${entry.turnD} L${dockX},${entry.runVbH + END_OVERHANG}`;
+  const dockX = entry.side === 'left' ? OLD_DOCK_LEFT : OLD_DOCK_RIGHT;
+  return `${entry.turnD} L${dockX},${entry.runVbH + OLD_END_OVERHANG}`;
 }
 
-function toEntry(entry: LineDatum): LinePathEntry {
-  return { vbH: entry.runVbH, wide: widePathFor(entry), narrow: entry.runD };
+function toFallbackEntry(entry: LineDatum): LinePathEntry {
+  return { vbH: entry.runVbH, wide: widePathForFallback(entry), narrow: entry.runD };
 }
 
-/** Реестр: десять секций главной + подвал (`footer`, отдельный ключ — как в
- *  `computeLineData()`/`footerLineData()`, свой `vbH`, своя нитка). */
-export const LINE_PATHS: Readonly<Record<string, LinePathEntry>> = (() => {
+const FALLBACK: Readonly<Record<string, LinePathEntry>> = (() => {
   const data = computeLineData();
   const result: Record<string, LinePathEntry> = {};
-  for (const s of HOME_SECTIONS) result[s.id] = toEntry(data[s.id]);
-
+  for (const s of HOME_SECTIONS) result[s.id] = toFallbackEntry(data[s.id]);
   const footer = footerLineData();
   result.footer = { vbH: footer.runVbH, wide: footer.runD, narrow: footer.runD };
-
   return result;
 })();
+
+/* ─────────────────────── 2. Рисование (раздел 4.3/4.4/6.2) ─────────────── */
+
+/** Раздел 4.2: левый и правый причал, одинаковы для всех секций. */
+const DOCK_LEFT = 59;
+const DOCK_RIGHT = 941;
+/** Раздел 3, Г-2: вынос концов пути за `viewBox` — торец `round` прячется
+ *  под соседний бокс. Тот же приём, что несёт `backgroundLine.ts`. */
+const OVERHANG = 60;
+/** Раздел 3, Г-2: прямой вертикальный участок на каждом конце пути —
+ *  порог 96, здесь взято с запасом 100, чтобы округление кривой не роняло
+ *  проверку на десятые доли единицы. */
+const STRAIGHT_IN_OUT = 100;
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** Прогон — прямая на доке `dockX` (раздел 4.3: «прямая» — секция
+ *  спокойная, боковой ход 0). */
+function straightPath(vbH: number, dockX: number): string {
+  return `M${dockX},${-OVERHANG} L${dockX},${round2(vbH + OVERHANG)}`;
+}
+
+/** Мобильная нитка — всегда левый док, вся высота секции (раздел 8). */
+function narrowPath(vbH: number): string {
+  return straightPath(vbH, DOCK_LEFT);
+}
+
+/** Траверс (раздел 4.4): вертикальный вход `STRAIGHT_IN_OUT`, S-дуга,
+ *  вертикальный выход `STRAIGHT_IN_OUT`. `xFrom` → `xTo` — доки входа и
+ *  выхода (не обязательно оба края холста: у `contact` выход — не правый
+ *  док, а середина, раздел 4.3 «сход к середине»). S-дуга занимает полосу
+ *  между `STRAIGHT_IN_OUT` и `vbH − STRAIGHT_IN_OUT` — вертикальные хвосты
+ *  вынесены в отдельные прямые (`L`), чтобы Г-2 не зависело от того, как
+ *  именно затухает кривизна кубики на конце (раздел 12: «на этом линия
+ *  ломалась уже дважды» — здесь прямой хвост гарантирует его безусловно). */
+function traversePath(vbH: number, xFrom: number, xTo: number): string {
+  const dx = xTo - xFrom;
+  const yA = STRAIGHT_IN_OUT;
+  const yB = round2(vbH - STRAIGHT_IN_OUT);
+  const span = yB - yA;
+  const y = (f: number) => round2(yA + f * span);
+  const x = (f: number) => round2(xFrom + f * dx);
+  return (
+    `M${xFrom},${-OVERHANG} L${xFrom},${yA} ` +
+    `C${xFrom},${y(0.12)} ${x(0.14)},${y(0.3)} ${x(0.32)},${y(0.42)} ` +
+    `C${x(0.56)},${y(0.55)} ${x(0.78)},${y(0.66)} ${x(0.9)},${y(0.8)} ` +
+    `C${x(0.98)},${y(0.9)} ${xTo},${y(0.97)} ${xTo},${yB} ` +
+    `L${xTo},${round2(vbH + OVERHANG)}`
+  );
+}
+
+/** Раздел 4.3 `cases`: «выход внутрь и обратно» — единственное событие
+ *  страницы, которое не меняет сторону (`turn='none'` у `cases`, группа
+ *  держит `right` весь акт «дело»). Симметричный туда-обратно от дока
+ *  `dock` к `peakX` и назад, пик в открытой полосе карты 6.2 (между полями
+ *  `+262…646` и `+1014…1590`, у `cases` — «крест-накрест», раздел 6.2). */
+function dipPath(vbH: number, dock: number, peakX: number, peakYFrac: number): string {
+  const dx = peakX - dock;
+  const yA = STRAIGHT_IN_OUT;
+  const yB = round2(vbH - STRAIGHT_IN_OUT);
+  const peakY = round2(yA + peakYFrac * (yB - yA));
+  const inSpan = peakY - yA;
+  const outSpan = yB - peakY;
+  const yIn = (f: number) => round2(yA + f * inSpan);
+  const yOut = (f: number) => round2(peakY + f * outSpan);
+  const xIn = (f: number) => round2(dock + f * dx);
+  const xOut = (f: number) => round2(peakX - f * dx);
+  return (
+    `M${dock},${-OVERHANG} L${dock},${yA} ` +
+    `C${dock},${yIn(0.35)} ${xIn(0.55)},${yIn(0.7)} ${peakX},${peakY} ` +
+    `C${xOut(0.55)},${yOut(0.3)} ${dock},${yOut(0.65)} ${dock},${yB} ` +
+    `L${dock},${round2(vbH + OVERHANG)}`
+  );
+}
+
+const vbHOf = (id: string) => computeVbH(MEASURED_SECTION_HEIGHT[id]);
+
+/** Одиннадцать нарисованных путей (раздел 10, шаг 4). Ключ появляется
+ *  здесь по мере рисования — один за другим, каждый со своим коммитом. */
+const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
+  // hero — раздел 4.3: «прямая, левый причал»; первая секция страницы, с
+  // неё начинается линия левым доком ([[00-overview]]).
+  hero: (() => {
+    const h = vbHOf('hero');
+    return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
+  })(),
+};
+
+export const LINE_PATHS: Readonly<Record<string, LinePathEntry>> = {
+  ...FALLBACK,
+  ...HAND_DRAWN,
+};
