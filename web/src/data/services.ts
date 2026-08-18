@@ -19,6 +19,12 @@ export interface ServiceLink {
   text: string;
   /** Предварительный адрес посадочной — см. предупреждение выше. */
   href: string;
+  /** Код услуги из `10-offer/SERVICES.md` (S1…S9) — единственный источник
+   *  значения для выпадающего списка формы (`components/LeadForm.astro`,
+   *  правка «Расскажите о задаче», задача 18). Бэкенд (`api/app/schemas.py`,
+   *  `SERVICE_LABELS`) ждёт РОВНО эти коды и порядок групп — второй список
+   *  кодов не заводится нигде, второй список текста услуг — тоже. */
+  code: string;
 }
 
 export type ServiceIconKind = 'sites' | 'automation' | 'ai' | 'telegram';
@@ -55,9 +61,9 @@ export const SERVICE_GROUPS: readonly ServiceGroup[] = [
       'SEO-обвязка и деплой с HTTPS',
     ],
     links: [
-      { text: 'Сайт под ключ', href: '/services/website' },
-      { text: 'Доработка и поддержка', href: '/services/website-support' },
-      { text: 'Аудит сайта', href: '/services/website-audit' },
+      { text: 'Сайт под ключ', href: '/services/website', code: 'S1' },
+      { text: 'Доработка и поддержка', href: '/services/website-support', code: 'S2' },
+      { text: 'Аудит сайта', href: '/services/website-audit', code: 'S3' },
     ],
     stack: 'Astro · React · FastAPI',
   },
@@ -74,9 +80,9 @@ export const SERVICE_GROUPS: readonly ServiceGroup[] = [
       'Приём оплат',
     ],
     links: [
-      { text: 'Приём заявок и интеграции', href: '/services/integrations' },
-      { text: 'Панель обращений', href: '/services/admin-panel' },
-      { text: 'Backend и API', href: '/services/backend-api' },
+      { text: 'Приём заявок и интеграции', href: '/services/integrations', code: 'S5' },
+      { text: 'Панель обращений', href: '/services/admin-panel', code: 'S6' },
+      { text: 'Backend и API', href: '/services/backend-api', code: 'S7' },
     ],
     stack: 'FastAPI · PostgreSQL · Docker',
   },
@@ -93,7 +99,7 @@ export const SERVICE_GROUPS: readonly ServiceGroup[] = [
       'Ставится на сайт одним тегом',
     ],
     links: [
-      { text: 'ИИ-консультант по материалам', href: '/services/ai-consultant' },
+      { text: 'ИИ-консультант по материалам', href: '/services/ai-consultant', code: 'S4' },
     ],
     stack: 'RAG · Chroma · Embed',
   },
@@ -110,8 +116,8 @@ export const SERVICE_GROUPS: readonly ServiceGroup[] = [
       'Оплата внутри',
     ],
     links: [
-      { text: 'Telegram-бот под задачу', href: '/services/telegram-bot' },
-      { text: 'Telegram Mini App', href: '/services/telegram-miniapp' },
+      { text: 'Telegram-бот под задачу', href: '/services/telegram-bot', code: 'S8' },
+      { text: 'Telegram Mini App', href: '/services/telegram-miniapp', code: 'S9' },
     ],
     stack: 'aiogram · Mini Apps',
   },
