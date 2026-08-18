@@ -31,8 +31,11 @@ describe('dist/index.html — секции 9, 10 и 11', () => {
     expect(html).toContain('>Обо мне<');
     expect(html).toContain('src="/wfeels-photo.jpg"');
     expect(html).toContain(ABOUT_LEAD);
+    // `ABOUT_BLOCKS` — плоский список текстов без заголовков (брифом
+    // `04-sections-brief.md`, раздел 4.3, пункт 15: подзаголовки сняты) —
+    // проверяется присутствие самого текста, не снятого `title`.
     for (const block of ABOUT_BLOCKS) {
-      expect(html, block.title).toContain(block.title);
+      expect(html, block.slice(0, 40)).toContain(block);
     }
     expect(html).toContain(ABOUT_CLOSING);
   });
