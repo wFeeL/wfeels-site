@@ -211,6 +211,13 @@ const HAND_DRAWN: Partial<Record<string, LinePathEntry>> = {
     const h = vbHOf('guarantees');
     return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
   })(),
+  // about — раздел 4.3: «прямая», 574 px. Карта 6.2: «нет ни одной»
+  // непрозрачной коробки, как у guarantees — тот же довод: два открытых
+  // экрана подряд обязаны оставаться спокойными.
+  about: (() => {
+    const h = vbHOf('about');
+    return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
+  })(),
 };
 
 export const LINE_PATHS: Readonly<Record<string, LinePathEntry>> = {
