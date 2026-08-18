@@ -23,7 +23,22 @@ const SENDING = 'Отправляю…';
   <Field name="budget" label="Бюджет, если он уже определён" autocomplete="off" />
 
   <p class="consent">
-    <input id="f-consent" name="consent" type="checkbox" required />
+    {/* Задача 19 (правка 2026-08-18): плавная анимация галочки согласия.
+        Нативный чекбокс красится браузером (`accent-color`, `base.css`) и
+        рисует галочку сам — у CSS нет доступа к этой отрисовке, значит
+        анимировать её напрямую нельзя. `input` остаётся настоящим чекбоксом
+        (фокус, клавиатура, `required`, отправка формы — всё как было),
+        только его СОБСТВЕННАЯ визуальная заливка снята (`appearance: none`
+        ниже), а квадрат и галочку рисует пара соседних узлов, управляемых
+        его же состоянием `:checked` через `~`. Порядок в разметке важен:
+        `~`/`+` видят только СЛЕДУЮЩИХ соседей, поэтому `input` стоит первым. */}
+    <span class="checkbox">
+      <input id="f-consent" name="consent" type="checkbox" required />
+      <svg class="checkbox-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+        <path d="M3 8.5 6.2 11.5 13 4.5" fill="none" stroke="currentColor"
+          stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </span>
     <label for="f-consent">
       Согласен на <a href="/consent">обработку персональных данных</a>
     </label>
@@ -88,7 +103,86 @@ const SENDING = 'Отправляю…';
   /* Квадрат опускается на середину ПЕРВОЙ строки подписи, а не прижимается к
      её верхнему краю: подпись на узком экране переносится на две строки, и при
      `align-items: center` чекбокс уехал бы в середину блока. */
-  .consent input { margin-block: 12px 0; }
+  .consent .checkbox { margin-block: 12px 0; }
+
+  /* Обёртка держит квадрат и галочку в одной координатной системе — галочка
+     стоит `position: absolute` внутри неё, а не внутри `input`, потому что
+     позиционировать что-либо ВНУТРИ чекбокса CSS не даёт. Размер тот же
+     24×24 px, что нёс голый `input[type="checkbox"]` в `base.css` (нижняя
+     граница WCAG 2.5.8 для цели без обёртки-исключения, замер дизайн-ревью
+     2026-08-13, «Три акта») — обёртка ничего не укрупняет и не мельчит. */
+  .checkbox {
+    position: relative;
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    flex: none;
+  }
+  /* `appearance: none` снимает ТОЛЬКО отрисовку — фокус, клавиатуру,
+     `required` и участие в отправке формы система не теряет, чекбокс
+     остаётся настоящим. Заливку и рамку рисуем сами, чтобы у переключения
+     `:checked` было на что накладывать переход (см. `.checkbox-mark`
+     ниже) — нативную закраску браузера, в отличие от CSS-заливки, никаким
+     `transition` не тронуть. */
+  .checkbox input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    margin: 0;
+    width: 24px;
+    height: 24px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    cursor: pointer;
+    transition: background-color var(--dur-micro) var(--ease),
+                border-color var(--dur-micro) var(--ease);
+  }
+  .checkbox input[type="checkbox"]:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .checkbox input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  /* Галочка красится тем же токеном, что несёт текст/значки НА акценте
+     (`--text-on-accent`) — контраст против залитого `--accent`-квадрата
+     посчитан один раз для этого токена (`tokens.css`), второй раз считать
+     не нужно. */
+  .checkbox-mark {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    color: var(--text-on-accent);
+    pointer-events: none;
+  }
+  /* Галочка «рисуется» тем же приёмом, что и линия на фоне «Чертежа» —
+     штрих проявляется вдоль своего пути, а не всплывает целиком. Длина
+     контура у пути «M3 8.5 6.2 11.5 13 4.5» ≈14,14 (посчитано геометрией
+     двух отрезков), 15 — небольшой запас, а не подгонка на глаз: при
+     запасе меньше фактической длины последний миллиметр штриха обрубался
+     бы, при заметно большем — старт держал бы паузу перед видимым
+     движением. В покое (не отмечен) сдвиг штриха на всю его длину — галочки
+     не видно ни на пиксель. */
+  .checkbox-mark path {
+    stroke-dasharray: 15;
+    stroke-dashoffset: 15;
+  }
+  /* Переход — только внутри `no-preference`, тем же приёмом, что уже стоит у
+     подчёркивания меню (`NavLinks.astro`) и волны смены темы
+     (`ThemeToggle.astro`): при `reduce` свойство `transition` не объявляется
+     вовсе, и переключение `:checked` меняет `stroke-dashoffset` СКАЧКОМ, без
+     кадра анимации — отмеченное состояние становится состоянием по
+     умолчанию для этого чекбокса, а не промежуточным кадром недоигравшего
+     перехода. */
+  @media (prefers-reduced-motion: no-preference) {
+    .checkbox-mark path {
+      transition: stroke-dashoffset var(--dur-reveal) var(--ease);
+    }
+  }
+  .checkbox input[type="checkbox"]:checked ~ .checkbox-mark path {
+    stroke-dashoffset: 0;
+  }
 
   /* Результат — панель, а не абзац. Обычный текст был легче подвала, а успех,
      окрашенный в акцент, читался как ещё одна ссылка, а не как подтверждение. */
