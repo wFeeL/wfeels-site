@@ -95,11 +95,25 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
       for (const c of DELIVERY_CHANNELS) expect(labels[0].toLowerCase()).toContain(c.label.toLowerCase());
     });
 
-    it('только ортогональные команды пути: нет C/S/Q/T', () => {
+    it('только ортогональные команды пути: нет C/S/Q/T — ни в `d`, ни в `offset-path`', () => {
+      // Маршрут пакета живёт не в атрибуте `d`, а в инлайновом
+      // `offset-path: path('…')` (бриф `07-flow-motion-brief.md`, раздел 6:
+      // «правило ортогонали: C/S/Q/T в `d` нет и в `offset-path` нет»).
+      // Проверка только по `d` его не видела бы вовсе.
       const pathData = [...flowSvgs.matchAll(/\sd="([^"]+)"/g)].map((m) => m[1]);
       expect(pathData.length).toBeGreaterThan(0);
-      for (const d of pathData) {
+      const routes = [...flowSvgs.matchAll(/offset-path:path\('([^']+)'\)/g)].map((m) => m[1]);
+      expect(routes.length, 'маршрутов пакета в разметке нет — offset-path потерялся').toBe(2);
+      for (const d of [...pathData, ...routes]) {
         expect(d, d).not.toMatch(/[CSQT]/);
+      }
+    });
+
+    it('ни одной цифры ни в одной подписи обоих раскроев (бриф 07, критерий 13)', () => {
+      const texts = [...flowSvgs.matchAll(/<text\b[^>]*>([\s\S]*?)<\/text>/g)].map((m) => m[1]);
+      expect(texts.length, 'подписей в раскроях не нашлось — селектор устарел').toBeGreaterThan(8);
+      for (const t of texts) {
+        expect(/[0-9]/.test(t), `подпись «${t}» несёт цифру`).toBe(false);
       }
     });
   });
