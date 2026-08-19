@@ -92,7 +92,7 @@ export const MEASURED_SECTION_HEIGHT: Readonly<Record<string, number>> = {
   services: 1538,
   pricing: 1334,
   cases: 2832,
-  process: 1279,
+  process: 1489,
   guarantees: 893,
   about: 634,
   faq: 543,
