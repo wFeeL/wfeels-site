@@ -14,9 +14,10 @@ import { PAGE_WEIGHT_KB } from '../data/pageWeight';
  * `02-case-illustrations.md`) — её проверки отсюда удалены, а не
  * закомментированы: файл раньше назывался `dist-home-cases-proof.test.ts`.
  *
- * Тизер фабрики (`FactoryTeaser.astro`) снят 2026-08-18 (D-048, бриф
- * `04-cases-brief.md`): «Фабрика ботов» стала четвёртым блоком секции —
- * проверки её текста и плиты переехали в `dist-factory-shelf.test.ts`. */
+ * «Фабрика ботов» снята с главной правкой владельца 2026-08-19: блоков
+ * стало три, её проверки (`dist-factory-shelf.test.ts` и оба e2e-сторожа
+ * «Стеллажа») удалены вместе с предметом, а не оставлены пустыми. Сторож
+ * отсутствия живёт ниже — по срезу секции, и в `data/cases.test.ts`. */
 const DIST_INDEX = fileURLToPath(new URL('../../dist/index.html', import.meta.url));
 
 describe('dist/index.html — секция 5', () => {
@@ -33,7 +34,7 @@ describe('dist/index.html — секция 5', () => {
   if (!existsSync(DIST_INDEX)) return;
   const html = readFileSync(DIST_INDEX, 'utf8');
 
-  it('секция 5: метка, заголовок, четыре блока кейсов дословно на странице', () => {
+  it('секция 5: метка, заголовок, три блока кейсов дословно на странице', () => {
     expect(html).toContain('ЧТО УЖЕ СДЕЛАНО');
     expect(html).toContain('>Кейсы<');
     for (const c of homeCases()) {
@@ -63,11 +64,12 @@ describe('dist/index.html — секция 5', () => {
     const end = html.indexOf('id="process"');
     const section = html.slice(start, end);
     // Задачи 4–5 плана (`02-case-illustrations.md`) построили «Одну трубу» и
-    // «Пример диалога»; D-048 (бриф `04-cases-brief.md`) добавила
-    // «Стеллаж» — с этой правки наполнены все четыре поля секции 5.
+    // «Пример диалога», задача 3 — «Замер». Четвёртое поле («Стеллаж»)
+    // ушло вместе с кейсом «Фабрика ботов» 2026-08-19: полей три, по одному
+    // на блок, и число обязано совпадать с длиной `homeCases()`.
     expect((section.match(/class="field"/g) || []).length,
-      'в секции кейсов сегодня четыре наполненных поля иллюстрации')
-      .toBe(4);
+      'в секции кейсов ровно по одному наполненному полю иллюстрации на блок')
+      .toBe(homeCases().length);
     expect(section, 'вес страницы не найден внутри поля «Замер»')
       .toContain(String(PAGE_WEIGHT_KB));
   });
@@ -93,12 +95,15 @@ describe('dist/index.html — секция 5', () => {
     expect(forbidden.test(casesSectionHtml)).toBe(false);
   });
 
-  it('четвёртый блок «Фабрика ботов»: адрес /cases/bot-factory, ровно один <a>, схема «Стеллаж» на месте', () => {
+  it('«Фабрики ботов» на главной нет: ни адреса, ни заголовка, ни схемы «Стеллаж»', () => {
+    // Сторож снятия (правка владельца 2026-08-19). Проверяется срез секции
+    // 5, а не вся страница: слово «фабрика» может законно появиться в
+    // тексте другой секции, а вот блок кейса — нет.
     const start = html.indexOf('id="cases"');
     const end = html.indexOf('id="process"');
     const section = html.slice(start, end);
-    expect(section).toContain('/cases/bot-factory');
-    expect(section).toContain('class="cf-stellar"');
-    // Подробный разбор содержимого и чисел схемы — `dist-factory-shelf.test.ts`.
+    expect(section).not.toContain('/cases/bot-factory');
+    expect(section).not.toContain('Фабрика ботов');
+    expect(section).not.toContain('class="cf-stellar"');
   });
 });

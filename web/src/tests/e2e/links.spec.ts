@@ -52,9 +52,6 @@ const NOT_BUILT_YET = [
   '/cases/site-v3',
   '/cases/zayavka-hub',
   '/cases/ai-consultant',
-  // Тизер фабрики той же секции 5 ведёт на страницу кейса фабрики — тоже
-  // спека 04 (`data/cases.ts`, `FACTORY_TEASER.href`).
-  '/cases/bot-factory',
 ];
 
 /** Внутренние ссылки: обход, а не список.

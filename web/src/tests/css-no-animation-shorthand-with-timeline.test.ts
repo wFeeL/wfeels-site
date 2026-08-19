@@ -14,8 +14,9 @@ import { extname, join, relative } from 'node:path';
  * пропадает. Проза не удержала правило — держит тест.
  *
  * Тот же приём для починки уже задокументирован комментарием
- * `BackgroundLine.astro:124-129` и применён в `FactoryCore.astro`,
- * `FactoryStamp.astro`, `Pricing.astro`, `CaseDialogueIllustration.astro`:
+ * `BackgroundLine.astro:124-129` и применён в `Pricing.astro` и
+ * `CaseDialogueIllustration.astro` (до 2026-08-19 — ещё в разметке
+ * «Фабрики ботов», снятой вместе с кейсом):
  * писать раздельными свойствами (`animation-name`, `animation-duration`,
  * `animation-timing-function`, `animation-fill-mode`, `animation-timeline`,
  * `animation-range`), никогда не собирать их в один `animation: …`.

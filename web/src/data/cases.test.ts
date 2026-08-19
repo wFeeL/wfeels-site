@@ -2,24 +2,24 @@ import { describe, it, expect } from 'vitest';
 import { CASES, homeCases, CASES_CATALOG_HREF } from './cases';
 
 describe('cases.ts — внутренняя целостность', () => {
-  it('шесть кейсов всего (00-overview.md)', () => {
-    expect(CASES.length).toBe(6);
+  it('пять кейсов всего — «Фабрика ботов» снята правкой владельца 2026-08-19', () => {
+    expect(CASES.length).toBe(5);
   });
 
-  it('ровно четыре кейса на главной (D-048)', () => {
-    expect(homeCases().length).toBe(4);
+  it('ровно три кейса на главной', () => {
+    expect(homeCases().length).toBe(3);
   });
 
-  it('четыре кейса главной в порядке брифа `04-cases-brief.md`, раздел 2.1: ' +
-    'этот сайт → ИИ-консультант → Заявка-Хаб → Фабрика ботов', () => {
+  it('три кейса главной в порядке брифа `04-cases-brief.md`, раздел 2.1: ' +
+    'этот сайт → ИИ-консультант → Заявка-Хаб', () => {
     expect(homeCases().map((c) => c.title)).toEqual([
-      'Этот сайт', 'ИИ-консультант', 'Заявка-Хаб', 'Фабрика ботов',
+      'Этот сайт', 'ИИ-консультант', 'Заявка-Хаб',
     ]);
   });
 
-  it('стороны чередуются формулой homeOrder % 2 === 0 — вторая и четвёртая зеркальны', () => {
+  it('стороны чередуются формулой homeOrder % 2 === 0 — зеркальна только вторая', () => {
     const mirrored = homeCases().map((c) => (c.homeOrder ?? 0) % 2 === 0);
-    expect(mirrored).toEqual([false, true, false, true]);
+    expect(mirrored).toEqual([false, true, false]);
   });
 
   it('у каждого кейса главной есть описание и строка стека', () => {
@@ -48,15 +48,25 @@ describe('cases.ts — внутренняя целостность', () => {
     }
   });
 
-  it('«Фабрика ботов» — описание дословно из брифа 04, раздел 6.4, а «ядро»/«единое ядро» нигде не встречаются (D-036)', () => {
-    const bf = CASES.find((c) => c.slug === 'bot-factory');
-    expect(bf?.description).toBe(
-      'Каркас переезжает целиком — заново пишется только предметная часть. ' +
-      'Четыре типа, тридцать две темы.',
-    );
-    expect(/\bядр[а-яё]*\b/i.test(bf?.description ?? '')).toBe(false);
-    expect(bf?.description).not.toContain('единое ядро');
-    expect(bf?.description).not.toContain('один движок');
+  // Сторож снятия, а не памятник: «Фабрика ботов» ушла с главной правкой
+  // владельца 2026-08-19, и вернуть её молча — через данные, мимо решения —
+  // нельзя. Кейса нет ни в каком виде: ни строкой на главной, ни записью
+  // вне главной (в отличие от SlotBook и Storefront, которые записями
+  // остаются и ждут спеку 04).
+  it('«Фабрика ботов» снята из данных целиком (правка владельца 2026-08-19)', () => {
+    expect(CASES.find((c) => c.slug === 'bot-factory')).toBeUndefined();
+    expect(CASES.map((c) => c.title)).not.toContain('Фабрика ботов');
+  });
+
+  // D-036: слово «ядро» ушло с сайта целиком — сторож остаётся и после
+  // снятия кейса, теперь на всех описаниях сразу, а не на одном.
+  it('слова «ядро», «единое ядро», «один движок» не встречаются в описаниях (D-036)', () => {
+    for (const c of CASES) {
+      if (!c.description) continue;
+      expect(/\bядр[а-яё]*\b/i.test(c.description), `«${c.title}»`).toBe(false);
+      expect(c.description, c.title).not.toContain('единое ядро');
+      expect(c.description, c.title).not.toContain('один движок');
+    }
   });
 
   it('адреса кейсов уникальны', () => {
