@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { ABOUT_LEAD, ABOUT_BLOCKS, ABOUT_CLOSING, ABOUT_CLIENT_LABEL } from '../data/about';
+import { BRAND_MARKERS, brandTextSegments } from '../lib/brandMarkers';
 import { FAQ_ITEMS } from '../data/faq';
 import { telegramHandle, EMAIL } from '../lib/contacts';
 import { SERVICE_GROUPS } from '../data/services';
@@ -35,8 +36,20 @@ describe('dist/index.html — секции 9, 10 и 11', () => {
     // `ABOUT_BLOCKS` — плоский список текстов без заголовков (брифом
     // `04-sections-brief.md`, раздел 4.3, пункт 15: подзаголовки сняты) —
     // проверяется присутствие самого текста, не снятого `title`.
+    //
+    // Ищется не строка целиком, а каждый её кусок между значками марок:
+    // значок разрывает предложение на несколько текстовых узлов, и целиком
+    // такой строки в разметке нет по устройству. Проверка от этого не
+    // слабеет — куски покрывают весь текст, кроме самих маркеров.
     for (const block of ABOUT_BLOCKS) {
-      expect(html, block.slice(0, 40)).toContain(block);
+      for (const segment of brandTextSegments(block)) {
+        expect(html, segment.slice(0, 40)).toContain(segment);
+      }
+    }
+    // Маркер значка не должен доехать до страницы буквально: `{claude}` в
+    // разметке значил бы, что разбор не отработал, а текст всё равно на месте.
+    for (const marker of BRAND_MARKERS) {
+      expect(html, `маркер {${marker}} остался в разметке`).not.toContain(`{${marker}}`);
     }
     expect(html).toContain(ABOUT_CLOSING);
   });

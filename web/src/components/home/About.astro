@@ -29,6 +29,8 @@
  */
 import Label from '../Label.astro';
 import Prose from '../Prose.astro';
+import BrandMark from '../BrandMark.astro';
+import { splitBrandText } from '../../lib/brandMarkers';
 import {
   ABOUT_PHOTO, ABOUT_LEAD, ABOUT_BLOCKS, ABOUT_CLOSING,
 } from '../../data/about';
@@ -64,7 +66,15 @@ if (ABOUT_BLOCKS.length !== 2) {
     <Label>КТО ЭТО ДЕЛАЕТ</Label>
     <h2 class="t-h2">Обо мне</h2>
     <Prose>
-      {ABOUT_BLOCKS.map((text) => <p class="body-text">{text}</p>)}
+      {/* Текст абзаца несёт места под фирменные значки марок (`{claude}` и
+          прочие) прямо внутри предложения — разбор в `lib/brandMarkers.ts`,
+          сам знак в `BrandMark.astro`. Кусок текста уходит на страницу
+          дословно, вместе с пробелом после значка. */}
+      {ABOUT_BLOCKS.map((text) => (
+        <p class="body-text">{splitBrandText(text).map((part) => (
+          part.kind === 'text' ? part.value : <BrandMark name={part.name} />
+        ))}</p>
+      ))}
       <p class="closing"><strong>{ABOUT_CLOSING}</strong></p>
     </Prose>
   </div>
