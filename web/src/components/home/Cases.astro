@@ -91,6 +91,7 @@ const ILLUSTRATIONS: Record<string, any> = {
         item={item}
         mirrored={(item.homeOrder ?? 0) % 2 === 0}
         illustrationHeight={ILLUSTRATION_HEIGHT[item.slug]}
+        illustrationMobileHeight={MOBILE_HEIGHT[item.slug]}
       >
         {Illustration && <Illustration />}
       </CaseRow>
