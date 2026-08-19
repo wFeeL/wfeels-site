@@ -57,7 +57,16 @@ const ILLUSTRATION_HEIGHT: Record<string, number> = {
  * прокручивается и ни одна реплика не обрезана. */
 const AI_CONSULTANT_MOBILE_HEIGHT = 672;
 
+/* «Замер» ниже 899 px: композиция владельца 2026-08-19 — четыре числа с
+   подписями, вывод и оговорка. На узкой колонке подпись под числом уходит на
+   три строки, а оговорка на две, и в 384 раскрой не помещается — замер
+   `e2e/case-weight-fit.spec.ts` на 390 px: содержимому нужно 339 px при
+   доступных 320. 416 (кратно 32, в коридоре 288…448 раздела 2.1 брифа) даёт
+   352 при 327 после поджатия промежутков — запас, а не впритык. */
+const SITE_V3_MOBILE_HEIGHT = 416;
+
 const MOBILE_HEIGHT: Record<string, number | undefined> = {
+  'site-v3': SITE_V3_MOBILE_HEIGHT,
   'ai-consultant': AI_CONSULTANT_MOBILE_HEIGHT,
 };
 

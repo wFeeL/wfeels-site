@@ -67,6 +67,19 @@ function extractElementByMarker(html, marker) {
   return null;
 }
 
+/* Клетка иллюстрации «Замер» по машинному якорю `data-cell`. Якорь —
+// атрибут, а не класс: класс принадлежит оформлению и не переживает
+// перевёрстку, а гейт обязан пережить её или упасть, но не пройти молча.
+// Срез идёт от начала тега клетки до начала СЛЕДУЮЩЕЙ клетки (или до конца
+// иллюстрации) — так число из соседней клетки не может подвернуться под
+// регулярку соседа. */
+function extractCell(slice, key) {
+  const start = slice.indexOf(`data-cell="${key}"`);
+  if (start === -1) return null;
+  const next = slice.indexOf('data-cell="', start + 1);
+  return slice.slice(start, next === -1 ? slice.length : next);
+}
+
 const FONT_EXT = new Set(['.woff2', '.woff', '.ttf', '.otf', '.eot']);
 
 // Исполняемые типы `<script>`. Отсутствие атрибута — тоже JS.
@@ -438,27 +451,40 @@ for (const page of PAGES) {
       );
       failed = true;
     } else {
-      const oursIdx = weightSlice.indexOf('bar-row ours');
-      const typicalIdx = weightSlice.indexOf('bar-row typical');
-      const metricsIdx = weightSlice.indexOf('class="metrics"');
-      const coefficientIdx = weightSlice.indexOf('class="coefficient"');
+      /* Композиция владельца 2026-08-19 (эскиз): четыре числа попарно —
+         время и вес, наши и чужие, — стрелка по центру и вывод внизу.
+         Сверять здесь можно ровно два числа и их частное: вес страницы,
+         медиану и кратность. Время сюда не идёт и не может: гейт считает
+         байты на диске, а время меряется браузером на канале — его сторож
+         живёт отдельно (`src/tests/e2e/case-weight-load-time.spec.ts`) и
+         сверяет НАПЕЧАТАННОЕ число с фактическим замером.
 
-      if (oursIdx === -1 || typicalIdx === -1 || typicalIdx <= oursIdx) {
+         Строки мелких метрик («N,N КБ JS · N сторонних скриптов») на рисунке
+         больше нет — композиция владельца её не несёт, и вместе с ней ушли
+         обе сверки. Правило «число без сторожа на рисунок не попадает» этим
+         не ослаблено: ослабило бы его обратное — число на рисунке без
+         сторожа. Сжатый вес JS и число сторонних скриптов гейт по-прежнему
+         считает и печатает строкой сводки выше. */
+      const oursCell = extractCell(weightSlice, 'weight-ours');
+      const typicalCell = extractCell(weightSlice, 'weight-typical');
+      const verdictCell = extractCell(weightSlice, 'verdict');
+      const linkCell = extractCell(weightSlice, 'link');
+
+      if (oursCell === null || typicalCell === null) {
         console.error(
-          `✗ ${page} — в иллюстрации «Замер» не нашлись обе полосы сравнения ` +
-          '(bar-row ours / bar-row typical). Разметка иллюстрации изменилась ' +
-          'сильнее, чем сторож ожидал — поправить сторож вместе с разметкой.'
+          `✗ ${page} — в иллюстрации «Замер» не нашлись клетки веса ` +
+          '(data-cell="weight-ours" / data-cell="weight-typical"). Разметка ' +
+          'иллюстрации изменилась сильнее, чем сторож ожидал — поправить сторож ' +
+          'вместе с разметкой.'
         );
         failed = true;
       }
 
-      const weightClaim = oursIdx !== -1 && typicalIdx > oursIdx
-        ? weightSlice.slice(oursIdx, typicalIdx).match(/(\d+)\s*КБ/)
-        : null;
+      const weightClaim = oursCell !== null ? oursCell.match(/(\d+)\s*КБ/) : null;
       if (!weightClaim) {
         console.error(
           `✗ ${page} — иллюстрация «Замер» не называет вес страницы ` +
-          '(ожидалось «N КБ» в полосе «этот сайт»).'
+          '(ожидалось «N КБ» в клетке data-cell="weight-ours").'
         );
         failed = true;
       } else {
@@ -475,27 +501,52 @@ for (const page of PAGES) {
         }
       }
 
-      const medianEnd = metricsIdx !== -1 && (typicalIdx === -1 || metricsIdx > typicalIdx)
-        ? metricsIdx
-        : weightSlice.length;
-      const medianClaim = typicalIdx !== -1
-        ? weightSlice.slice(typicalIdx, medianEnd).match(/(\d+),(\d+)\s*МБ/)
-        : null;
+      const medianClaim = typicalCell !== null ? typicalCell.match(/(\d+),(\d+)\s*МБ/) : null;
       if (!medianClaim) {
         console.error(
           `✗ ${page} — иллюстрация «Замер» называет вес, но не называет медиану ` +
-          '(ожидалось «N,N МБ» в полосе «средний»). Кратность сверить не с чем.'
+          '(ожидалось «N,N МБ» в клетке data-cell="weight-typical"). Кратность сверить не с чем.'
         );
         failed = true;
       }
 
-      const coefficientClaim = coefficientIdx !== -1
-        ? weightSlice.slice(coefficientIdx).match(/×(\d+)/)
-        : null;
+      const coefficientClaim = verdictCell !== null ? verdictCell.match(/(\d+)×/) : null;
       if (!coefficientClaim) {
         console.error(
-          `✗ ${page} — коэффициент («×N» в правом нижнем углу иллюстрации, ` +
-          'class="coefficient") не найден или не несёт числа.'
+          `✗ ${page} — вывод рисунка («N×» в клетке data-cell="verdict") не найден ` +
+          'или не несёт числа.'
+        );
+        failed = true;
+      }
+
+      /* Кратность стоит на рисунке дважды — цифрой «6×» и словом «в шесть раз
+         легче». Расхождение этих двух форм — молчаливый дефект ровно того
+         класса, ради которого слово выводится из числа: сверяется здесь, на
+         собранной странице, а не только в модуле, который их считает. */
+      if (coefficientClaim) {
+        const WORDS = ['', '', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь',
+          'девять', 'десять', 'одиннадцать', 'двенадцать'];
+        const claimedRatio = Number(coefficientClaim[1]);
+        const word = WORDS[claimedRatio];
+        if (!word || !new RegExp(`в\\s+${word}\\s+раз`, 'i').test(verdictCell)) {
+          console.error(
+            `✗ ${page} — вывод рисунка утверждает ${claimedRatio}×, но словом этого не ` +
+            'повторяет (ожидалось «в ' + (word || '…') + ' раз(а) легче» в той же клетке). ' +
+            'Цифра и слово разошлись — их обязан выводить один расчёт ' +
+            '(data/pageWeight.ts, WEIGHT_MULTIPLIER_PHRASE).'
+          );
+          failed = true;
+        }
+      }
+
+      /* Оговорка о канале и метрике — не оформление, а условие, без которого
+         числа времени на рисунке ничего не значат: та же страница даёт
+         0,048 с на 100 Мбит/с и 1,56 с на 3 Мбит/с. Само время гейт проверить
+         не может, а вот молчаливую пропажу оговорки — обязан. */
+      if (linkCell === null || !/\d+\s*МБИТ\/С/i.test(linkCell)) {
+        console.error(
+          `✗ ${page} — на иллюстрации «Замер» не назван канал (клетка data-cell="link", ` +
+          'ожидалось «… N МБИТ/С»). Без канала «0,4 с» — не число, а впечатление.'
         );
         failed = true;
       }
@@ -510,60 +561,11 @@ for (const page of PAGES) {
         const expectedRatio = Math.round(medianKb / claimedKb);
         if (claimedRatio !== expectedRatio) {
           console.error(
-            `✗ ${page} — коэффициент утверждает ×${claimedRatio}, а по факту медиана/вес даёт ` +
-            `×${expectedRatio} (медиана ${medianClaim[1]},${medianClaim[2]} МБ, вес ${claimedKb} КБ). ` +
+            `✗ ${page} — вывод утверждает ${claimedRatio}×, а по факту медиана/вес даёт ` +
+            `${expectedRatio}× (медиана ${medianClaim[1]},${medianClaim[2]} МБ, вес ${claimedKb} КБ). ` +
             'Кратность выводится из веса: подставить оба числа в `data/pageWeight.ts` вместе.'
           );
           failed = true;
-        }
-      }
-
-      /* Мелкие метрики (JS сжатый, сторонние скрипты) — та же логика
-         среза, тот же принцип «нет якоря — красный дефект». Допуск JS не в
-         процентах, как у веса страницы: 5% от ~2 КБ — это ~0,1 КБ, уже
-         меньше точности округления до одного знака после запятой, которым
-         печатается число. Сверяется поэтому не разница в проценте, а
-         СОВПАДЕНИЕ округлённого до 0,1 КБ значения. */
-      const metricsSlice = metricsIdx !== -1
-        ? weightSlice.slice(metricsIdx, coefficientIdx !== -1 && coefficientIdx > metricsIdx ? coefficientIdx : weightSlice.length)
-        : null;
-      if (metricsSlice === null) {
-        console.error(
-          `✗ ${page} — строка мелких метрик (JS, сторонние скрипты) не найдена ` +
-          'в иллюстрации «Замер» (ожидался class="metrics").'
-        );
-        failed = true;
-      } else {
-        const jsClaim = metricsSlice.match(/(\d+),(\d+)\s*КБ\s*JS\b/);
-        if (!jsClaim) {
-          console.error(`✗ ${page} — иллюстрация «Замер» не называет сжатый вес JS.`);
-          failed = true;
-        } else {
-          const claimedJsKb = Number(jsClaim[1]) + Number(jsClaim[2]) / 10;
-          const actualJsKb = Math.round((jsGzip / 1024) * 10) / 10;
-          if (Math.abs(claimedJsKb - actualJsKb) > 0.05) {
-            console.error(
-              `✗ ${page} — иллюстрация утверждает JS ${jsClaim[1]},${jsClaim[2]} КБ, а фактический ` +
-              `сжатый JS — ${actualJsKb.toFixed(1)} КБ. Подставить новое число в data/pageWeight.ts ` +
-              '(PAGE_JS_GZIP_KB).'
-            );
-            failed = true;
-          }
-        }
-
-        const thirdPartyClaim = metricsSlice.match(/(\d+)\s*сторонних\s*скрипт/i);
-        if (!thirdPartyClaim) {
-          console.error(`✗ ${page} — иллюстрация «Замер» не называет число сторонних скриптов.`);
-          failed = true;
-        } else {
-          const claimedThirdParty = Number(thirdPartyClaim[1]);
-          if (claimedThirdParty !== thirdPartyScripts) {
-            console.error(
-              `✗ ${page} — иллюстрация утверждает ${claimedThirdParty} сторонних скриптов, а по факту ` +
-              `${thirdPartyScripts}. Подставить новое число в data/pageWeight.ts (THIRD_PARTY_SCRIPTS_COUNT).`
-            );
-            failed = true;
-          }
         }
       }
     }

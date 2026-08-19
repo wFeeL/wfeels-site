@@ -1,243 +1,361 @@
 ---
-/* Иллюстрация «Замер» (кейс «Этот сайт»), секция кейсов главной. Композиция
- * утверждена владельцем 2026-08-13 (диспетч задачи «Иллюстрация кейса «Этот
- * сайт»»): полоса сравнения «эта страница / медиана рынка» — главный
- * элемент, строка мелких метрик под ней — второстепенный (задача 2 этого
- * захода). Раньше здесь стояла одна голая цифра (правка ревью 2026-08-13,
- * часть 2) — обещание «сравнение с медианой» несла только подпись под
- * полем словами, само поле его не показывало.
+/* Иллюстрация «Замер» (кейс «Этот сайт»), секция кейсов главной.
  *
- * Каждое число здесь читается из `data/pageWeight.ts` через
- * `data/case-illustrations.ts:WEIGHT_ILLUSTRATION` — единственный источник,
- * второй ручной копии нет. Длина полосы «этот сайт» — точная доля
- * `ourKb / typicalKb`, посчитанная здесь же из тех же чисел: полоса не может
- * соврать пропорцией, потому что не несёт собственного литерала длины.
+ * Композиция — эскиз владельца 2026-08-19: четыре числа попарно (время и вес,
+ * наши и чужие), стрелка по центру, вывод внизу, оговорка мелкой строкой.
+ * Она заменила две сравнительные полосы и строку мелких метрик под ними
+ * (композиция 2026-08-13). Причина смены — не вкус: полосы показывали ВЕС, а
+ * владельцу малого бизнеса вес сам по себе не говорит ничего. Говорит время,
+ * в которое этот вес превращается, — поэтому время стоит первой строкой, а
+ * вес под ним объяснением.
  *
- * ВНИМАНИЕ будущему редактору: эта композиция (залитые полосы) отличается
- * от «волосяной размерной линии с засечками», которую предписывал
- * `70-workshop/specs/site-v3/02-case-illustrations.md`, раздел 3.3, — решение
- * владельца сменилось в тот же день. Спека не переписана этим заходом (не
- * моя область правок) — см. отчёт задачи, раздел «Влияние на базу».
+ * Итоговая подпись — «в шесть раз легче», решение владельца взамен
+ * нарисованного на эскизе «уникальность в скорости»: превосходную степень о
+ * себе проверить нечем, а кратность проверяет `check-budget.mjs`. Слово
+ * «шесть» ВЫВОДИТСЯ из `WEIGHT_MULTIPLIER` (`data/pageWeight.ts`), не пишется
+ * литералом — иначе при смене кратности цифра «6×» и слово разошлись бы молча.
  *
- * Коэффициент в правом нижнем углу (решение владельца 2026-08-14, пункт 7
- * списка правок, [[03-redesign-2026-08-14]] раздел 1) заменяет прозаическую
- * фразу «Она весит 398 КБ… в шесть раз больше», раньше стоявшую подписью под
- * полем (`Cases.astro`, `WEIGHT_CLAIM`). `.weight` несёт машинный признак
- * `data-illustration="case-weight"` — по нему `check-budget.mjs` вырезает
- * именно эту иллюстрацию из собранной страницы и сверяет вес, медиану и
- * кратность внутри среза, а не по фразе где-то на странице (та же причина,
- * по которой у этого гейта уже дважды находили «проверка есть, проверяет не
- * то»: флаг `i` у регулярки и кратность вне таблицы слов, `pageWeight.ts`).
- * Без этого атрибута на главной гейт обязан упасть, а не пройти молча.
+ * Ни одно число здесь не написано рукой: своё время замерено, чужое выведено
+ * из веса и канала, кратность выведена из двух весов, слово выведено из
+ * кратности. Всё приходит из `data/case-illustrations.ts:WEIGHT_ILLUSTRATION`.
+ *
+ * Машинные якоря — `data-illustration="case-weight"` на корне и `data-cell`
+ * на каждой клетке. По ним `check-budget.mjs` вырезает именно эту иллюстрацию
+ * из собранной страницы и сверяет вес, медиану и кратность внутри среза, а не
+ * по фразе где-то на странице (тот же класс дефекта, который у этого гейта уже
+ * дважды находили: «проверка есть, проверяет не то»). Якоря — атрибуты, а не
+ * классы: класс принадлежит оформлению и переживёт не всякую перевёрстку.
+ * Без этих атрибутов на главной гейт обязан упасть, а не пройти молча.
  */
 import { WEIGHT_ILLUSTRATION } from '../../data/case-illustrations';
 
-const { ourKb, typicalKb, typicalMbText, jsGzipKbText, thirdPartyScriptsCount, multiplier } =
-  WEIGHT_ILLUSTRATION;
+const { cells, multiplier, multiplierPhrase, linkLabel } = WEIGHT_ILLUSTRATION;
+const [timeOurs, timeTypical, weightOurs, weightTypical] = cells;
 
-// Доля полосы «этот сайт» от полосы медианы — не второй литерал длины, а
-// вычисление из тех же двух чисел, что стоят рядом текстом.
-const ourPct = (ourKb / typicalKb) * 100;
+/* Клетки идут в раскладку парами со стрелкой между ними — порядок клеток
+   задаёт `WEIGHT_CELLS`, а не расстановка руками здесь. */
+const ROWS = [
+  { seg: 1, ours: timeOurs, typical: timeTypical },
+  { seg: 2, ours: weightOurs, typical: weightTypical },
+];
 ---
 <div class="weight" data-illustration="case-weight">
-  <p id="weight-lbl" class="lbl">СКОЛЬКО ВЕСИТ ЭТА СТРАНИЦА</p>
-  <div class="bars" aria-labelledby="weight-lbl">
-    <div class="bar-row ours">
-      <span class="bar-label">ЭТОТ САЙТ</span>
-      <span class="track">
-        <span class="fill accent" style={`--target:${ourPct.toFixed(2)}%`} />
-      </span>
-      <span class="bar-value">{ourKb} КБ</span>
-    </div>
-    <div class="bar-row typical">
-      <span class="bar-label">СРЕДНИЙ</span>
-      <span class="track">
-        <span class="fill" style="--target:100%" />
-      </span>
-      <span class="bar-value">{typicalMbText} МБ</span>
-    </div>
+  <div class="cmp">
+    {ROWS.map((row) => (
+      <>
+        <div class="cell ours" data-cell={row.ours.key}>
+          {/* Число — блочный элемент во всю ширину колонки, поэтому счётчик
+              («0» → «400») не двигает ни подпись под собой, ни соседнюю
+              колонку: меняется текст, а не раскладка. */}
+          <p class="v" data-count>{row.ours.value}</p>
+          <p class="c">{row.ours.caption}</p>
+        </div>
+        <div class="arrow" data-seg={row.seg} aria-hidden="true">
+          <span class="shaft"></span>
+          <span class="head"></span>
+        </div>
+        <div class="cell typical" data-cell={row.typical.key}>
+          <p class="v" data-count>{row.typical.value}</p>
+          <p class="c">{row.typical.caption}</p>
+        </div>
+      </>
+    ))}
   </div>
-  {/* Мелкие метрики — только числа, у которых есть сторож (`check-budget
-      .mjs`, гейт задачи 2 захода 2026-08-13): без сторожа число сюда не
-      попадает, число тестов сюда не попадает никогда. */}
-  <p class="metrics">
-    <span>{jsGzipKbText} КБ JS</span>
-    <span class="dot" aria-hidden="true">·</span>
-    <span>{thirdPartyScriptsCount} сторонних скриптов</span>
+
+  {/* Вывод — то, ради чего нарисованы четыре числа. Кратность стоит дважды
+      (цифрой и словом) и оба раза выведена из одного вычисления: второго
+      литерала кратности на рисунке нет. */}
+  <p class="verdict" data-cell="verdict">
+    <span class="mult">{multiplier}×</span>
+    <span class="phrase">{multiplierPhrase}</span>
   </p>
-  {/* Коэффициент — правый нижний угол блока (решение владельца 2026-08-14,
-      пункт 7). Число берётся из WEIGHT_MULTIPLIER (через WEIGHT_ILLUSTRATION
-      .multiplier), второго литерала кратности здесь нет: полоса сравнения,
-      подпись и коэффициент — три чтения одного и того же вычисления. */}
-  <p class="coefficient">
-    <span class="value">×{multiplier}</span>
-    <span class="unit">легче медианы</span>
-  </p>
+
+  {/* Оговорка обязательна и обязана стоять на самом рисунке: без названного
+      канала и метрики «0,4 с» — не число, а впечатление (та же страница даёт
+      0,048 с на 100 Мбит/с). Речь о свойстве ЭТОЙ страницы на названном
+      канале, а не об обещании читателю: сайт не опубликован, хостинг не
+      выбран, TTFB хостинга в замер не входит — поэтому здесь нет и не может
+      быть слов «у вас». */}
+  <p class="note" data-cell="link">{linkLabel}</p>
 </div>
+
+{/* Счётчик от нуля до значения — движение из записки владельца («стрелка
+    прорисовывается по мере прокрутки, числа отсчитываются от нуля»).
+
+    `is:inline` здесь ОБЯЗАТЕЛЕН, и это не вкусовщина. Обычный (поднимаемый)
+    `<script>` из ЭТОГО компонента в сборку не попадает вовсе: иллюстрации
+    приезжают в `CaseIllustrationField` через слот, который тот сначала
+    рендерит вручную (`Astro.slots.render('default')` — проверка «есть ли
+    содержимое»), и к этому моменту поднятые скрипты страницы уже собраны.
+    Потеря молчаливая: сборка зелёная, разметка на месте, тесты проходят — а
+    поведения нет. Проверено пробником, см. тот же комментарий в
+    `CaseFlowIllustration.astro`.
+
+    Скрипт НИЧЕГО не рисует и ничего не прячет: конечные значения уже стоят в
+    разметке, он лишь временно переписывает цифры на пути к ним. Отказ скрипта,
+    отключённый JavaScript, `prefers-reduced-motion: reduce` и браузер без
+    таймлайнов прокрутки дают одно и то же — четыре числа в конечных значениях.
+    Обратный порядок (нули в разметке, счётчик их «оживляет») оставил бы при
+    любом сбое рисунок с нулями, то есть враньём.
+
+    Условия входа те же, при которых движется стрелка (`@supports` +
+    `@media` ниже), — иначе числа считались бы под неподвижной стрелкой.
+
+    Прогресс считается от той же фазы `cover` того же элемента, что и у
+    стрелки, но своей формулой: это не переизложение таймлайна CSS, а его
+    спутник — точное совпадение долей здесь не требуется и не обещано,
+    требуется одновременность на глаз и гарантированный приход к единице. */}
+<script is:inline>
+  (function () {
+    if (!matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+    if (!(window.CSS && CSS.supports && CSS.supports('animation-timeline', 'view()'))) return;
+
+    var root = document.querySelector('[data-illustration="case-weight"]');
+    if (!root) return;
+
+    // Всё, что нужно счётчику, читается из НАПЕЧАТАННОЙ строки: значение,
+    // число знаков после запятой и хвост с единицей. Второго описания числа
+    // (data-атрибута со значением) нет намеренно — оно могло бы разойтись с
+    // тем, что видит человек.
+    var nums = [];
+    var els = root.querySelectorAll('[data-count]');
+    for (var i = 0; i < els.length; i++) {
+      var text = els[i].textContent;
+      var m = /^[\d,]+/.exec(text);
+      if (!m) continue;
+      var digits = m[0];
+      var comma = digits.indexOf(',');
+      nums.push({
+        el: els[i],
+        text: text,
+        suffix: text.slice(digits.length),
+        value: parseFloat(digits.replace(',', '.')),
+        dec: comma === -1 ? 0 : digits.length - comma - 1,
+      });
+    }
+    if (!nums.length) return;
+
+    var START = 0.2;
+    var END = 0.6;
+    var queued = false;
+
+    function paint() {
+      queued = false;
+      var r = root.getBoundingClientRect();
+      var vh = window.innerHeight || document.documentElement.clientHeight;
+      var cover = (vh - r.top) / (vh + r.height);
+      var p = (cover - START) / (END - START);
+      if (p < 0) p = 0;
+      if (p > 1) p = 1;
+      for (var j = 0; j < nums.length; j++) {
+        var n = nums[j];
+        // На единице возвращается ИСХОДНАЯ строка, а не пересобранная:
+        // округление счётчика не имеет права переписать напечатанное число.
+        var next = p >= 1 ? n.text : (n.value * p).toFixed(n.dec).replace('.', ',') + n.suffix;
+        if (n.el.textContent !== next) n.el.textContent = next;
+      }
+    }
+
+    function schedule() {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(paint);
+    }
+
+    addEventListener('scroll', schedule, { passive: true });
+    addEventListener('resize', schedule);
+    schedule();
+  })();
+</script>
 
 <style>
   .weight {
-    /* relative — только чтобы дать точку отсчёта коэффициенту в правом
-       нижнем углу (`.coefficient`, absolute); саму раскладку строк это
-       свойство не меняет. */
-    position: relative;
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
     gap: 24px;
+    /* Таймлайн прокрутки объявлен ИМЕНОВАННЫМ и на корне рисунка, а не
+       анонимным `view()` у каждого отрезка стрелки: анонимный таймлайн берёт
+       субъектом сам элемент, и два отрезка разной высоты получили бы разные
+       шкалы — стрелка ломалась бы на стыке. Здесь субъект один на весь
+       рисунок, все отрезки читают его по имени.
+
+       Свойство стоит ВНЕ `@supports` намеренно: браузер без поддержки просто
+       не знает этого объявления и молча его отбрасывает, а внутри `@supports`
+       оно оказалось бы недоступно тем самым потомкам, ради которых заведено.
+
+       Источник таймлайна — ближайший прокручиваемый предок. Это окно:
+       `.field` (`CaseIllustrationField.astro`) стоит на `overflow: clip`,
+       который контейнером прокрутки НЕ становится, в отличие от `hidden`. */
+    view-timeline-name: --weight-view;
   }
 
-  /* Единственная метка-заголовок поля — 11 px допустим только здесь (бриф
-     `02-case-illustrations.md`, раздел 2.3), не для содержательных подписей
-     ниже. */
-  .lbl {
-    margin: 0;
-    font: 500 0.6875rem/1.3 var(--font-mono);
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  .bars { display: flex; flex-direction: column; gap: 20px; }
-
-  .bar-row {
+  /* Четыре клетки и два отрезка стрелки одной сеткой: колонка «наша» —
+     стрелка — колонка «чужая». Средняя колонка фиксированной ширины, чтобы
+     стрелка стояла ровно по оси и на 390 px, и на 1440. */
+  .cmp {
     display: grid;
-    grid-template-columns: 104px 1fr auto;
-    align-items: center;
-    gap: 16px;
+    grid-template-columns: 1fr 48px 1fr;
+    align-items: stretch;
+    row-gap: 20px;
   }
 
-  .bar-label {
-    font: 500 1rem/1.3 var(--font-mono);
-    letter-spacing: 0.04em;
-    color: var(--text-muted);
+  .cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
   }
+  .cell.typical { text-align: right; }
 
-  /* НЕ `overflow: hidden`: скругление полосы обеспечено собственным
-     `border-radius` `.fill`, а не обрезкой родителя. `overflow: hidden` на
-     `.track` делает его «контейнером прокрутки» по спецификации CSS
-     Overflow — а именно ближайший контейнер прокрутки становится ИСТОЧНИКОМ
-     таймлайна для `animation-timeline: view()` у потомка (не окно и не
-     страница). `.track` сам никогда не скроллится, поэтому источник
-     оказывается замороженным, и полоса застревает на одном и том же
-     промежуточном прогрессе независимо от прокрутки страницы — поймано
-     `getAnimations()[0].timeline.source` на живой странице при проверке
-     этой задачи (см. отчёт, `Оставшиеся риски`). */
-  .track {
-    display: block;
-    height: 16px;
-    background: var(--grid);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-  }
-
-  /* Заливка полосы медианы была `--border` (`#CBD3DE`) по дорожке `--grid`
-     (`#E6EBF2`) — контраст 1,09:1, замер дизайн-ревью 2026-08-13: полоса
-     сравнения читалась наоборот («наша» видна на 1/6, «средняя» выглядит
-     пустой, хотя смысл графика — обратный). `--text-muted` даёт 4,87:1
-     (светлая тема) и 5,88:1 (тёмная) против `--grid` — соотношение читается
-     глазом без подписи, а сама пропорция полос не тронута: обе дорожки
-     `.track` физически равной ширины (моно-шрифт, значения `410 КБ`/`2,4 МБ`
-     — одинаковое число знаков), заливка «этого сайта» остаётся ровно в
-     шесть раз короче, как и посчитано `ourPct`. */
-  .fill {
-    display: block;
-    height: 100%;
-    width: var(--target);
-    background: var(--text-muted);
-    border-radius: var(--radius-sm);
-  }
-  /* Акцент — только на своей полосе (бриф, раздел 2.3: «одна роль на
-     рисунок»): доказательство, а не украшение. */
-  .fill.accent { background: var(--accent); }
-
-  .bar-value {
-    font: 700 1.75rem/1.3 var(--font-mono);
+  /* 28 px — роль `h3` объявленной шкалы (`dist-typography-scale.test.ts`).
+     Наше число и чужое одного кегля намеренно: сравнение честное только
+     тогда, когда обе стороны показаны одинаково крупно. Разводит их не
+     размер, а цвет — акцент против приглушённого. */
+  .v {
+    margin: 0;
+    font: 700 1.75rem/1.2 var(--font-mono);
     color: var(--text);
-    text-align: right;
     white-space: nowrap;
   }
+  /* Единственный акцент рисунка — наша сторона сравнения (бриф
+     `02-case-illustrations.md`, раздел 2.3: «одна роль на рисунок»). Второго
+     акцентного цвета на рисунке нет: стрелка и «6×» — тот же `--accent`. */
+  .cell.ours .v { color: var(--accent); }
 
-  @media (max-width: 899px) {
-    .bar-row { grid-template-columns: 1fr; row-gap: 8px; }
-    .bar-value { text-align: left; }
-  }
-
-  /* Мелкие метрики — второстепенные по отношению к полосе сравнения,
-     поэтому мельче подписей полос, но не мельче small (бриф раздела 2.3:
-     кегль подписи внутри рисунка — не меньше 14 px). */
-  .metrics {
+  /* Подпись — 16 px (роль `small`), не мельче: кегль текста внутри рисунка
+     не опускается ниже 14 px ни на одной ширине (бриф, раздел 2.3). */
+  .c {
     margin: 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 10px;
-    font: 500 1rem/1.4 var(--font-mono);
+    font: 500 1rem/1.35 var(--font-mono);
     color: var(--text-muted);
   }
-  /* `--text-faint` не используется ни в одном из трёх рисунков секции
-     кейсов (бриф `02-case-illustrations.md`, раздел 2.3) — разделитель
-     остаётся на `--text-muted`, как и сами метрики рядом. */
 
-  /* Коэффициент — правый нижний угол поля. `--accent` здесь не второй акцент
-     (бриф раздела 2.3 разрешает «ровно одну роль на рисунок»): число — это
-     та же кратность, что уже доказывает залитая полоса `.fill.accent`, а не
-     новый объект внимания. */
-  .coefficient {
-    position: absolute;
-    right: 0;
-    bottom: 0;
+  /* Отрезок стрелки: волосяной ствол во всю высоту строки и наконечник под
+     ним. Два отрезка подряд читаются как одна непрерывная стрелка, ведущая
+     от чисел к выводу. */
+  .arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  .shaft {
+    flex: 1;
+    width: 1px;
+    background: var(--accent);
+    transform-origin: top center;
+  }
+  .head {
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid var(--accent);
+    transform-origin: top center;
+  }
+
+  /* Вывод — центрирован под стрелкой, наконечник второго отрезка указывает
+     прямо в него. */
+  .verdict {
     margin: 0;
     display: flex;
     align-items: baseline;
-    gap: 8px;
-    white-space: nowrap;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
   }
-  .coefficient .value {
-    font: 700 1.75rem/1.3 var(--font-mono);
+  /* 32 px — роль `h2` (нижняя граница `clamp`) объявленной шкалы: вывод
+     крупнее любого из четырёх чисел, потому что он и есть итог рисунка. */
+  .mult {
+    font: 700 2rem/1.1 var(--font-mono);
     color: var(--accent);
   }
-  /* 1rem — та же роль шкалы («small», `dist-typography-scale.test.ts`), что
-     `.bar-label` и `.metrics` рядом: 0.875rem в собранном CSS вне
-     объявленных восьми ролей и роняет сторожа шкалы кеглей. */
-  .coefficient .unit {
+  .phrase {
     font: 500 1rem/1.3 var(--font-mono);
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    color: var(--text);
   }
 
-  /* Запасное состояние — состояние ПО УМОЛЧАНИЮ (бриф раздела 2.4): без
-     этого блока обе полосы уже нарисованы в полную длину (`.fill { width:
-     var(--target); }` выше). Анимация навешивается только внутри
-     `@supports`, поверх готового рисунка, никогда наоборот — закрывает и
-     `prefers-reduced-motion: reduce`, и браузер без поддержки таймлайнов
-     прокрутки одним и тем же блоком. */
+  /* Оговорка. Прописные с разрядкой отличают её от подписей под числами: это
+     не ещё одна подпись, а условие замера. Кегль тот же — 16 px, ниже 14 px
+     на рисунке не опускается ничего. */
+  .note {
+    margin: 0;
+    font: 500 1rem/1.3 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 1179px) {
+    .cmp { grid-template-columns: 1fr 40px 1fr; }
+    /* 22 px — роль `body-lg` шкалы. Ниже 1180 px колонка рисунка у́же, и
+       28 px рядом с четырёхзначным числом уводили бы «2,4 МБ» под стрелку. */
+    .v { font-size: 1.375rem; }
+  }
+
+  /* На узкой ширине подпись под числом переносится на три строки, а оговорка —
+     на две: рисунок вырастает почти на четверть. Поле получает свою мобильную
+     высоту (`Cases.astro`), а промежутки поджимаются здесь — обе меры вместе
+     дают запас, а не впритык. Замер — `e2e/case-weight-fit.spec.ts`, он же
+     сторож: раскрой, не помещающийся в поле, обязан ронять прогон, а не
+     обрезаться молча под `overflow: clip` поля. */
+  @media (max-width: 899px) {
+    .weight { gap: 20px; }
+    .cmp { grid-template-columns: 1fr 32px 1fr; row-gap: 16px; }
+    .verdict { gap: 10px; }
+  }
+</style>
+
+<style>
+  /* Движение — ПОВЕРХ готового рисунка, никогда наоборот.
+   *
+   * Конечное состояние — состояние ПО УМОЛЧАНИЮ: без этого блока стрелка уже
+   * нарисована целиком (`.shaft`, `.head` выше без единого transform), а все
+   * четыре числа стоят в конечных значениях прямо в разметке. Один и тот же
+   * блок закрывает и `prefers-reduced-motion: reduce`, и браузер без
+   * таймлайнов прокрутки — оба видят готовый рисунок, а не пустое место и не
+   * нули.
+   *
+   * Диапазоны идут подряд без зазоров: ствол первого отрезка → его
+   * наконечник → ствол второго → его наконечник. Стрелка прорисовывается
+   * сверху вниз ровно в том порядке, в каком её читают.
+   *
+   * Раздельные свойства, не сокращение `animation:` — сборка сводит
+   * `animation` + `animation-timeline` в один шорткод, а собранный Chromium
+   * такую форму не разбирает и молча роняет анимацию целиком
+   * (`css-no-animation-shorthand-with-timeline.test.ts`).
+   */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      .fill {
-        width: 0;
-        animation-timeline: view();
-        animation-range: entry 15% cover 65%;
-        /* Раздельные свойства, не сокращение `animation:` — сборка сводит
-           `animation` + `animation-timeline` в один шорткод, а собранный
-           Chromium такую форму не разбирает и молча роняет анимацию целиком
-           (`css-no-animation-shorthand-with-timeline.test.ts`). */
+      .shaft,
+      .head {
+        animation-timeline: --weight-view;
         animation-timing-function: linear;
         animation-fill-mode: both;
-        animation-name: bar-grow;
       }
-      /* Полоса медианы растёт первой (контекст), полоса этого сайта —
-         следом (вывод): тот же порядок «сначала контекст, потом
-         доказательство», что и в остальных двух рисунках секции. */
-      .bar-row.typical .fill { animation-duration: 1ms; }
-      .bar-row.ours .fill { animation-duration: 160ms; }
+      .shaft {
+        transform: scaleY(0);
+        animation-name: draw-down;
+      }
+      .head {
+        transform: scale(0);
+        animation-name: head-in;
+      }
+
+      .arrow[data-seg='1'] .shaft { animation-range: cover 20% cover 42%; }
+      .arrow[data-seg='1'] .head { animation-range: cover 42% cover 46%; }
+      .arrow[data-seg='2'] .shaft { animation-range: cover 46% cover 62%; }
+      .arrow[data-seg='2'] .head { animation-range: cover 62% cover 66%; }
     }
   }
 
-  @keyframes bar-grow {
-    to { width: var(--target); }
+  @keyframes draw-down {
+    to { transform: scaleY(1); }
+  }
+  @keyframes head-in {
+    to { transform: scale(1); }
   }
 </style>
