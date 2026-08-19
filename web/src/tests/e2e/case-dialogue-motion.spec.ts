@@ -69,11 +69,35 @@ async function measure(page: Page) {
         minWho = `«${text.slice(0, 28)}»`;
       }
     }
+    /* Габаритов окна МАЛО. `.chat` — колонка `flex: 1`, она всегда ровно по
+       полю, а содержимое переливается ВНУТРИ ленты и молча срезается
+       `overflow: clip` поля. Проверено намеренной поломкой: с высотой поля
+       320 px рисунок срезан, а сравнение коробок на 1180 и 1440 проходило.
+       Поэтому меряется ещё и лента изнутри, и положение каждого пункта
+       переписки со строкой ввода в поле содержимого поля. */
+    const feed = chat.querySelector('.feed') as HTMLElement;
+    const fieldBox = {
+      top: fr.top + parseFloat(fs.paddingTop) + parseFloat(fs.borderTopWidth),
+      bottom: fr.bottom - parseFloat(fs.paddingBottom) - parseFloat(fs.borderBottomWidth),
+    };
+    const clipped: string[] = [];
+    const parts: [string, Element][] = [
+      ...[...feed.children].map((li, i) => [`реплика ${i + 1}`, li] as [string, Element]),
+      ['строка ввода', chat.querySelector('.input')!],
+    ];
+    for (const [name, el] of parts) {
+      const r = el.getBoundingClientRect();
+      if (r.top < fieldBox.top - 0.5) clipped.push(`${name} срезана сверху на ${(fieldBox.top - r.top).toFixed(1)} px`);
+      if (r.bottom > fieldBox.bottom + 0.5) clipped.push(`${name} срезана снизу на ${(r.bottom - fieldBox.bottom).toFixed(1)} px`);
+    }
+
     return {
       inner,
       chat: { w: cr.width, h: cr.height },
       overflowY: field.scrollHeight - field.clientHeight,
       overflowX: field.scrollWidth - field.clientWidth,
+      feedOverflow: feed.scrollHeight - feed.clientHeight,
+      clipped,
       minPx,
       minWho,
       nodes,
@@ -99,6 +123,11 @@ test.describe('«ИИ-консультант» — раскрой в поле и
         `окно выше поля: ${m.chat.h.toFixed(1)} против ${m.inner.h.toFixed(1)}`,
       ).toBeLessThanOrEqual(m.inner.h + 0.5);
       expect(m.overflowY, `поле прокручивается по вертикали на ${m.overflowY} px`).toBeLessThanOrEqual(0);
+      expect(
+        m.feedOverflow,
+        `лента переписки не умещается в отведённой высоте: лишних ${m.feedOverflow} px`,
+      ).toBeLessThanOrEqual(0);
+      expect(m.clipped, `содержимое окна срезано полем:\n${m.clipped.join('\n')}`).toEqual([]);
       expect(m.overflowX, `поле прокручивается по горизонтали на ${m.overflowX} px`).toBeLessThanOrEqual(0);
       expect(m.minPx, `самый мелкий текст — ${m.minPx} px, это ${m.minWho}`).toBeGreaterThanOrEqual(MIN_FONT_PX);
     });
