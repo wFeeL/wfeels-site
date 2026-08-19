@@ -349,6 +349,19 @@ const ROWS = [
       .arrow[data-seg='1'] .head { animation-range: cover 42% cover 46%; }
       .arrow[data-seg='2'] .shaft { animation-range: cover 46% cover 62%; }
       .arrow[data-seg='2'] .head { animation-range: cover 62% cover 66%; }
+
+      /* Вывод проявляется последним — там, куда пришла стрелка. Иначе рисунок
+         показывает ответ раньше довода: на снимке середины движения «в шесть
+         раз легче» стояло готовым, пока числа ещё крутились. Это не
+         украшение, а порядок чтения. */
+      .verdict {
+        opacity: 0;
+        animation-timeline: --weight-view;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-name: verdict-in;
+        animation-range: cover 64% cover 72%;
+      }
     }
   }
 
@@ -357,5 +370,8 @@ const ROWS = [
   }
   @keyframes head-in {
     to { transform: scale(1); }
+  }
+  @keyframes verdict-in {
+    to { opacity: 1; }
   }
 </style>
