@@ -1,58 +1,120 @@
 ---
-/* Иллюстрация «Одна труба, четыре отвода» (кейс «Заявка-Хаб»), бриф
- * `70-workshop/specs/site-v3/02-case-illustrations.md`, раздел 4. Читать
- * бриф целиком: этот файл реализует заданную геометрию, а не выбирает её.
+/* Иллюстрация «Одна труба, четыре отвода» (кейс «Заявка-Хаб»).
  *
- * Тот же язык, что `FactoryCore.astro`: оба раскроя лежат в разметке
- * одновременно, невидимый скрыт `display:none` на пороге 899/900 px; три
- * толщины обводки из токенов (`--stroke-bold/--stroke-line/--stroke-hair`).
- * Геометрия — константы компонента (структура рисунка, не бизнес-данные);
- * СОДЕРЖИМОЕ (подписи источников, каналов, число каналов) читается из
- * `data/case-illustrations.ts` — единственного источника; ни одна подпись
- * не написана здесь строкой. Модуль данных падает на сборке, если каналов
- * не ровно четыре, поэтому пустого рисунка не бывает.
+ * ДЕЙСТВУЮЩИЙ бриф движения и геометрии — `70-workshop/specs/site-v3/
+ * 07-flow-motion-brief.md` (вариант В «Один пакет-герой», выбран владельцем
+ * 2026-08-19). Он перекрывает разделы 4.4–4.5 прежнего брифа
+ * `02-case-illustrations.md` (там описана снятая механика: шесть/четыре
+ * пакета и движение по прокрутке). Состав, палитра, токены и кегль подписи
+ * по-прежнему из `02-case-illustrations.md`, раздел 2.3.
  *
- * Несколько отрезков одной роли/фазы собраны в ОДИН `<path>` через
- * повторный `M` внутри `d` (несколько несвязанных подпутей одним элементом) —
- * бюджет секции (бриф, раздел 6) тесный, а роль/цвет/анимация у них общие;
- * визуально и по правилу ортогонали (только H/V, дуги фиксированного
- * радиуса 16 — здесь не потребовались вовсе) это тот же рисунок, что при
- * отдельных элементах. Цвет и кегль вынесены на класс, а не повторены
- * атрибутами (комментарий `FactoryCore.astro:20-23` — та же причина).
+ * Что несёт этот файл и чего не решает: геометрия — константы компонента
+ * (структура рисунка, не бизнес-данные); СОДЕРЖИМОЕ (подписи источников,
+ * каналов, возврата) читается из `data/case-illustrations.ts` —
+ * единственного источника; ни одна подпись не написана здесь строкой.
+ * Модуль данных падает на сборке, если источников не три или каналов не
+ * четыре, поэтому пустого рисунка не бывает.
+ *
+ * Три вещи, которые легко сломать не заметив:
+ *
+ * 1. ПОРЯДОК ПОТОМКОВ `<svg>` задан жёстко (бриф 07, раздел 5) и проверяется
+ *    тестом: сначала все линии, затем группа пакета, затем непрозрачные
+ *    плашки узлов, и только потом все `<text>`. Отсюда два следствия, ради
+ *    которых порядок и задан: пакет никогда не рисуется поверх подписи, и
+ *    пакет ВСАСЫВАЕТСЯ в узел — дошедший до центра квадрата канала физически
+ *    исчезает под непрозрачной плашкой. Это и есть отметка «доставлено»: не
+ *    второй цвет, не вспышка, а перекрытие.
+ * 2. Узел «ЗАЯВКА» несёт заливку `--bg` (не `fill: none`) — без неё пакет,
+ *    пересекающий плашку по маршруту, читался бы поверх слова «ЗАЯВКА».
+ * 3. Шорткод `animation:` не применяется НИГДЕ — только раздельные свойства
+ *    (сторож `src/tests/css-no-animation-shorthand-with-timeline.test.ts`).
+ *
+ * Несколько отрезков одной роли/фазы собраны в ОДИН `<path>` через повторный
+ * `M` внутри `d` — бюджет секции тесный, а роль/цвет/анимация у них общие.
+ * Цвет и кегль вынесены на класс, а не повторены атрибутами (комментарий
+ * `FactoryCore.astro:20-23` — та же причина).
  */
 import { FLOW_SOURCES, DELIVERY_CHANNELS, FLOW_RETRY_LABEL } from '../../data/case-illustrations';
 
-// ---------------------------------------------------------------------
-// Раскрой А (от 900 px) — viewBox `0 0 ${VIEWBOX_W} 288`, ширина холста
-// пересчитана (см. ниже), геометрия узла и источников — бриф раздел 4.3.
-// ---------------------------------------------------------------------
+// =====================================================================
+// Маршрут пакета — общая механика обоих раскроев (бриф 07, раздел 6).
+//
+// Ломаная задаётся МАССИВОМ ТОЧЕК, из него на сборке выводятся разом:
+// строка `offset-path: path("…")` и доли `offset-distance` для ключевых
+// кадров. Ни одно число маршрута не пишется в CSS руками — иначе дельты
+// пришлось бы пересчитывать вручную при каждой правке геометрии (долг,
+// названный в `06-flow-motion-options.md`, раздел 2.1).
+// =====================================================================
+type Pt = readonly [number, number];
+
+/** Строка `d` ломаной. Только `H`/`V` — правило ортогонали (бриф 07, раздел
+ *  6): `C/S/Q/T` не появляются ни в `d` рисунка, ни в `offset-path`. */
+function routePath(points: readonly Pt[]): string {
+  let d = `M${points[0][0]},${points[0][1]}`;
+  for (let i = 1; i < points.length; i++) {
+    const [x, y] = points[i];
+    const [px, py] = points[i - 1];
+    if (x !== px && y !== py) {
+      throw new Error(
+        `CaseFlowIllustration: отрезок ${i} маршрута пакета диагональный ` +
+        `(${px},${py})→(${x},${y}) — маршрут обязан быть ортогональным (только H/V).`,
+      );
+    }
+    d += x !== px ? `H${x}` : `V${y}`;
+  }
+  return d;
+}
+
+/** Доли `offset-distance` для перечисленных вершин, в процентах манхэттенской
+ *  длины всей ломаной. Именно эти доли CSS получает переменными `--w1…--w14`
+ *  инлайновым `style` на самом кружке. */
+function routeStops(points: readonly Pt[], indices: readonly number[]): string[] {
+  const cum: number[] = [0];
+  for (let i = 1; i < points.length; i++) {
+    cum.push(cum[i - 1] + Math.abs(points[i][0] - points[i - 1][0]) + Math.abs(points[i][1] - points[i - 1][1]));
+  }
+  const total = cum[cum.length - 1];
+  return indices.map((i) => `${((cum[i] / total) * 100).toFixed(2)}%`);
+}
+
+/** Инлайновый `style` кружка: маршрут плюс четырнадцать долей. */
+function packetStyle(points: readonly Pt[], indices: readonly number[]): string {
+  const stops = routeStops(points, indices);
+  if (stops.length !== 14) {
+    throw new Error(
+      `CaseFlowIllustration: раскадровка ждёт ровно 14 ключевых вершин (--w1…--w14), ` +
+      `передано ${stops.length} — ключевые кадры в <style> пришлось бы править вслед.`,
+    );
+  }
+  return `offset-path:path('${routePath(points)}');` + stops.map((s, i) => `--w${i + 1}:${s}`).join(';');
+}
+
+function squarePath(x: number, y: number, size: number): string {
+  return `M${x},${y}H${x + size}V${y + size}H${x}Z`;
+}
+
+// =====================================================================
+// Раскрой А (от 1180 px) — viewBox `0 0 608 288` (бриф 07, раздел 3).
+// Ширина холста, источники, узел, ствол, отводы и узлы каналов НЕ меняются
+// относительно прежней редакции; переразмечен только возврат.
+// =====================================================================
 const SOURCE_Y = [64, 128, 192]; // ФОРМА · БОТ · ЛЕНДИНГ, из README (11–12, 17, 30)
+const SOURCE_LABEL_X = 88;
+const SOURCE_LINE_X = 96;
 const TRUNK_X = 112;
 const NODE_X = 160;
 const NODE_W = 128;
 const NODE_Y = 104;
 const NODE_H = 48;
 const NODE_CY = NODE_Y + NODE_H / 2; // 128
+const NODE_BOTTOM = NODE_Y + NODE_H; // 152
 
 const CHANNEL_X0 = 320;
-/* НАХОДКА 2026-08-18: вчерашняя починка (шаг 64→96 равномерно для ВСЕХ трёх
- * промежутков) убрала коллизию подписей, но раздула холст 576→672. Холст
- * рисуется в поле фиксированной ширины (колонка 7fr секции кейсов), поэтому
- * при том же поле рост холста — это чистое уменьшение масштаба: замер
- * `getBoundingClientRect()` на живой сборке дал кегль подписи 13,3 px на
- * 1440, 9,4 px на 900 — ниже правила «не мельче 14 px» (бриф раздел 2.3)
- * практически везде.
- *
- * Коллизия была только у ОДНОЙ пары — «ТАБЛИЦЫ»/«TELEGRAM»
- * (`getComputedTextLength()`: 67,2 + 76,8, полуширины в сумме 72,0 против
- * шага 64 — налезание на 8 единиц). Промежутки «ПОЧТА»↔«CRM» и «CRM»↔
- * «ТАБЛИЦЫ» короче и в замере не налезали — им шаг 96 был не нужен, вчерашняя
- * починка раздвинула все три промежутка заодно и заплатила за это лишними
- * 64 единицами ширины холста. Раздвинут точечно только третий промежуток, до
- * ближайшего кратного 32, дающего запас (64→96, тот же прирост на паре,
- * которая реально налезала); первые два остаются на 64. Холст пересчитан
- * ниже под новый правый край, вернулся к 608 (был 576 до вчерашней правки,
- * 672 после неё). */
+/* Шаг узлов каналов: два первых промежутка 64, третий 96. Замер
+ * `getComputedTextLength()`: «ТАБЛИЦЫ» 67,2 и «TELEGRAM» 76,8, полуширины в
+ * сумме 72,0 — на шаге 64 подписи налезали. Раздвинут ТОЧЕЧНО только третий
+ * промежуток: раздувать все три — платить шириной холста (а значит масштабом
+ * и кеглем подписи) за коллизию, которой в первых двух не было. */
 const CHANNEL_GAPS = [64, 64, 96]; // ПОЧТА→CRM, CRM→ТАБЛИЦЫ, ТАБЛИЦЫ→TELEGRAM
 if (CHANNEL_GAPS.length !== DELIVERY_CHANNELS.length - 1) {
   throw new Error(
@@ -66,98 +128,245 @@ const CHANNEL_XS = CHANNEL_GAPS.reduce<number[]>(
 );
 const CHANNEL_NODE_Y = 192;
 const CHANNEL_NODE_SIZE = 24;
-const CHANNEL_LABEL_Y = CHANNEL_NODE_Y + CHANNEL_NODE_SIZE + 18;
-
-const RETURN_BUS_Y = 256;
-const RETURN_X = 224; // «нижняя кромка узла» (224,152), бриф раздел 4.3
-const RETURN_LABEL_Y = RETURN_BUS_Y + 20;
+const CHANNEL_NODE_HALF = CHANNEL_NODE_SIZE / 2; // 12
+const CHANNEL_NODE_CY = CHANNEL_NODE_Y + CHANNEL_NODE_HALF; // 204 — центр квадрата
+const CHANNEL_LABEL_Y = CHANNEL_NODE_Y + CHANNEL_NODE_SIZE + 18; // 234
 const LAST_CHANNEL_X = CHANNEL_XS[CHANNEL_XS.length - 1]; // 544
 
-/* Хвост ствола за последним отводом — короткий, не «уходит в пустоту» (то же
- * решение ревью 2026-08-13, число не пересматривалось). */
+/* Возврат (бриф 07, раздел 3) — ОДИН, а не четыре, и выходит из ЛЕВОЙ кромки
+ * последнего узла, а не сверху вниз из всех четырёх.
+ *
+ * Почему переразмечен: прежние вертикали стояли на x каждого канала и
+ * проходили ровно сквозь его подпись (замер `getBBox()`: «ПОЧТА» занимает
+ * 296…344 по x, вертикаль стояла на 320) — линия перечёркивала подпись у
+ * ВСЕХ ЧЕТЫРЁХ каналов. Смысл «не принять может любой канал» несёт подпись
+ * `НЕ ДОШЛО — ПОВТОР` и сам факт возвратной шины; четыре одинаковых спуска
+ * этого не добавляли, а подписи портили.
+ *
+ * `A_RETURN_DROP_X` = 496 — середина коридора между подписями «ТАБЛИЦЫ»
+ * (кончается на 481,6) и «TELEGRAM» (начинается на 505,6); просветы 14,4 и
+ * 9,6 единицы, замерено. `RETURN_BUS_Y` поднята с 256 до 248, чтобы пакет на
+ * шине (радиус 4 → полоса 244…252) не касался подписи возврата (её верх —
+ * 259,6): просвет 7,6. */
+const A_RETURN_DROP_X = 496;
+const RETURN_BUS_Y = 248;
+const RETURN_X = 224; // вход в узел снизу, «нижняя кромка узла» (224,152)
+const RETURN_LABEL_Y = RETURN_BUS_Y + 28; // 276
+const RETURN_LABEL_X = (RETURN_X + A_RETURN_DROP_X) / 2; // 360
+
+/* Хвост ствола за последним отводом — короткий, не «уходит в пустоту». */
 const TRUNK_END_X = LAST_CHANNEL_X + 16; // 560
 
 /* Ширина холста — не сумма геометрии ствола, а факт замера подписи:
- * `TELEGRAM` центрирована на последнем канале (544) и занимает 76,8 единицы
- * (`getComputedTextLength()`), её правый край — 544 + 76,8/2 = 582,4. Холст
- * обязан быть шире этого края (иначе `<svg>` обрезает подпись своим
- * умолчальным `overflow: hidden`), с запасом. 608 (кратно 32) даёт те же
- * 25,6 единицы запаса, что и вчерашний расчёт для 672/646,4 — сам запас не
- * менялся, изменился только правый край, от которого он отсчитан (находка
- * 2026-08-18 выше). */
+ * «TELEGRAM» центрирована на последнем канале (544) и занимает 76,8 единицы,
+ * её правый край — 582,4. Холст обязан быть шире этого края (иначе `<svg>`
+ * своим умолчальным `overflow: hidden` обрезает подпись), с запасом. */
 const VIEWBOX_W = 608;
+const VIEWBOX_H = 288;
 
 function vSegments(xs: number[], y1: number, y2: number): string {
   return xs.map((x) => `M${x},${y1}V${y2}`).join('');
 }
-function rectSegments(xs: number[], y: number, size: number): string {
-  const h = size / 2;
-  return xs.map((x) => `M${x - h},${y}H${x + h}V${y + size}H${x - h}Z`).join('');
-}
 
-const aPathSources = `M96,${SOURCE_Y[0]}H${TRUNK_X}M96,${SOURCE_Y[1]}H${TRUNK_X}M96,${SOURCE_Y[2]}H${TRUNK_X}`;
+const aPathSources = SOURCE_Y.map((y) => `M${SOURCE_LINE_X},${y}H${TRUNK_X}`).join('');
 const aPathTrunkIn = `M${TRUNK_X},${SOURCE_Y[0]}V${SOURCE_Y[2]}M${TRUNK_X},${SOURCE_Y[1]}H${NODE_X}`;
 const aPathTrunkOut =
   `M${NODE_X + NODE_W},${NODE_CY}H${TRUNK_END_X}` +
   `M${TRUNK_END_X - 8},${NODE_CY - 8}L${TRUNK_END_X},${NODE_CY}L${TRUNK_END_X - 8},${NODE_CY + 8}`;
 const aPathBranches = vSegments(CHANNEL_XS, NODE_CY, CHANNEL_NODE_Y);
-const aPathChannelNodes = rectSegments(CHANNEL_XS, CHANNEL_NODE_Y, CHANNEL_NODE_SIZE);
+const aPathChannelNodes = CHANNEL_XS
+  .map((x) => squarePath(x - CHANNEL_NODE_HALF, CHANNEL_NODE_Y, CHANNEL_NODE_SIZE))
+  .join('');
 const aPathReturn =
-  vSegments(CHANNEL_XS, CHANNEL_NODE_Y + CHANNEL_NODE_SIZE, RETURN_BUS_Y) +
-  `M${LAST_CHANNEL_X},${RETURN_BUS_Y}H${RETURN_X}M${RETURN_X},${RETURN_BUS_Y}V${NODE_Y + NODE_H}` +
-  `M${RETURN_X - 6},${NODE_Y + NODE_H + 8}L${RETURN_X},${NODE_Y + NODE_H}L${RETURN_X + 6},${NODE_Y + NODE_H + 8}`;
+  `M${LAST_CHANNEL_X - CHANNEL_NODE_HALF},${CHANNEL_NODE_CY}H${A_RETURN_DROP_X}` +
+  `V${RETURN_BUS_Y}H${RETURN_X}V${NODE_BOTTOM}` +
+  `M${RETURN_X - 6},${NODE_BOTTOM + 8}L${RETURN_X},${NODE_BOTTOM}L${RETURN_X + 6},${NODE_BOTTOM + 8}`;
 
-// ---------------------------------------------------------------------
-// Раскрой Б (ниже 900 px) — viewBox `0 0 ${B_VIEWBOX_W} 480` (ширина холста
-// пересчитана, см. ниже; геометрия узла — бриф раздел 4.4).
-// ---------------------------------------------------------------------
-const B_NODE_X = 64;
-const B_NODE_Y = 96;
-const B_NODE_W = 160;
-const B_NODE_H = 48;
-const B_NODE_CX = B_NODE_X + B_NODE_W / 2; // 144
-const B_TRUNK_START_Y = B_NODE_Y + B_NODE_H; // 144
-const B_BRANCH_X = B_NODE_CX; // 144
-const B_NODE_LEFT = 188;
-const B_LABEL_X = 224;
-const B_RETURN_X = 104;
-const B_RETURN_ARROW_TOP = B_NODE_Y + B_NODE_H + 6; // 150
-const B_LABEL_Y = 436;
+/* Маршрут пакета раскроя А, 30 вершин, длина 2596 единиц (бриф 07, раздел
+ * 6.1). Читается так: пришёл от «ФОРМЫ» → под плашку узла → вышел на ствол →
+ * трижды «ушёл в канал и не вернулся» (в первые три канала пакет входит и
+ * исчезает под плашкой; обратно к узлу он едет СКРЫТЫМ — эти участки гасит
+ * анимация видимости) → четвёртый канал ВЫПУСКАЕТ его обратно, пакет встаёт
+ * у подписи «НЕ ДОШЛО — ПОВТОР» → по волосяной шине назад в узел → тот же
+ * путь ещё раз → доставлено.
+ *
+ * `A_HIDE_X` — точка ВНУТРИ плашки узла, в которой пакет «ждёт» скрытым;
+ * оба конца каждой скрытой фазы обязаны лежать под непрозрачной плашкой,
+ * иначе переключение видимости было бы заметно (бриф 07, раздел 9.3).
+ * `A_PAUSE_X` — где пакет стоит 0,72 с: 16 единиц левее кромки последнего
+ * узла, то есть заведомо ВНЕ плашки, рядом с единственной подписью,
+ * объясняющей остановку. */
+const A_HIDE_X = NODE_X + NODE_W - 16; // 272
+const A_PAUSE_X = LAST_CHANNEL_X - CHANNEL_NODE_HALF - 16; // 516
 
-/* Найдено при проверке этого же захода (не названо блокером 3 отдельно, тот
- * же класс дефекта): в исходном холсте 288 «TELEGRAM» (x=224, ширина 76,8)
- * заканчивалась на 300,8 — за краем viewBox 288, и `<svg>` его умолчальным
- * `overflow: hidden` обрезал подпись до «TELEGRA». Холст расширен до
- * ближайшего кратного 32, дающего запас — 320 (300,8 + 19,2). Подписи здесь
- * не центрированы (`text-anchor` не задан, растут вправо от `B_LABEL_X`), в
- * отличие от раскроя А — коллизии между СОСЕДНИМИ подписями нет: они лежат
- * в разных строках (шаг `B_BRANCH_YS` 64), задача только не срезать самую
- * длинную по правому краю холста. */
+const aRoute: Pt[] = [
+  [SOURCE_LINE_X, SOURCE_Y[0]],
+  [TRUNK_X, SOURCE_Y[0]],
+  [TRUNK_X, NODE_CY],
+  [NODE_X, NODE_CY], // w1 — левая кромка узла, уходит под плашку
+  [NODE_X + NODE_W, NODE_CY], // w2 — правая кромка, вышел на ствол
+  ...CHANNEL_XS.slice(0, -1).flatMap((x): Pt[] => [
+    [x, NODE_CY],
+    [x, CHANNEL_NODE_CY], // wN — центр узла канала, поглощён
+    [x, NODE_CY],
+    [A_HIDE_X, NODE_CY], // wN+1 — скрытый возврат под плашку узла
+  ]),
+  [LAST_CHANNEL_X, NODE_CY],
+  [LAST_CHANNEL_X, CHANNEL_NODE_CY], // w9 — центр последнего узла
+  [LAST_CHANNEL_X - CHANNEL_NODE_HALF, CHANNEL_NODE_CY],
+  [A_PAUSE_X, CHANNEL_NODE_CY], // w10 — вышел обратно, СТОИТ
+  [A_RETURN_DROP_X, CHANNEL_NODE_CY],
+  [A_RETURN_DROP_X, RETURN_BUS_Y],
+  [RETURN_X, RETURN_BUS_Y],
+  [RETURN_X, NODE_BOTTOM], // w11 — входит в узел снизу
+  [RETURN_X, NODE_CY],
+  [NODE_X + NODE_W, NODE_CY], // w12 — вышел из узла на ствол
+  [LAST_CHANNEL_X, NODE_CY],
+  [LAST_CHANNEL_X, CHANNEL_NODE_Y], // w13 — кромка узла, ДОСТАВЛЕНО (покой)
+  [LAST_CHANNEL_X, CHANNEL_NODE_CY], // w14 — центр узла, поглощён, конец цикла
+];
+const aStopIndices = [3, 4, 6, 8, 10, 12, 14, 16, 18, 20, 24, 26, 28, 29];
+const aPacketStyle = packetStyle(aRoute, aStopIndices);
+
+// =====================================================================
+// Раскрой Б (до 1179 px) — viewBox `0 0 320 272`, ПЕРЕРАЗМЕЧЕН ЦЕЛИКОМ
+// (бриф 07, раздел 4).
+//
+// Прежняя вертикальная колонка 320×480 не помещалась в поле: на ширинах
+// 900…1179 px поле даёт 286 по высоте, и рисунок срезался на 194 px — сорок
+// процентов, включая ВЕСЬ возврат. Выбор брифа — перекроить Б под низкое
+// поле, а не растить поле и не двигать порог раскроев: раскрою А нужно
+// минимум 544 px поля при кегле 14 px, а поле на 900 px даёт 394.
+//
+// Новая композиция — ДВЕ ВСТРЕЧНЫЕ ГРЕБЁНКИ: узел сверху, распределительная
+// шина под ним, два стояка по краям холста, каналы висят на стояках попарно,
+// подписи смотрят ВНУТРЬ (левые от квадрата вправо, правые — до x=264 с
+// `text-anchor="end"`). Порядок каналов на холсте — порядок данных; последний
+// канал оказывается нижним правым, ближе всех к возврату — это и есть тот,
+// который в сюжете не принимает.
+//
+// Цена решения названа брифом прямо: на 900…1179 px рисунок занимает 320 px
+// из 394…556 доступных и стоит по центру, по бокам остаётся воздух.
+// =====================================================================
 const B_VIEWBOX_W = 320;
+const B_VIEWBOX_H = 272;
+const B_SRC_LABEL_Y = 20;
+const B_ENTRY_TOP = 30;
+const B_NODE_X = 96;
+const B_NODE_Y = 48;
+const B_NODE_W = 128;
+const B_NODE_H = 48;
+const B_NODE_CX = B_NODE_X + B_NODE_W / 2; // 160
+const B_NODE_BOTTOM = B_NODE_Y + B_NODE_H; // 96
+const B_NODE_MID_Y = B_NODE_Y + B_NODE_H / 2; // 72
+/* Вход и выход узла разнесены на 32 и оба лежат внутри плашки (96…224) —
+ * у узла разный вход и выход, как и в раскрое А. */
+const B_EXIT_X = B_NODE_CX + 16; // 176
+const B_RETURN_X = B_NODE_CX - 16; // 144
+const B_BUS_Y = 124; // распределительная шина
+const B_RISER_L = 8;
+const B_RISER_R = B_VIEWBOX_W - 8; // 312
+const B_ROW_Y = [148, 196]; // центры рядов узлов каналов
+const B_RISER_BOTTOM = B_ROW_Y[B_ROW_Y.length - 1]; // 196
+const B_LEFT_NODE_X = 24; // квадрат 24…48
+const B_RIGHT_NODE_X = 272; // квадрат 272…296
+const B_LEFT_NODE_CX = B_LEFT_NODE_X + CHANNEL_NODE_HALF; // 36
+const B_RIGHT_NODE_CX = B_RIGHT_NODE_X + CHANNEL_NODE_HALF; // 284
+const B_LABEL_L_X = B_LEFT_NODE_X + CHANNEL_NODE_SIZE + 8; // 56
+const B_LABEL_R_X = B_RIGHT_NODE_X - 8; // 264
+const B_RETURN_BUS_Y = 228;
+const B_RETURN_LABEL_Y = B_RETURN_BUS_Y + 28; // 256
+const B_RETURN_LABEL_X = (B_RETURN_X + B_RIGHT_NODE_CX) / 2; // 214
 
-const B_BRANCH_YS = DELIVERY_CHANNELS.map((_, i) => 208 + i * 64);
-const B_LAST_BRANCH_Y = B_BRANCH_YS[B_BRANCH_YS.length - 1];
-
-function hSegments(y: number[], x1: number, x2: number): string {
-  return y.map((v) => `M${x1},${v}H${x2}`).join('');
+if (DELIVERY_CHANNELS.length !== B_ROW_Y.length * 2) {
+  throw new Error(
+    'CaseFlowIllustration: раскрой Б — две встречные гребёнки по два канала в ряду; ' +
+    'число каналов в data/case-illustrations.ts изменилось, гребёнку надо пересчитать.',
+  );
 }
-function rectSegmentsRow(ys: number[], x: number, size: number): string {
-  const h = size / 2;
-  return ys.map((y) => `M${x},${y - h}H${x + size}V${y + h}H${x}Z`).join('');
-}
 
-const bPathEntry = `M${B_NODE_CX},48V${B_NODE_Y}`;
-const bPathTrunk = `M${B_BRANCH_X},${B_TRUNK_START_Y}V${B_LAST_BRANCH_Y}`;
-const bPathBranches = hSegments(B_BRANCH_YS, B_BRANCH_X, B_NODE_LEFT);
-const bPathChannelNodes = rectSegmentsRow(B_BRANCH_YS, B_NODE_LEFT, CHANNEL_NODE_SIZE);
+/** Место канала в раскрое Б: ряд (0/1) и сторона (0 — левая, 1 — правая). */
+const bChannelPos = DELIVERY_CHANNELS.map((_, i) => {
+  const row = Math.floor(i / 2);
+  const right = i % 2 === 1;
+  return {
+    row,
+    right,
+    cx: right ? B_RIGHT_NODE_CX : B_LEFT_NODE_CX,
+    cy: B_ROW_Y[row],
+    riserX: right ? B_RISER_R : B_RISER_L,
+    nodeX: right ? B_RIGHT_NODE_X : B_LEFT_NODE_X,
+    labelX: right ? B_LABEL_R_X : B_LABEL_L_X,
+    anchor: right ? 'end' : 'start',
+  };
+});
+
+const bPathEntry = `M${B_NODE_CX},${B_ENTRY_TOP}V${B_NODE_Y}`;
+const bPathExit = `M${B_EXIT_X},${B_NODE_BOTTOM}V${B_BUS_Y}`;
+const bPathBus = `M${B_RISER_L},${B_BUS_Y}H${B_RISER_R}`;
+const bPathRisers = `M${B_RISER_L},${B_BUS_Y}V${B_RISER_BOTTOM}M${B_RISER_R},${B_BUS_Y}V${B_RISER_BOTTOM}`;
+const bPathTaps = bChannelPos
+  .map((p) => `M${p.riserX},${p.cy}H${p.right ? p.nodeX + CHANNEL_NODE_SIZE : p.nodeX}`)
+  .join('');
+const bPathChannelNodes = bChannelPos
+  .map((p) => squarePath(p.nodeX, p.cy - CHANNEL_NODE_HALF, CHANNEL_NODE_SIZE))
+  .join('');
+/* Возврат один раз пересекает распределительную шину (в точке 144,124). Это
+ * намеренное пересечение волосяной линии с несущей, не стык: точки соединения
+ * на пересечении не ставится. */
 const bPathReturn =
-  `M${B_RETURN_X},${B_LAST_BRANCH_Y}V${B_RETURN_ARROW_TOP}` +
-  `M${B_RETURN_X - 6},${B_RETURN_ARROW_TOP}L${B_RETURN_X},${B_TRUNK_START_Y}L${B_RETURN_X + 6},${B_RETURN_ARROW_TOP}`;
+  `M${B_RIGHT_NODE_CX},${B_ROW_Y[1] + CHANNEL_NODE_HALF}V${B_RETURN_BUS_Y}H${B_RETURN_X}V${B_NODE_BOTTOM}` +
+  `M${B_RETURN_X - 6},${B_NODE_BOTTOM + 8}L${B_RETURN_X},${B_NODE_BOTTOM}L${B_RETURN_X + 6},${B_NODE_BOTTOM + 8}`;
 
-// ---------------------------------------------------------------------
-// Общее — сворачивается для программы чтения в одно описание (бриф,
-// раздел 2.5: «читать 20 фигур по одной — шум»).
-// ---------------------------------------------------------------------
+/* Маршрут пакета раскроя Б, 46 вершин, длина 2610 единиц (бриф 07, раздел
+ * 6.2). Сюжет и раскадровка те же, что в А, — меняется только геометрия.
+ * `B_HIDE_Y` — точка внутри плашки узла (скрытый возврат), `B_PAUSE_Y` —
+ * где пакет стоит 0,72 с: 10 единиц ниже кромки нижнего правого квадрата,
+ * то есть вне плашки и выше подписи возврата (её верх — 239,5). */
+const B_HIDE_Y = B_NODE_BOTTOM - 16; // 80
+const B_PAUSE_Y = B_ROW_Y[1] + CHANNEL_NODE_HALF + 10; // 218
+
+const bLast = bChannelPos[bChannelPos.length - 1];
+const bRoute: Pt[] = [
+  [B_NODE_CX, B_ENTRY_TOP],
+  [B_NODE_CX, B_NODE_Y], // w1 — верхняя кромка узла, под плашку
+  [B_NODE_CX, B_NODE_MID_Y],
+  [B_EXIT_X, B_NODE_MID_Y],
+  [B_EXIT_X, B_NODE_BOTTOM], // w2 — нижняя кромка узла, вышел
+  [B_EXIT_X, B_BUS_Y],
+  ...bChannelPos.slice(0, -1).flatMap((p): Pt[] => [
+    [p.riserX, B_BUS_Y],
+    [p.riserX, p.cy],
+    [p.cx, p.cy], // wN — центр узла канала, поглощён
+    [p.riserX, p.cy],
+    [p.riserX, B_BUS_Y],
+    [B_EXIT_X, B_BUS_Y],
+    [B_EXIT_X, B_HIDE_Y], // wN+1 — скрытый возврат под плашку узла
+    [B_EXIT_X, B_BUS_Y],
+  ]),
+  [bLast.riserX, B_BUS_Y],
+  [bLast.riserX, bLast.cy],
+  [bLast.cx, bLast.cy], // w9 — центр последнего узла
+  [bLast.cx, bLast.cy + CHANNEL_NODE_HALF],
+  [bLast.cx, B_PAUSE_Y], // w10 — выпал снизу, СТОИТ
+  [bLast.cx, B_RETURN_BUS_Y],
+  [B_RETURN_X, B_RETURN_BUS_Y],
+  [B_RETURN_X, B_NODE_BOTTOM], // w11 — входит в узел снизу
+  [B_RETURN_X, B_NODE_MID_Y],
+  [B_EXIT_X, B_NODE_MID_Y],
+  [B_EXIT_X, B_NODE_BOTTOM],
+  [B_EXIT_X, B_BUS_Y], // w12 — вышел на шину раздачи
+  [bLast.riserX, B_BUS_Y],
+  [bLast.riserX, bLast.cy],
+  [bLast.nodeX + CHANNEL_NODE_SIZE, bLast.cy], // w13 — кромка узла, ДОСТАВЛЕНО (покой)
+  [bLast.cx, bLast.cy], // w14 — центр узла, поглощён, конец цикла
+];
+const bStopIndices = [1, 4, 8, 12, 16, 20, 24, 28, 32, 34, 37, 41, 44, 45];
+const bPacketStyle = packetStyle(bRoute, bStopIndices);
+
+// =====================================================================
+// Общее — сворачивается для программы чтения в одно описание.
+// =====================================================================
 const sourceWords = FLOW_SOURCES.map((s) => s.label.toLowerCase()).join(', ');
 const channelWords = DELIVERY_CHANNELS.map((c) => c.label.toLowerCase()).join(', ');
 const ariaLabel =
@@ -165,99 +374,106 @@ const ariaLabel =
   `расходятся по ${DELIVERY_CHANNELS.length} каналам: ${channelWords}. ` +
   `При сбое доставки: ${FLOW_RETRY_LABEL.toLowerCase()}.`;
 ---
-<div class="flow">
-  <svg class="svg ra" viewBox={`0 0 ${VIEWBOX_W} 288`} width={VIEWBOX_W} height="288" role="img" aria-label={ariaLabel} focusable="false">
-    <g class="lm f p1" text-anchor="end">
-      {FLOW_SOURCES.map((s, i) => <text x="88" y={SOURCE_Y[i] + 5}>{s.label}</text>)}
-    </g>
+<div class="flow" data-case-flow>
+  <svg class="svg ra" viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`} width={VIEWBOX_W} height={VIEWBOX_H} role="img" aria-label={ariaLabel} focusable="false">
+    {/* 1. Линии — все до пакета. */}
     <path class="h d p1" d={aPathSources} pathLength="1" />
     <path class="l d p1" d={aPathTrunkIn} pathLength="1" />
+    <path class="l d p3" d={aPathTrunkOut} pathLength="1" />
+    <path class="l d p4" d={aPathBranches} pathLength="1" />
+    <path class="h d p6" d={aPathReturn} pathLength="1" />
 
-    <rect class="b d p2" x={NODE_X} y={NODE_Y} width={NODE_W} height={NODE_H} pathLength="1" />
-    <g class="f p2">
-      <text class="lx" x={NODE_X + NODE_W / 2} y={NODE_CY + 5} text-anchor="middle">ЗАЯВКА</text>
+    {/* 2. Пакет. Появляется по прокрутке ПОЗЖЕ всех линий (вес `.p7` больше
+        любого веса рисования) — на недорисованной схеме его физически не
+        бывает, и затвору не нужно угадывать порог. Едет по ВРЕМЕНИ, не по
+        прокрутке: два клока не спорят, потому что висят на разных объектах. */}
+    <g class="pkts f p7" aria-hidden="true">
+      <circle class="pkt" r="4" style={aPacketStyle} />
     </g>
 
-    <path class="l d p3" d={aPathTrunkOut} pathLength="1" />
-
-    <path class="l d p4" d={aPathBranches} pathLength="1" />
+    {/* 3. Плашки узлов — непрозрачные, поверх пакета: пакет, дошедший до
+        центра квадрата, исчезает под ним. Это и есть «доставлено». */}
+    {/* Обёртка `.f p2` нужна из-за заливки: `.d` рисует обводку, но заливка
+        `--bg` не подчиняется `stroke-dashoffset` и без общего проявления
+        плашка вспыхивала бы прямоугольником фона раньше своей рамки. */}
+    <g class="f p2">
+      <rect class="b n d p2" x={NODE_X} y={NODE_Y} width={NODE_W} height={NODE_H} pathLength="1" />
+    </g>
     <path class="n f p4" d={aPathChannelNodes} />
 
-    {/* Подписи каналов — одна строка (правка дизайн-ревью 2026-08-13: приём
-        «через одну в две строки», использованный раньше, читался как два
-        класса каналов — глаз группировал подписи по строке, каждая нижняя
-        выглядела подпунктом верхней, — а коллизию не убирал целиком, только
-        делал её диагональной: TELEGRAM во второй строке пересекал рамку
-        обратного пути «НЕ ДОШЛО — ПОВТОР». Причина коллизии была не в
-        вертикали, а в шаге узлов — см. вывод `CHANNEL_GAPS` выше:
-        `getComputedTextLength()` даёт «ТАБЛИЦЫ» 67,2 и «TELEGRAM» 76,8, их
-        полуширины в сумме 72,0 против прежнего шага 64. Промежуток перед
-        TELEGRAM закрывает это шагом 96 с запасом 24, подписи вернулись в
-        одну строку без смещения. Два предыдущих промежутка короче в замере
-        и остаются на 64 (находка 2026-08-18: раздувать их тоже — платить
-        шириной холста за коллизию, которой там не было). */}
+    {/* 4. Все подписи — последними: пакет никогда не рисуется поверх текста. */}
+    <g class="lm f p1" text-anchor="end">
+      {FLOW_SOURCES.map((s, i) => <text x={SOURCE_LABEL_X} y={SOURCE_Y[i] + 5}>{s.label}</text>)}
+    </g>
+    <text class="lx f p2" x={NODE_X + NODE_W / 2} y={NODE_CY + 5} text-anchor="middle">ЗАЯВКА</text>
     <g class="lm f p5" text-anchor="middle">
       {DELIVERY_CHANNELS.map((c, i) => (
         <text x={CHANNEL_XS[i]} y={CHANNEL_LABEL_Y}>{c.label}</text>
       ))}
     </g>
-
-    <path class="h d p6" d={aPathReturn} pathLength="1" />
-    <text class="lm f p6" x={(RETURN_X + LAST_CHANNEL_X) / 2} y={RETURN_LABEL_Y} text-anchor="middle">{FLOW_RETRY_LABEL}</text>
-
-    {/* Пакеты — заявка едет по уже нарисованным линиям (бриф раздел 5.3/5.4).
-        Атрибуты `cx`/`cy` — КОНЕЧНОЕ положение каждого пакета (докладка), это
-        и есть запасное состояние по умолчанию (раздел 8.1). Анимация (только
-        при поддержке `view()` и без `reduce`) двигает пакет `translate`-ом от
-        точки отправления НАЗАД к нулю — см. `@keyframes pkt-*` в `<style>`.
-        Средний источник (БОТ, SOURCE_Y[1]) пакета не получает (раздел 5.3:
-        его маршрут — прямая вдоль ствола, движение по ней не читается). */}
-    <g class="pkts" aria-hidden="true">
-      <circle class="pkt p7 k-sf" cx={NODE_X} cy={NODE_CY} r="4" />
-      <circle class="pkt p8 k-sl" cx={NODE_X} cy={NODE_CY} r="4" />
-      <circle class="pkt p9 k-cm" cx={CHANNEL_XS[0]} cy={CHANNEL_NODE_Y} r="4" />
-      <circle class="pkt p10 k-cc" cx={CHANNEL_XS[1]} cy={CHANNEL_NODE_Y} r="4" />
-      <circle class="pkt p11 k-ct" cx={CHANNEL_XS[2]} cy={CHANNEL_NODE_Y} r="4" />
-      <circle class="pkt p12 k-rt" cx={LAST_CHANNEL_X} cy={CHANNEL_NODE_Y} r="4" />
-    </g>
+    <text class="lm f p6" x={RETURN_LABEL_X} y={RETURN_LABEL_Y} text-anchor="middle">{FLOW_RETRY_LABEL}</text>
   </svg>
 
-  <svg class="svg rb" viewBox={`0 0 ${B_VIEWBOX_W} 480`} width={B_VIEWBOX_W} height="480" role="img" aria-label={ariaLabel} focusable="false">
-    {/* Три источника — в одну строку через «·»: на 288 px раздельно не
-        помещаются, не мельча (бриф, раздел 4.4). */}
-    <text class="lm f p1" x={B_NODE_CX} y="37" text-anchor="middle">{FLOW_SOURCES.map((s) => s.label).join(' · ')}</text>
+  <svg class="svg rb" viewBox={`0 0 ${B_VIEWBOX_W} ${B_VIEWBOX_H}`} width={B_VIEWBOX_W} height={B_VIEWBOX_H} role="img" aria-label={ariaLabel} focusable="false">
     <path class="l d p1" d={bPathEntry} pathLength="1" />
+    <path class="l d p3" d={bPathExit} pathLength="1" />
+    <path class="l d p3" d={bPathBus} pathLength="1" />
+    <path class="l d p4" d={bPathRisers} pathLength="1" />
+    <path class="l d p4" d={bPathTaps} pathLength="1" />
+    <path class="h d p6" d={bPathReturn} pathLength="1" />
 
-    <rect class="b d p2" x={B_NODE_X} y={B_NODE_Y} width={B_NODE_W} height={B_NODE_H} pathLength="1" />
-    <g class="f p2">
-      <text class="lx" x={B_NODE_CX} y={B_NODE_Y + B_NODE_H / 2 + 5} text-anchor="middle">ЗАЯВКА</text>
+    <g class="pkts f p7" aria-hidden="true">
+      <circle class="pkt" r="4" style={bPacketStyle} />
     </g>
 
-    <path class="l d p3" d={bPathTrunk} pathLength="1" />
-
-    <path class="l d p4" d={bPathBranches} pathLength="1" />
+    <g class="f p2">
+      <rect class="b n d p2" x={B_NODE_X} y={B_NODE_Y} width={B_NODE_W} height={B_NODE_H} pathLength="1" />
+    </g>
     <path class="n f p4" d={bPathChannelNodes} />
 
+    {/* Три источника — в одну строку через «·»: раздельно они на 320 единиц
+        не помещаются, не мельча ниже 14 px на экране. */}
+    <text class="lm f p1" x={B_NODE_CX} y={B_SRC_LABEL_Y} text-anchor="middle">{FLOW_SOURCES.map((s) => s.label).join(' · ')}</text>
+    <text class="lx f p2" x={B_NODE_CX} y={B_NODE_MID_Y + 5} text-anchor="middle">ЗАЯВКА</text>
     <g class="lm f p5">
-      {DELIVERY_CHANNELS.map((c, i) => <text x={B_LABEL_X} y={B_BRANCH_YS[i] + 5}>{c.label}</text>)}
+      {DELIVERY_CHANNELS.map((c, i) => (
+        <text x={bChannelPos[i].labelX} y={bChannelPos[i].cy + 5} text-anchor={bChannelPos[i].anchor}>{c.label}</text>
+      ))}
     </g>
-
-    <path class="h d p6" d={bPathReturn} pathLength="1" />
-    <text class="lm f p6" x={B_NODE_CX} y={B_LABEL_Y} text-anchor="middle">{FLOW_RETRY_LABEL}</text>
-
-    {/* Пакеты раскроя Б — меньше, чем в А (четыре вместо шести, бриф раздел
-        5.3): один слитный источник и только два первых канала получают
-        видимое движение, третий и четвёртый несёт только повтор. Веса те же
-        фазы (`.p7`/`.p9`/`.p10`/`.p12`), что у раскроя А — тот же смысл,
-        другая геометрия. */}
-    <g class="pkts" aria-hidden="true">
-      <circle class="pkt p7 k-ms" cx={B_NODE_CX} cy={B_NODE_Y} r="4" />
-      <circle class="pkt p9 k-c1" cx={B_NODE_LEFT} cy={B_BRANCH_YS[0]} r="4" />
-      <circle class="pkt p10 k-c2" cx={B_NODE_LEFT} cy={B_BRANCH_YS[1]} r="4" />
-      <circle class="pkt p12 k-mr" cx={B_NODE_LEFT} cy={B_LAST_BRANCH_Y} r="4" />
-    </g>
+    <text class="lm f p6" x={B_RETURN_LABEL_X} y={B_RETURN_LABEL_Y} text-anchor="middle">{FLOW_RETRY_LABEL}</text>
   </svg>
 </div>
+
+<script>
+  /* Затвор цикла — ЕДИНСТВЕННЫЙ JavaScript иллюстрации (бриф 07, раздел 9.5).
+   *
+   * Зациклённое движение обязано останавливаться вне окна. Замерено, что
+   * `content-visibility: auto` этого НЕ делает, а `animation-play-state`
+   * делает: с классом прирост `currentTime` — 0 мс за 800 мс, без класса —
+   * 783 мс за 800 мс.
+   *
+   * Ищем по АТРИБУТУ `data-case-flow`, а не по классу: класс `.flow` у Astro
+   * хешированный. Порог 0 — движение живёт, пока виден хоть один пиксель
+   * рисунка; от преждевременного старта на недорисованной схеме защищает не
+   * наблюдатель, а появление группы пакета по прокрутке.
+   *
+   * Класса `off` в разметке НЕТ и он не ставится сервером: без скрипта цикл
+   * идёт всегда. Отказ скрипта обязан стоить процессорного времени, а не
+   * сломанной картинки — обратный порядок при заблокированном JS оставил бы
+   * пакет в кадре 0 %, то есть невидимым. */
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const flows = document.querySelectorAll('[data-case-flow]');
+    if (flows.length > 0) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) entry.target.classList.toggle('off', !entry.isIntersecting);
+        },
+        { threshold: 0 },
+      );
+      for (const el of flows) io.observe(el);
+    }
+  }
+</script>
 
 <style>
   .flow {
@@ -265,36 +481,29 @@ const ariaLabel =
     min-height: 0;
     display: flex;
     align-items: center;
-    /* `flex-start`, не `center`: раскрой А не сжимается ниже плавающего
-     * порога у `.ra` (см. ниже) — поле колонки 7fr у́же холста уже при
-     * 1100 px окна (замер 2026-08-18, см. отчёт задачи), поэтому «А» иногда
-     * шире своей рамки и прокручивается. При центрировании браузер обрезает
-     * ОБА края поровну и открывает прокрутку с середины — читатель видит
-     * обрубленный с двух сторон рисунок и не подозревает, что он
-     * прокручивается. `flex-start` показывает рисунок с начала (источники,
-     * узел «Заявка»), как обычный текст слева направо; прокрутка нужна
-     * только чтобы долистать до правого края (каналы, TELEGRAM). Когда
-     * рисунок умещается целиком (обычный случай, порог не сработал),
-     * разницы с `center` нет — рисунок и так занимает всю ширину `.flow`. */
-    justify-content: flex-start;
-    /* `overflow-y` держит `hidden`, чтобы высота поля (её задаёт
-     * `CaseIllustrationField`) не потекла — переполнение только
-     * горизонтальное, и только у раскроя, а не у диалога/веса в соседних
-     * блоках. */
+    /* `center`, а не прежний `flex-start`: после переразметки раскроя Б ни
+     * один раскрой не переполняет поле ни на одной ширине (замер, бриф 07,
+     * раздел 2), и довод прежнего комментария («А иногда шире своей рамки и
+     * прокручивается») больше не действует. На 900…1179 px рисунок у́же поля —
+     * воздух обязан лежать по обеим сторонам, а не одной кучей справа. */
+    justify-content: center;
+    /* `overflow-x: auto` остаётся страховкой на случай нестандартных полей.
+     * Он же создаёт прокручиваемый контейнер, из-за которого таймлайн ниже
+     * ОБЯЗАН быть именованным. `overflow-y: hidden` держит высоту поля. */
     overflow-x: auto;
     overflow-y: hidden;
     /* Именованный таймлайн — обязателен здесь, не анонимный `view()` на
      * каждом элементе (бриф `04-cases-brief.md`, раздел 8.3, «Ловушка 2»):
      * `.flow` сам — прокручиваемый контейнер (`overflow-x: auto` выше
      * создаёт его вне зависимости от того, есть ли фактическая горизонтальная
-     * прокрутка), и АНОНИМНЫЙ `view()` у потомка (линии, пакеты) разрешился
+     * прокрутка), и АНОНИМНЫЙ `view()` у потомка (линии, пакет) разрешился
      * бы ПРОТИВ `.flow`, а не против окна — `.flow` по вертикали никогда не
      * скроллится сам по себе, диапазон таймлайна свернулся бы в точку, и
      * анимация замерла бы на первом кадре. Именованный таймлайн ставит
      * СУБЪЕКТОМ сам `.flow`: источник ищется от РОДИТЕЛЯ `.flow` вверх — это
      * `.field` (`CaseIllustrationField.astro`, `overflow: clip`, не
      * прокручиваемый контейнер) — и находит окно. Потомки (`.d`, `.f`,
-     * `.pkt`) — читают этот же таймлайн по имени, не заводят собственный.
+     * `.pkt`) читают этот же таймлайн по имени, собственного не заводят.
      * Свойство — ВНЕ `@supports`/`@media` намеренно: браузер без поддержки
      * просто отбрасывает незнакомое свойство и никакого состояния не задаёт
      * (приём общий для всех схем секции 5). */
@@ -304,193 +513,193 @@ const ariaLabel =
 
   .svg { display: block; max-width: 100%; height: auto; }
 
-  /* Раскрой А — от 900 px. Раскрой Б — ниже. Тот же порог, что у навигации
-     и у ядра фабрики (`FactoryCore.astro:234-242`). Классы `.ra`/`.rb`, не
-     `.a`/`.b` — короткая `.b` уже занята ролью «жирная обводка узла» ниже,
-     и на одном элементе (например, узле в раскрое Б) оба класса встречаются
-     вместе: пересечение имён включило бы узел в переключатель раскроя. */
+  /* Раскрой А — от 1180 px, раскрой Б — ниже. Порог не менялся: А живёт ровно
+     до той ширины, где ему хватает места (поле ≥ 544 px, это примерно 1180 px
+     окна), ниже работает Б, который на этих ширинах помещается целиком и
+     держит кегль 16 px. Классы `.ra`/`.rb`, не `.a`/`.b` — короткая `.b` уже
+     занята ролью «жирная обводка узла». */
   .ra {
     display: block;
     flex-shrink: 0;
-    /* НАХОДКА 2026-08-18: поле колонки (7fr секции кейсов) у́же холста
-     * (608 единиц) уже на широких desktop-окнах — `max-width: 100%` тогда
-     * сжимает подписи ниже 14 px (замер `getBoundingClientRect()`: 13,3 px
-     * на 1440, 9,4 px на 900 при холсте 672; при холсте 608 — тот же дефект
-     * в меньшей степени, порог всё равно пробивается на части диапазона).
-     * `min-width` не даёт масштабу упасть ниже 0,875 (16×0,875=14 px):
-     * 544/608=0,8947→14,3 px, с запасом на округление браузера. Ниже этого
-     * поле не сжимает рисунок дальше. */
+    /* `min-width` не даёт масштабу упасть ниже 0,895 (16×0,895 ≈ 14,3 px) —
+       правило «подпись не мельче 14 px» (`02-case-illustrations.md`, 2.3). */
     min-width: 544px;
   }
   .rb { display: none; }
 
-  /* Порог переключения раскроев — 1180 px, а не прежние 900 (правка
-     2026-08-18, координатор).
-     Первая редакция этой починки оставляла порог на 900 и разрешала раскрою А
-     прокручиваться по горизонтали там, где он не влезает, с доводом «читаемые
-     подписи важнее рисунка целиком в кадре». Замер показал цену этого выбора:
-     при 1100 px окна рисунку нужно 544 px, а поле даёт 510; при 900 — поле
-     394, то есть за кадром остаётся 150 px из 544, почти треть схемы. Боковую
-     прокрутку внутри карточки читатель на ноутбуке не обнаруживает — он видит
-     обрезанную схему и считает её такой.
-     Выбор между «мелко» и «спрятано» ложный: рядом есть раскрой Б, который на
-     этих ширинах помещается целиком и держит кегль 14,6 px. Поэтому А живёт
-     ровно до той ширины, где ему хватает места (поле ≥ 544 px, это примерно
-     1180 px окна), а ниже работает Б. Прокрутка остаётся только страховкой на
-     случай нестандартных полей, а не штатным режимом. */
   @media (max-width: 1179px) {
     .ra { display: none; }
     .rb { display: block; }
   }
 
-  /* Три ширины обводки (бриф, раздел 2.3): главное / несущее / вспомогательное.
-     Общая база + переопределения — короче, чем четыре независимых правила. */
+  /* Три ширины обводки: главное / несущее / вспомогательное. */
   .h, .l, .b, .n { fill: none; stroke: var(--text); stroke-width: var(--stroke-line); }
   .h { stroke: var(--text-muted); stroke-width: var(--stroke-hair); opacity: var(--stroke-hair-opacity); }
   .b { stroke-width: var(--stroke-bold); }
+  /* Заливка плашек — `--bg`, тот же токен у узла «ЗАЯВКА» и у квадратов
+     каналов. Именно она делает перекрытие отметкой «доставлено» и не даёт
+     пакету читаться поверх слова «ЗАЯВКА» (бриф 07, раздел 5). */
   .n { fill: var(--bg); }
-  /* Единственный акцент рисунка (бриф, раздел 5.3) — роль «заявка», у всех
-     шести/четырёх пакетов сразу, а не у отдельной точки входа (`.dot`,
-     снятой этим заходом: её роль и её покойное положение (160,128) наследует
-     пара пакетов `src-form`/`src-landing`). */
-  .pkt { fill: var(--accent); }
 
-  .lm, .lx { font-family: var(--font-mono); font-size: 1rem; } /* small — не мельче 14px, раздел 2.3 */
+  .lm, .lx { font-family: var(--font-mono); font-size: 1rem; } /* не мельче 14px на экране */
   .lm { fill: var(--text-muted); }
   .lx { fill: var(--text); } /* подпись ЗАЯВКА — исключение раздела 4.3 */
 
-  /* Запасное состояние — состояние ПО УМОЛЧАНИЮ (бриф, раздел 2.4): без
-     этого блока рисунок и так уже полностью виден. Анимация — только внутри
-     `@supports`, поверх статичного состояния, никогда наоборот. */
+  /* Запасное состояние — состояние ПО УМОЛЧАНИЮ: без блоков ниже рисунок и
+     так полностью виден. Анимация — только поверх статичного состояния. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      .d, .f, .pkt {
+      .d, .f {
         animation-timeline: --case-flow;
         animation-range: entry 15% cover 65%;
         /* Раздельные свойства, не сокращение `animation:` — сборка сводит
            `animation` + `animation-timeline` в один шорткод, а собранный
            Chromium такую форму не разбирает и молча роняет анимацию целиком
-           (тот же приём и та же причина, что `BackgroundLine.astro:124-129`). */
+           (то же, что `BackgroundLine.astro:124-129`). */
         animation-timing-function: linear;
         animation-fill-mode: both;
       }
       .d { stroke-dasharray: 1; stroke-dashoffset: 1; animation-name: fdraw; }
       .f { opacity: 0; animation-name: ffade; }
 
-      /* Шесть фаз (бриф, раздел 4.5): источники → узел и точка входа →
-         ствол → отводы и узлы → подписи каналов → возврат и его подпись.
-         Возврат оживает последним намеренно — сначала видно, что заявка
-         ушла, и только потом, что при сбое она уйдёт снова. */
+      /* Шесть фаз рисования: источники → узел → ствол → отводы и узлы →
+         подписи каналов → возврат и его подпись. Возврат оживает последним
+         намеренно — сначала видно, что заявка ушла, и только потом, что при
+         сбое она уйдёт снова. */
       .p1 { animation-duration: 1ms; }
       .p2 { animation-duration: 70ms; }
       .p3 { animation-duration: 150ms; }
       .p4 { animation-duration: 220ms; }
       .p5 { animation-duration: 280ms; }
       .p6 { animation-duration: 340ms; }
-
-      /* Пакеты — оживают ПОСЛЕ того, как схема дорисована (бриф, раздел 5.7:
-         веса больше p6=340ms). Заявки пришли → разошлись по каналам → повтор
-         последним — та же логика очерёдности, что у фаз рисования выше. */
-      .p7 { animation-duration: 420ms; }  /* src-form */
-      .p8 { animation-duration: 480ms; }  /* src-landing */
-      .p9 { animation-duration: 560ms; }  /* ch-mail / mb-ch1 */
-      .p10 { animation-duration: 620ms; } /* ch-crm / mb-ch2 */
-      .p11 { animation-duration: 680ms; } /* ch-tables */
-      .p12 { animation-duration: 900ms; } /* retry / mb-retry, последним */
-
-      .k-sf { animation-name: sf; }
-      .k-sl { animation-name: sl; }
-      .k-cm { animation-name: cm; }
-      .k-cc { animation-name: cc; }
-      .k-ct { animation-name: ct; }
-      .k-rt { animation-name: rt; }
-      .k-ms { animation-name: ms; }
-      .k-c1 { animation-name: c1; }
-      .k-c2 { animation-name: c2; }
-      .k-mr { animation-name: mr; }
+      /* Группа пакета проявляется ПОЗЖЕ всех линий — см. разметку. */
+      .p7 { animation-duration: 420ms; }
     }
   }
 
   @keyframes fdraw { to { stroke-dashoffset: 0; } }
   @keyframes ffade { to { opacity: 1; } }
 
-  /* Пакеты — раскрой А (бриф, раздел 5.2/5.3). Каждый кружок несёт СВОИМ
-     `cx`/`cy`-атрибутом конечное положение (докладка/покой); `translate`
-     ниже двигает его НАЗАД к точке отправления на 0% и возвращает к нулю на
-     100% — именно поэтому маршрут в комментариях читается «от узла», а числа
-     в keyframe идут в обратную сторону (0,0 — покой, отрицательные — старт).
-     Дельты — разности констант компонента выше (TRUNK_X 112, NODE_X 160,
-     NODE_W 128, NODE_CY 128, CHANNEL_XS [320,384,448,544], CHANNEL_NODE_Y
-     192, RETURN_X 224, RETURN_BUS_Y 256, NODE_Y+NODE_H 152); CSS не читает
-     JS-константы без `define:vars` — при изменении этих чисел выше дельты
-     пересчитываются вручную здесь же. */
-  @keyframes sf {           /* (96,64)→(112,64)→(112,128)→(160,128) */
-    0% { translate: -64px -64px; }    /* (96,64) — начало источника «ФОРМА» */
-    12.5% { translate: -48px -64px; } /* (112,64) — поворот на ствол */
-    62.5% { translate: -48px 0; }     /* (112,128) — спуск по стволу до узла */
-    100% { translate: 0 0; }          /* (160,128) — левая кромка узла, покой */
-  }
-  @keyframes sl {        /* (96,192)→(112,192)→(112,128)→(160,128) */
-    0% { translate: -64px 64px; }     /* (96,192) — начало источника «ЛЕНДИНГ» */
-    12.5% { translate: -48px 64px; }  /* (112,192) — поворот на ствол */
-    62.5% { translate: -48px 0; }     /* (112,128) — подъём по стволу до узла */
-    100% { translate: 0 0; }          /* (160,128) — левая кромка узла, покой */
-  }
-  @keyframes cm {           /* (288,128)→(320,128)→(320,192) */
-    0% { translate: -32px -64px; }  /* (288,128) — правая кромка узла */
-    33% { translate: 0 -64px; }     /* (320,128) — над отводом «ПОЧТА» */
-    100% { translate: 0 0; }        /* (320,192) — верх узла канала, покой */
-  }
-  @keyframes cc {           /* (288,128)→(384,128)→(384,192) */
-    0% { translate: -96px -64px; }  /* (288,128) — правая кромка узла */
-    60% { translate: 0 -64px; }     /* (384,128) — над отводом «CRM» */
-    100% { translate: 0 0; }        /* (384,192) — верх узла канала, покой */
-  }
-  @keyframes ct {            /* (288,128)→(448,128)→(448,192) */
-    0% { translate: -160px -64px; } /* (288,128) — правая кромка узла */
-    71% { translate: 0 -64px; }     /* (448,128) — над отводом «ТАБЛИЦЫ» */
-    100% { translate: 0 0; }        /* (448,192) — верх узла канала, покой */
-  }
-  /* Пакет-повтор — единственная неортогональная фаза во всей секции (бриф,
-     раздел 5.4): последний участок (86%→100%) — прямая от узла к каналу,
-     она читается как «то же самое ещё раз», а не как новый маршрут. Без
-     красного — направление и пауза несут отказ (раздел 5.4). Стопы 45% и
-     52% (пауза «не приняли») делят одно значение — один блок, не два. */
-  @keyframes rt {
-    0% { translate: -256px -64px; }  /* (288,128) — вышел из узла */
-    30% { translate: 0 -64px; }      /* (544,128) — дошёл по стволу до отвода */
-    45%, 52% { translate: 0 0; }     /* (544,192) — дошёл до узла канала, пауза */
-    62% { translate: 0 64px; }       /* (544,256) — спустился на шину возврата */
-    78% { translate: -320px 64px; }  /* (224,256) — прошёл шину назад */
-    86% { translate: -320px -40px; } /* (224,152) — вернулся к нижней кромке узла */
-    100% { translate: 0 0; }         /* (544,192) — дошёл со второй попытки, покой */
+  /* ---------------------------------------------------------------
+     Пакет — один на раскрой, движется по ВРЕМЕНИ (бриф 07, раздел 9).
+     --------------------------------------------------------------- */
+  .pkt {
+    fill: var(--accent);
+    /* ОТСТУПЛЕНИЕ 2 от правила «конечное состояние — состояние по умолчанию»
+       (бриф 07, раздел 9.4), намеренное: у кружка НЕТ атрибутов `cx`/`cy` —
+       положение целиком задаёт `offset-path`. Браузер без `offset-path`
+       посадил бы его в (0,0), левый верхний угол холста. Поэтому по
+       умолчанию пакета нет вовсе, а появляется он только внутри `@supports`.
+       Рисунок без пакета остаётся полным: все факты (четыре канала, возврат,
+       повтор) несут статичные подписи, пакет их только оживляет. */
+    visibility: hidden;
   }
 
-  /* Пакеты — раскрой Б (бриф, раздел 5.3, «Раскрой Б»): та же логика,
-     дельты — от констант B_* выше (B_NODE_CX 144, B_NODE_Y 96, B_TRUNK_
-     START_Y 144, B_NODE_LEFT 188, B_BRANCH_YS [208,272,336,400], B_RETURN_X
-     104, B_RETURN_ARROW_TOP 150). */
-  @keyframes ms {        /* (144,48)→(144,96) */
-    0% { translate: 0 -48px; }  /* (144,48) — вход, единственный слитный источник */
-    100% { translate: 0 0; }    /* (144,96) — верх узла, покой */
+  @supports (offset-path: path("M0,0")) {
+    .pkt {
+      visibility: visible;
+      /* Явно, чтобы поворот вдоль пути не появился при смене формы пакета. */
+      offset-rotate: 0deg;
+      /* ОТСТУПЛЕНИЕ 1 от того же правила: покой — `--w13` (99,54 %), кромка
+         узла последнего канала, а НЕ 100 %. На 100 % пакет в центре квадрата,
+         то есть скрыт непрозрачной плашкой, и статичный рисунок остался бы
+         вовсе без акцентного объекта — против правила «акцент — ровно одна
+         роль на рисунок». 99,54 % — последняя ВИДИМАЯ точка сюжета
+         («заявка доставлена»), и она объявлена свойством, а не оставлена
+         анимации. `transform-box`/`transform-origin` не трогать: замер —
+         значения по умолчанию совмещают точно, а `fill-box` сдвигает пакет
+         на +4,+4 (угол его собственного bbox). */
+      offset-distance: var(--w13);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .pkt {
+        animation-duration: 9s, 9s;
+        /* `linear` без ускорений: рисунок механический, кривая разгона
+           читалась бы в нём как мультипликация. */
+        animation-timing-function: linear, linear;
+        animation-iteration-count: infinite, infinite;
+      }
+      .ra .pkt { animation-name: hero-a, hero-a-vis; }
+      .rb .pkt { animation-name: hero-b, hero-b-vis; }
+      /* Затвор: класс `off` ставит IntersectionObserver выше. Два значения —
+         по одному на каждую из двух анимаций пакета. */
+      .flow.off .pkt { animation-play-state: paused, paused; }
+    }
   }
-  @keyframes c1 {           /* (144,144)→(144,208)→(188,208) */
-    0% { translate: -44px -64px; } /* (144,144) — низ узла */
-    59% { translate: -44px 0; }    /* (144,208) — спуск по шине до первого отвода */
-    100% { translate: 0 0; }       /* (188,208) — узел канала «ПОЧТА», покой */
+
+  /* Раскадровка — период 9 с, пятнадцать фаз, одинаковых в обоих раскроях;
+     доли периода свои, потому что геометрия разная, а видимая скорость пакета
+     обязана быть одинаковой внутри раскроя (замер: 245 ед/с в А, 220 в Б —
+     на экране 225 и 220 px/с, разницы читатель не заметит).
+
+     ШАГИ — раскадровка, она живёт здесь. ЗНАЧЕНИЯ — геометрия, она живёт в
+     компоненте и приезжает переменными `--w1…--w14` инлайновым стилем кружка.
+     Ни одного числа маршрута в этом файле руками не написано.
+
+     Ф10 «отказ» и Ф11 «пауза» — единственный момент, когда рисунок говорит
+     «не дошло»: 8 % периода = 0,72 с неподвижности. Второго цвета нет,
+     отказ несут направление и пауза. */
+  @keyframes hero-a {
+    0% { offset-distance: 0%; }
+    6% { offset-distance: var(--w1); }
+    8% { offset-distance: var(--w2); }
+    13% { offset-distance: var(--w3); }
+    15% { offset-distance: var(--w4); }
+    23% { offset-distance: var(--w5); }
+    25% { offset-distance: var(--w6); }
+    36% { offset-distance: var(--w7); }
+    38% { offset-distance: var(--w8); }
+    54% { offset-distance: var(--w9); }
+    55%, 63% { offset-distance: var(--w10); } /* приход и конец паузы — одно значение */
+    83% { offset-distance: var(--w11); }
+    85% { offset-distance: var(--w12); }
+    99% { offset-distance: var(--w13); }
+    100% { offset-distance: var(--w14); }
   }
-  @keyframes c2 {            /* (144,144)→(144,272)→(188,272) */
-    0% { translate: -44px -128px; } /* (144,144) — низ узла */
-    74% { translate: -44px 0; }     /* (144,272) — спуск по шине до второго отвода */
-    100% { translate: 0 0; }        /* (188,272) — узел канала «CRM», покой */
+  /* Видимость — отдельная анимация той же длительности. Делает три вещи:
+     проявляет пакет на старте, гасит его на скрытых возвратах (Ф4, Ф6, Ф8) и
+     держит `opacity: 1` всё остальное время. Переключения стоят ПАРАМИ кадров
+     с шагом 0,1 % (9 мс, полкадра) и обязательно в моменты, когда пакет под
+     плашкой: вход в скрытую фазу — центр узла канала, выход — точка внутри
+     плашки «ЗАЯВКА». Пакет виден 93 % цикла; «пустого» времени 7 % тремя
+     кусками по 0,18 с — паузой это не читается. */
+  @keyframes hero-a-vis {
+    0% { opacity: 0; }
+    1%, 13% { opacity: 1; }
+    13.1%, 14.9% { opacity: 0; }
+    15%, 23% { opacity: 1; }
+    23.1%, 24.9% { opacity: 0; }
+    25%, 36% { opacity: 1; }
+    36.1%, 37.9% { opacity: 0; }
+    38%, 100% { opacity: 1; }
   }
-  @keyframes mr {
-    0% { translate: -44px -256px; } /* (144,144) — вышел из узла */
-    30% { translate: -44px 0; }     /* (144,400) — дошёл по шине до последнего отвода */
-    45%, 52% { translate: 0 0; }    /* (188,400) — дошёл до узла канала, пауза */
-    62% { translate: -84px 0; }     /* (104,400) — перешёл на шину возврата */
-    78% { translate: -84px -250px; }/* (104,150) — прошёл шину назад */
-    86% { translate: -84px -256px; }/* (104,144) — вернулся к низу узла */
-    100% { translate: 0 0; }        /* (188,400) — дошёл со второй попытки, покой */
+
+  @keyframes hero-b {
+    0% { offset-distance: 0%; }
+    3% { offset-distance: var(--w1); }
+    5% { offset-distance: var(--w2); }
+    17% { offset-distance: var(--w3); }
+    19% { offset-distance: var(--w4); }
+    31% { offset-distance: var(--w5); }
+    33% { offset-distance: var(--w6); }
+    48% { offset-distance: var(--w7); }
+    50% { offset-distance: var(--w8); }
+    64% { offset-distance: var(--w9); }
+    65%, 73% { offset-distance: var(--w10); }
+    86% { offset-distance: var(--w11); }
+    88% { offset-distance: var(--w12); }
+    99% { offset-distance: var(--w13); }
+    100% { offset-distance: var(--w14); }
+  }
+  @keyframes hero-b-vis {
+    0% { opacity: 0; }
+    0.8%, 17% { opacity: 1; }
+    17.1%, 18.9% { opacity: 0; }
+    19%, 31% { opacity: 1; }
+    31.1%, 32.9% { opacity: 0; }
+    33%, 48% { opacity: 1; }
+    48.1%, 49.9% { opacity: 0; }
+    50%, 100% { opacity: 1; }
   }
 </style>
