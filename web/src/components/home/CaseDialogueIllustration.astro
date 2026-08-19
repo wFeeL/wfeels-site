@@ -217,8 +217,12 @@ const ARIA_LABEL =
     border-bottom-right-radius: 4px;
     max-width: 78%;
   }
+  /* Пузырь ответа заливается `--bg`, а НЕ `--surface`: паспарту поля само
+     `--surface`, и на нём пузырь читался бы одной волосяной рамкой — в
+     тёмной теме почти сливаясь с панелью. `--bg` даёт ту же вложенность,
+     что у строки ввода ниже, и работает в обеих темах. */
   .a {
-    background: var(--surface);
+    background: var(--bg);
     color: var(--text);
     border: 1px solid var(--border);
     border-bottom-left-radius: 4px;
@@ -335,7 +339,7 @@ const ARIA_LABEL =
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       border-bottom-left-radius: 4px;
-      background: var(--surface);
+      background: var(--bg);
       animation-name: dlg-typing;
     }
     /* Точки живут своим коротким тактом (1,2 с), а не долей периода: их
