@@ -93,6 +93,10 @@ const widthEm = (vbW / vbH).toFixed(3);
      Сдвиг вниз на 0,15em сажает квадратный знак на ту же оптическую линию,
      что строчные буквы рядом. */
   .brand-mark {
+    /* `inline-block`, а не умолчание браузера: preflight Tailwind ставит всем
+       `svg` `display: block`, и знак посреди предложения уезжал на отдельную
+       строку — фраза разваливалась на шесть строк вместо трёх. */
+    display: inline-block;
     height: 1em;
     vertical-align: -0.15em;
   }

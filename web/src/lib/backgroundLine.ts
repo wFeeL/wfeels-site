@@ -82,8 +82,9 @@ export interface LineDatum {
  * Ч-4. Измерено `getBoundingClientRect()` на живой сборке этого захода,
  * ширина окна 1180 px (`--container`), 2026-08-18 — тем же приёмом, каким
  * раздел 0 брифа получил свои числа. `about` переизмерена 2026-08-19
- * (574 → 717): секция получила тексты владельца, они длиннее прежних. Правка состава или объёма секции
- * требует переизмерения; тест `backgroundLine.test.ts` пересчитывает
+ * (574 → 634): секция получила тексты владельца, они длиннее прежних.
+ * Правка состава или объёма секции требует переизмерения; тест
+ * `backgroundLine.test.ts` пересчитывает
  * результат из этой же таблицы, а не хранит его отдельно. */
 export const MEASURED_SECTION_HEIGHT: Readonly<Record<string, number>> = {
   hero: 891,
@@ -93,7 +94,7 @@ export const MEASURED_SECTION_HEIGHT: Readonly<Record<string, number>> = {
   cases: 2832,
   process: 1279,
   guarantees: 893,
-  about: 717,
+  about: 634,
   faq: 543,
   contact: 966,
 };
