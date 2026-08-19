@@ -5,9 +5,10 @@ import {
   FLOW_SOURCES,
   DELIVERY_CHANNELS,
   FLOW_RETRY_LABEL,
-  DIALOGUE_FIELD_LABEL,
   DIALOGUE_LINES,
   DIALOGUE_INPUT_PLACEHOLDER,
+  DIALOGUE_STATUS_LABEL,
+  DIALOGUE_WINDOW_TITLE,
 } from '../data/case-illustrations';
 
 /* Критерии приёмки `70-workshop/specs/site-v3/02-case-illustrations.md`,
@@ -118,12 +119,21 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
     });
   });
 
+  /* Переписка переработана 2026-08-19 по эскизу и решениям владельца: ровно
+   * одна пара реплик, метки поля больше нет, окно зациклено. Проверки ниже
+   * переписаны под этот состав, а не подогнаны под прежний. */
   describe('«Пример диалога» (ИИ-консультант)', () => {
-    it('метка поля — дословно, безымянный салон', () => {
-      expect(casesHtml).toContain(DIALOGUE_FIELD_LABEL);
+    it('шапка окна: состояние и собеседник — дословно из данных', () => {
+      expect(casesHtml).toContain(DIALOGUE_STATUS_LABEL);
+      expect(casesHtml).toContain(DIALOGUE_WINDOW_TITLE);
     });
 
-    it('все четыре реплики присутствуют дословно, по порядку', () => {
+    it('снятой метки поля «ПРИМЕР ДИАЛОГА · МАТЕРИАЛЫ ГРУМИНГ-САЛОНА» на странице нет', () => {
+      expect(casesHtml).not.toContain('ПРИМЕР ДИАЛОГА');
+      expect(casesHtml).not.toContain('МАТЕРИАЛЫ ГРУМИНГ-САЛОНА');
+    });
+
+    it('обе реплики присутствуют дословно, по порядку', () => {
       let cursor = -1;
       for (const line of DIALOGUE_LINES) {
         const idx = casesHtml.indexOf(line.text, cursor + 1);
@@ -132,48 +142,76 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
       }
     });
 
-    it('чип источника — дословно, у первой реплики бота', () => {
+    it('чип источника — дословно, у ответа', () => {
       const withSource = DIALOGUE_LINES.find((l) => l.source);
       expect(withSource).toBeDefined();
       expect(casesHtml).toContain(`ИСТОЧНИК: ${withSource!.source}`);
     });
 
-    it('в репликах диалога нет ни одной цифры и нет ₽', () => {
+    it('подписи времени присутствуют дословно', () => {
+      for (const line of DIALOGUE_LINES) {
+        expect(casesHtml).toContain(line.meta);
+      }
+    });
+
+    it('в репликах диалога нет ни одной цифры и нет ₽ (время живёт отдельным полем)', () => {
       for (const line of DIALOGUE_LINES) {
         expect(/[0-9₽]/.test(line.text)).toBe(false);
       }
     });
 
     it('ни слова «клиент», «заказчик», «для компании» — правило действует и на выдуманный салон', () => {
-      const start = casesHtml.indexOf('id="dialogue-field-label"');
+      const start = casesHtml.indexOf('<ol');
       const end = casesHtml.indexOf('</ol>', start);
       const dialogueHtml = casesHtml.slice(start, end);
       expect(/клиент(?!ск)|заказчик|для компании/i.test(dialogueHtml)).toBe(false);
     });
 
-    it('диалог читается как настоящий текст — список <ol> из четырёх <li>', () => {
+    it('диалог — настоящий текст в разметке: список <ol> ровно из двух <li>', () => {
       const start = casesHtml.indexOf('<ol');
       const end = casesHtml.indexOf('</ol>', start);
       const ol = casesHtml.slice(start, end);
-      expect((ol.match(/<li/g) || []).length).toBe(4);
-      expect(ol).not.toContain('aria-hidden');
-      expect(ol).not.toContain('role="img"');
+      expect((ol.match(/<li/g) || []).length).toBe(2);
+      // Ни один пункт списка не спрятан от программы чтения по отдельности:
+      // окно объявлено единой иллюстрацией целиком, а не по кускам.
+      expect(ol).not.toMatch(/<li[^>]*aria-hidden/);
     });
 
-    it('подсказка строки ввода присутствует дословно (бриф 04, раздел 4.6/13.8)', () => {
+    it('окно объявлено единой иллюстрацией с осмысленным описанием', () => {
+      const idx = casesHtml.indexOf('role="img"');
+      expect(idx, 'у окна переписки нет role="img"').toBeGreaterThan(-1);
+      const tagStart = casesHtml.lastIndexOf('<div', idx);
+      const tag = casesHtml.slice(tagStart, casesHtml.indexOf('>', idx) + 1);
+      expect(tag).toContain('aria-label=');
+      expect(tag).toContain('data-case-dialogue');
+      // Описание собрано из тех же данных, что и рисунок.
+      for (const line of DIALOGUE_LINES) {
+        expect(tag, `описание не несёт реплику «${line.text}»`).toContain(line.text);
+      }
+      expect(tag).toContain(DIALOGUE_LINES[1].source!);
+    });
+
+    it('подсказка строки ввода присутствует дословно', () => {
       expect(casesHtml).toContain(DIALOGUE_INPUT_PLACEHOLDER);
     });
 
-    it('строка ввода — рисунок, не форма: `aria-hidden`, вне таб-порядка', () => {
+    it('строка ввода и кнопка отправки — рисунок, не форма: вне таб-порядка', () => {
       const idx = casesHtml.indexOf(DIALOGUE_INPUT_PLACEHOLDER);
       expect(idx).toBeGreaterThan(-1);
-      // Ближайший открывающий div перед подсказкой — контейнер строки ввода.
       const before = casesHtml.slice(Math.max(0, idx - 400), idx);
-      const divStart = before.lastIndexOf('<div class="input"');
+      const divStart = before.lastIndexOf('<div class="input');
       expect(divStart, 'контейнер строки ввода не найден перед подсказкой').toBeGreaterThan(-1);
       const inputTag = before.slice(divStart);
-      expect(inputTag).toContain('aria-hidden="true"');
       expect(inputTag).not.toContain('tabindex');
+      // Кнопка отправки — `<span>`, не `<button>`: проверяется общим сторожем
+      // «внутри секции кейсов нет <button>» выше.
+    });
+
+    it('затвор цикла доехал до сборки: инлайновый скрипт с IntersectionObserver', () => {
+      // Поднимаемый `<script>` из этого компонента в сборку не попадает —
+      // иллюстрация приезжает через `Astro.slots.render`. Сторож ровно на это.
+      expect(casesHtml).toContain('data-case-dialogue');
+      expect(casesHtml).toMatch(/IntersectionObserver[\s\S]*data-case-dialogue/);
     });
   });
 });

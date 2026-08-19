@@ -1,133 +1,208 @@
 ---
-/* Иллюстрация «Пример диалога» (кейс «ИИ-консультант»), бриф
- * `70-workshop/specs/site-v3/04-cases-brief.md`, раздел 4. Читать бриф
- * целиком: этот файл реализует устройство переписки, а не выбирает его.
+/* Иллюстрация «Пример диалога» (кейс «ИИ-консультант») — окно переписки,
+ * которое ЗАЦИКЛЕНО: реплики появляются по очереди, между вопросом и ответом
+ * стоит пузырёк «печатает», отыграв — начинается заново.
  *
- * Устройство снято с живого `50-code/rag-consultant` (`app/web/widget.html`):
- * шапка окна (подпись + волосяная линия), реплики двумя сторонами со
- * срезанным углом-«хвостом», строка ввода с подсказкой и кнопкой отправки,
- * строка источника под ответом. Отклонено: аватар-кружок (знак несуществующей
- * организации), лаймовый акцент (прежний сайт), чипы-подсказки (цена вне
- * PRICING.md), «печатает…»/галочки/статус «в сети» (нечем проверить). Ни
- * одной строки кода из `rag-consultant` сюда не попадает — только приём.
+ * ДЕЙСТВУЮЩИЙ источник устройства — эскиз и решения владельца 2026-08-19. Он
+ * перекрывает раздел 5 прежнего брифа `70-workshop/specs/site-v3/
+ * 04-cases-brief.md` в трёх местах: (1) реплик ровно ДВЕ, а не четыре;
+ * (2) метки поля «ПРИМЕР ДИАЛОГА · МАТЕРИАЛЫ ГРУМИНГ-САЛОНА» больше нет —
+ * владелец снял её как лишнюю; (3) переписка не «проступает по прокрутке
+ * один раз», а идёт циклом по времени. Всё остальное (палитра, токены,
+ * кегль ≥ 14 px, запрет второго акцента) — по-прежнему
+ * `02-case-illustrations.md`, раздел 2.3.
  *
- * Настоящий текст в HTML, не картинка и не `aria-hidden` (кроме поля ввода,
- * раздел 4.6): он весит около нуля, читается программой чтения и работает
- * без JavaScript. Сценарий клиента (D-011): бот отвечает покупателю
- * груминг-салона, салон безымянный — выдуманные названия организаций
- * запрещены наравне с выдуманным заказчиком (00-overview, раздел 7;
- * `40-portfolio/CLAUDE.md`).
+ * Что несёт этот файл и чего не решает: раскладка окна и раскадровка цикла —
+ * здесь; СОДЕРЖИМОЕ (реплики, чип источника, подписи времени, шапка,
+ * подсказка ввода) читается из `data/case-illustrations.ts` — единственного
+ * источника, ни одной строки текста здесь руками не написано. Модуль данных
+ * падает на сборке, если реплик не две, если ответ перестал начинаться с
+ * «Нет» или если у него сняли чип источника: пустого рисунка не бывает.
  *
- * Реплики и метка поля читаются из `data/case-illustrations.ts` —
- * единственного источника; модуль падает на сборке, если реплик не ровно
- * четыре, они не чередуются посетитель/бот, содержат цифру или ₽, или вторая
- * реплика бота перестала быть честным отказом (раздел 5.3 общей спеки).
+ * ЧЕТЫРЕ вещи, которые легко сломать не заметив:
  *
- * ДВИЖЕНИЕ: однократное появление по прокрутке (`animation-timeline:
- * view()`) — реплики проступают по очереди при въезде поля в кадр и дальше
- * стоят статично. Шапка (метка + волосяная линия) и строка ввода НЕ
- * анимируются — видны сразу: рамка окна переписки не «приезжает» (бриф,
- * раздел 4.8). Запасное состояние — оно же состояние ПО УМОЛЧАНИЮ: все
- * четыре реплики видны сразу и статично.
+ * 1. `<script>` ОБЯЗАН быть `is:inline`. Обычный (поднимаемый) скрипт из
+ *    этого компонента в сборку не попадает вовсе: иллюстрации приезжают в
+ *    `CaseIllustrationField` через слот, который тот сначала рендерит вручную
+ *    (`Astro.slots.render('default')`), и к этому моменту поднятые скрипты
+ *    страницы уже собраны. Потеря молчаливая — сборка зелёная, разметка на
+ *    месте, поведения нет. То же самое и по той же причине сделано в
+ *    `CaseFlowIllustration.astro`.
+ * 2. Шорткод `animation:` не применяется НИГДЕ — только раздельные свойства
+ *    (сторож `src/tests/css-no-animation-shorthand-with-timeline.test.ts`).
+ * 3. Состояние ПО УМОЛЧАНИЮ — конечное: обе реплики, чип источника, подписи
+ *    времени, шапка и строка ввода видны целиком и неподвижно. Ни одного
+ *    `opacity: 0` вне `@media (prefers-reduced-motion: no-preference)`.
+ *    `@supports` здесь НЕТ намеренно, в отличие от соседних иллюстраций: они
+ *    опираются на `offset-path` и `animation-timeline: view()` — свойства,
+ *    которые браузер может не знать; этот цикл сделан обычной CSS-анимацией,
+ *    и браузера, который понимает `prefers-reduced-motion`, но не понимает
+ *    `@keyframes`, не существует.
+ * 4. Зациклённое движение обязано СТОЯТЬ вне окна: `animation-play-state:
+ *    paused` по классу `off`, который ставит IntersectionObserver ниже.
+ *    `content-visibility: auto` этого не делает (замерено на соседней схеме).
  *
- * Метки ролей «ПОСЕТИТЕЛЬ»/«БОТ» сняты с экрана (сторона, цвет заливки и
- * «хвост» пузыря говорят это без слов — бриф, раздел 4.5) и живут только в
- * дереве доступности: `.sr` — локальное правило компонента, скрывает текст
- * визуально, но не от программы чтения (`display:none`/`visibility:hidden`
- * этого не гарантируют).
+ * ДОСТУПНОСТЬ: всё окно — единая иллюстрация (`role="img"` + `aria-label`),
+ * а не список реплик в порядке чтения. Причина — цикл: программа чтения
+ * иначе объявляла бы то появляющиеся, то исчезающие узлы, а «печатает»
+ * читалось бы как пустой пункт списка. Текст при этом остаётся НАСТОЯЩИМ
+ * текстом в HTML (не картинкой): он весит около нуля, индексируется и
+ * работает без JavaScript — теряется только пословный обход, взамен
+ * приходит осмысленное описание, собранное из тех же данных.
+ *
+ * Сценарий клиента (D-011): бот отвечает покупателю груминг-салона, салон
+ * безымянный — выдуманные названия организаций запрещены наравне с
+ * выдуманным заказчиком (00-overview, раздел 7; `40-portfolio/CLAUDE.md`).
  */
 import {
-  DIALOGUE_FIELD_LABEL,
   DIALOGUE_LINES,
   DIALOGUE_INPUT_PLACEHOLDER,
-  type DialogueRole,
+  DIALOGUE_STATUS_LABEL,
+  DIALOGUE_WINDOW_TITLE,
 } from '../../data/case-illustrations';
 import TelegramMark from '../TelegramMark.astro';
 
-const ROLE_LABEL: Record<DialogueRole, string> = {
-  visitor: 'Посетитель:',
-  bot: 'Бот:',
-};
-const ROLE_CLASS: Record<DialogueRole, string> = { visitor: 'v', bot: 'bt' };
+const [question, answer] = DIALOGUE_LINES;
+
+/* Описание для программы чтения собирается из тех же данных, что и рисунок:
+   второй, расходящейся с картинкой копии текста не заводится. */
+const ARIA_LABEL =
+  `${DIALOGUE_WINDOW_TITLE}, пример переписки. ` +
+  `Посетитель спрашивает: «${question.text}» ` +
+  `Ассистент отвечает: «${answer.text}» ` +
+  `Основание ответа — ${answer.source}.`;
 ---
-<div class="dialogue">
-  <p id="dialogue-field-label" class="lbl">{DIALOGUE_FIELD_LABEL}</p>
-  <div class="hr" aria-hidden="true"></div>
-  <ol class="lines" aria-labelledby="dialogue-field-label">
-    {DIALOGUE_LINES.map((line, i) => (
-      <li class={`${ROLE_CLASS[line.role]} p${i + 1}`}>
-        <span class="sr">{ROLE_LABEL[line.role]}</span>
-        <p class="msg">
-          <span class="txt">{line.text}</span>
-          {line.source && (
-            <span class="src">
-              <span class="src-label">ИСТОЧНИК: {line.source}</span>
-            </span>
-          )}
+<div class="chat" role="img" aria-label={ARIA_LABEL} data-case-dialogue>
+  <div class="head">
+    <span class="status"><span class="dot"></span>{DIALOGUE_STATUS_LABEL}</span>
+    <span class="title">{DIALOGUE_WINDOW_TITLE}</span>
+  </div>
+  <div class="hr"></div>
+
+  <ol class="feed">
+    <li class="ln v">
+      <p class="msg q an">{question.text}</p>
+      <p class="meta q-meta an">{question.meta}</p>
+    </li>
+    <li class="ln bt">
+      {/* Пузырёк «печатает» и ответ стоят в ОДНОЙ ячейке грида: ответ
+          приходит НА МЕСТО точек, а не под ними — иначе после смены остаётся
+          пустая строка там, где были точки, и высота ленты гуляет. */}
+      <div class="slot">
+        <span class="typing an"><i class="an"></i><i class="an"></i><i class="an"></i></span>
+        <p class="msg a an">
+          {answer.text}
+          {/* Чип источника — самый тихий элемент рисунка по кеглю и самый
+              важный по смыслу: он единственный показывает, что ассистент
+              отказывает, опираясь на материалы, а не сочиняет. Место
+              зарезервировано всегда — чип только проявляется, пузырь от
+              этого не растёт и лента не дёргается. */}
+          <span class="src an">ИСТОЧНИК: {answer.source}</span>
         </p>
-      </li>
-    ))}
+      </div>
+      <p class="meta a-meta an">{answer.meta}</p>
+    </li>
   </ol>
-  {/* Строка ввода — рисунок, не форма (бриф, раздел 3.2/4.6): настоящее
-      поле внутри блока-ссылки (раздел 3 брифа, вариант В) стало бы ловушкой
-      клавиатуры. Ни `<input>`, ни `<button>`, ни `contenteditable`, ни
-      `tabindex` — обычный `<div aria-hidden="true">`. */}
-  <div class="input" aria-hidden="true">
+
+  {/* Строка ввода с кнопкой отправки — РИСУНОК статичного состояния виджета,
+      не форма: ни `<input>`, ни `<button>`, ни `contenteditable`, ни
+      `tabindex`. Настоящее поле внутри блока-ссылки стало бы ловушкой
+      клавиатуры, а кнопка приглашала бы к клику, который никуда не ведёт. */}
+  <div class="input">
     <span class="placeholder">{DIALOGUE_INPUT_PLACEHOLDER}</span>
     <span class="send"><TelegramMark size={20} /></span>
   </div>
 </div>
 
-<style>
-  .dialogue { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+{/* Затвор цикла. `is:inline` обязателен — см. пункт 1 шапки файла.
+    Ищем по АТРИБУТУ `data-case-dialogue`, а не по классу: класс `.chat` у
+    Astro хешированный. Порог 0 — движение живёт, пока виден хоть один
+    пиксель окна. Класса `off` в разметке нет и сервер его не ставит: без
+    скрипта цикл идёт всегда, отказ скрипта стоит процессорного времени, а не
+    сломанной картинки. */}
+<script is:inline>
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    var dio = new IntersectionObserver(function (entries) {
+      for (var i = 0; i < entries.length; i++) {
+        entries[i].target.classList.toggle('off', !entries[i].isIntersecting);
+      }
+    }, { threshold: 0 });
+    document.querySelectorAll('[data-case-dialogue]').forEach(function (el) { dio.observe(el); });
+  }
+</script>
 
-  /* Метка-заголовок поля — 11 px допустим только здесь (бриф раздел 2.3
-     общей спеки), не для содержательных подписей ниже. */
-  .lbl {
-    margin: 0;
-    font: 500 0.6875rem/1.3 var(--font-mono);
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+<style>
+  .chat { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+  /* --- шапка окна ----------------------------------------------------- */
+  /* Слева состояние, справа собеседник — как на эскизе владельца.
+     ВЕСЬ текст окна набран одним кеглем 16 px, и это не лень раскладки:
+     объявленная шкала сайта (`styles/base.css`, сторож
+     `dist-typography-scale.test.ts`) знает из мелких ступеней только 11 и 16,
+     а 11 запрещено правилом «в рисунке не мельче 14 px»
+     (`02-case-illustrations.md`, 2.3). Заводить ради этого окна ступень 14 —
+     ровно то, что сторож называет «протоколом капитуляции». Поэтому
+     иерархия внутри окна держится не кеглем, а гарнитурой, насыщенностью,
+     цветом и местом. */
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font: 500 1rem/1.3 var(--font-mono);
     color: var(--text-muted);
+    white-space: nowrap;
+  }
+  /* Точка «в сети» — АКЦЕНТНАЯ, не зелёная: на сайте один акцентный цвет,
+     зелёного в палитре нет (00-overview, раздел 4). */
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: 0 0 auto;
+  }
+  .title {
+    font: 600 1rem/1.3 var(--font-text);
+    color: var(--text);
+    white-space: nowrap;
   }
 
   /* Линия шапки — в край поля: приём, по которому глаз узнаёт «окно
-     переписки», а не «список цитат» (бриф, раздел 4.3). Метка → линия: 16;
-     линия → первая реплика: 24. */
+     переписки», а не «список цитат». Шапка → линия: 16; линия → лента: 24. */
   .hr {
     margin: 16px -32px 24px;
     width: calc(100% + 64px);
     border-top: 1px solid var(--border);
   }
 
-  .lines { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
-  .lines > li {
+  /* --- лента ---------------------------------------------------------- */
+  .feed {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
     display: flex;
-    min-width: 0;
-    opacity: 1;
-    translate: 0 0;
+    flex-direction: column;
+    gap: 16px;
   }
-  /* Реплика посетителя — справа; реплика бота — слева. Каждая прижата к
-     СВОЕМУ краю поля вплотную, свободное место остаётся у противоположного
-     края (бриф, раздел 4.3). */
-  .v { justify-content: flex-end; }
-  .bt { justify-content: flex-start; }
+  .ln { display: flex; flex-direction: column; min-width: 0; }
+  /* Реплика посетителя — справа, ответ — слева; каждая прижата к СВОЕМУ краю
+     поля, свободное место остаётся у противоположного. */
+  .v { align-items: flex-end; }
+  .bt { align-items: flex-start; }
 
-  /* Скрытая подпись роли — для программы чтения, не для глаза (бриф,
-     раздел 4.5). `display:none`/`visibility:hidden` не годятся — прячут
-     текст и от читалки тоже. */
-  .sr {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
+  .slot { display: grid; width: 100%; justify-items: start; }
+  .slot > * { grid-area: 1 / 1; align-self: start; }
 
-  /* Пузыри — не прямоугольники с волосяной рамкой (было), а мессенджер:
-     заливка по роли, «хвост» срезанным углом (бриф, раздел 4.3/4.4). Ни
-     одной тени. */
+  /* Пузыри — мессенджер, а не цитаты: заливка по роли, «хвост» срезанным
+     углом. Ни одной тени. */
   .msg {
     margin: 0;
     padding: 12px 16px;
@@ -136,13 +211,13 @@ const ROLE_CLASS: Record<DialogueRole, string> = { visitor: 'v', bot: 'bt' };
     box-sizing: border-box;
     min-width: 0;
   }
-  .v .msg {
+  .q {
     background: var(--accent);
     color: var(--text-on-accent);
     border-bottom-right-radius: 4px;
     max-width: 78%;
   }
-  .bt .msg {
+  .a {
     background: var(--surface);
     color: var(--text);
     border: 1px solid var(--border);
@@ -150,13 +225,22 @@ const ROLE_CLASS: Record<DialogueRole, string> = { visitor: 'v', bot: 'bt' };
     max-width: 86%;
   }
   @media (max-width: 479px) {
-    .v .msg, .bt .msg { max-width: 92%; }
+    .q, .a { max-width: 100%; }
   }
 
-  /* Строка источника — под волосяной линией ВНУТРИ пузыря бота (бриф,
-     раздел 4.4): доказательство держится словами и местом, а не цветом —
-     акцент рисунка теперь у реплики посетителя (раздел 4.4, расхождение с
-     [[02-case-illustrations]] названо вслух там же). */
+  /* Подпись времени — правдоподобие окна, не факт о кейсе. Тише чипа
+     источника обычным начертанием и строчными буквами, а не кеглем: кегль у
+     всего окна один (см. выше). `--text-faint` не берётся — в тёмной теме он
+     даёт под AA на панели; `--text-muted` проверен `styles/tokens.test.ts`. */
+  .meta {
+    margin: 6px 2px 0;
+    font: 400 1rem/1.3 var(--font-mono);
+    color: var(--text-muted);
+  }
+
+  /* Чип источника — под волосяной линией ВНУТРИ пузыря ответа:
+     доказательство держится словами и местом, а не цветом (акцент рисунка
+     занят репликой посетителя, второго акцента на сайте нет). */
   .src {
     display: block;
     margin-top: 8px;
@@ -168,8 +252,20 @@ const ROLE_CLASS: Record<DialogueRole, string> = { visitor: 'v', bot: 'bt' };
     color: var(--text-muted);
   }
 
-  /* Строка ввода — рисунок статичного состояния виджета, не форма (бриф,
-     раздел 4.6). */
+  /* Пузырёк «печатает»: три точки в такой же оболочке, что и ответ. По
+     умолчанию его НЕТ вовсе (`display: none`) — он существует только внутри
+     цикла. Это не `opacity: 0`: невидимый, но занимающий место элемент в
+     запасном состоянии оставил бы в ленте пустое пятно. */
+  .typing { display: none; }
+  .typing i {
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+  }
+
+  /* --- строка ввода --------------------------------------------------- */
   .input {
     margin-top: 24px;
     display: flex;
@@ -203,37 +299,94 @@ const ROLE_CLASS: Record<DialogueRole, string> = { visitor: 'v', bot: 'bt' };
     color: var(--text-on-accent);
   }
 
-  /* Запасное состояние — состояние ПО УМОЛЧАНИЮ (см. верх файла): без этого
-     блока все четыре реплики уже полностью видны и статичны (`.lines > li`
-     выше), шапка и строка ввода не участвуют в анимации вовсе. Анимация —
-     только внутри `@supports`, поверх готового рисунка, никогда наоборот —
-     закрывает и `prefers-reduced-motion: reduce`, и браузер без поддержки
-     таймлайнов прокрутки одним и тем же блоком. */
-  @supports (animation-timeline: view()) {
-    @media (prefers-reduced-motion: no-preference) {
-      .lines > li {
-        opacity: 0;
-        translate: 0 8px;
-        animation-timeline: view();
-        animation-range: entry 15% cover 65%;
-        /* Раздельные свойства, не сокращение `animation:` — сборка сводит
-           `animation` + `animation-timeline` в один шорткод, а собранный
-           Chromium такую форму не разбирает и молча роняет анимацию целиком
-           (`css-no-animation-shorthand-with-timeline.test.ts`). */
-        animation-timing-function: linear;
-        animation-fill-mode: both;
-        animation-name: dlg-line-in;
-      }
-      .p1 { animation-duration: 100ms; }
-      .p2 { animation-duration: 180ms; }
-      .p3 { animation-duration: 260ms; }
-      .p4 { animation-duration: 340ms; }
+  /* ------------------------------------------------------------------ */
+  /* ЦИКЛ. Период 8 с — один на все элементы, раскадровка задана долями
+     периода в собственных `@keyframes` каждого. Почему 8: вопрос из сорока
+     знаков читается около двух секунд, ответ — около полутора, между ними
+     обязан поместиться различимый такт «печатает» (1,8 с — короче он
+     читается как мигание), а в конце нужен покой, за который глаз успевает
+     дочитать чип источника (2,6 с). Меньше семи — читатель не успевает
+     пройти сюжет; больше девяти — окно слишком долго стоит пустым для того,
+     кто пришёл в момент сброса. Соседняя схема «Заявки-Хаба» крутится 9 с:
+     разные периоды нарочно — два рисунка в одной секции не должны пульсировать
+     в такт.
+
+     Все элементы движения помечены классом `an` — по нему же их и
+     останавливает затвор, одним правилом, без перечисления селекторов. */
+  @media (prefers-reduced-motion: no-preference) {
+    .an {
+      animation-duration: 8s;
+      animation-timing-function: linear;
+      animation-iteration-count: infinite;
+      animation-fill-mode: both;
     }
+    .q { animation-name: dlg-q; }
+    .q-meta { animation-name: dlg-q-meta; }
+    .typing {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      padding: 15px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      border-bottom-left-radius: 4px;
+      background: var(--surface);
+      animation-name: dlg-typing;
+    }
+    /* Точки живут своим коротким тактом (1,2 с), а не долей периода: их
+       ритм — свойство самого жеста «печатает», он не обязан делиться на 8. */
+    .typing i {
+      animation-duration: 1.2s;
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
+      animation-name: dlg-dot;
+    }
+    .typing i:nth-child(2) { animation-delay: 0.16s; }
+    .typing i:nth-child(3) { animation-delay: 0.32s; }
+    .a { animation-name: dlg-a; }
+    .src { animation-name: dlg-src; }
+    .a-meta { animation-name: dlg-a-meta; }
+
+    /* Затвор: класс `off` ставит IntersectionObserver выше. */
+    .chat.off .an { animation-play-state: paused; }
   }
 
-  /* Только opacity и сдвиг 8 px — ни мигания, ни подпрыгивания, ни
-     горизонтальной езды. */
-  @keyframes dlg-line-in {
-    to { opacity: 1; translate: 0 0; }
+  /* Раскадровка. Только `opacity` и сдвиг 6 px — ни мигания, ни
+     подпрыгивания, ни горизонтальной езды. На стыке 100 % → 0 % все
+     элементы прозрачны, поэтому возврат сдвига в исходные 6 px читателю не
+     виден: окно просто пустеет и переписка начинается заново. */
+  @keyframes dlg-q {
+    0%, 5% { opacity: 0; translate: 0 6px; }
+    10%, 92% { opacity: 1; translate: 0 0; }
+    100% { opacity: 0; translate: 0 0; }
+  }
+  @keyframes dlg-q-meta {
+    0%, 10% { opacity: 0; }
+    14%, 92% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes dlg-typing {
+    0%, 19% { opacity: 0; translate: 0 6px; }
+    24%, 46% { opacity: 1; translate: 0 0; }
+    50%, 100% { opacity: 0; translate: 0 0; }
+  }
+  @keyframes dlg-dot {
+    0%, 60%, 100% { opacity: 0.35; translate: 0 0; }
+    30% { opacity: 1; translate: 0 -3px; }
+  }
+  @keyframes dlg-a {
+    0%, 47% { opacity: 0; translate: 0 6px; }
+    52%, 92% { opacity: 1; translate: 0 0; }
+    100% { opacity: 0; translate: 0 0; }
+  }
+  @keyframes dlg-src {
+    0%, 54% { opacity: 0; }
+    60%, 92% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes dlg-a-meta {
+    0%, 56% { opacity: 0; }
+    62%, 92% { opacity: 1; }
+    100% { opacity: 0; }
   }
 </style>
