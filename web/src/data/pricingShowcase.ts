@@ -150,7 +150,7 @@ export const TOP_CARDS: readonly TopCard[] = [
     // из источника (тогда фильтр не найдёт что убирать — тест ниже это ловит
     // по длине состава).
     composition: [
-      'Всё из «Лендинга»',
+      'Все из «Лендинга»',
       ...splitComposition(SITE_5.whatIncluded).filter((item) => item !== 'дизайн-система'),
     ],
     // Единственная разрешённая метка спроса — «Самый популярный», дословно.
@@ -215,9 +215,9 @@ export const SHELF_CARDS: readonly ShelfCard[] = [
     href: serviceHref('sites', 'Сайт под ключ'),
   },
   {
-    label: 'Бот-приёмщик заявок',
+    label: 'Бот-приемщик заявок',
     description: 'Один сценарий: клиент пишет боту, заявка падает вам в уведомления. Без админки.',
-    price: stage('Telegram', 'Бот-приёмщик заявок').price,
+    price: stage('Telegram', 'Бот-приемщик заявок').price,
     timeframe: 'от 2 дней',
     href: serviceHref('telegram', 'Telegram-бот под задачу'),
   },
@@ -226,7 +226,7 @@ export const SHELF_CARDS: readonly ShelfCard[] = [
     description: 'Связать форму с CRM, подключить оплату, выгрузить заявки в таблицу.',
     price: cheapestEntry(group('Автоматизация и интеграции')).price,
     timeframe: 'от 2 дней',
-    href: serviceHref('automation', 'Приём заявок и интеграции'),
+    href: serviceHref('automation', 'Прием заявок и интеграции'),
   },
   {
     label: 'ИИ-консультант',

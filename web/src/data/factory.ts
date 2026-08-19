@@ -67,7 +67,7 @@ export const FACTORY_FRAME: readonly string[] = [
 export const FACTORY_CAPTIONS = {
   node: 'каркас',
   themes: 'тем',
-  moves: 'переезжает целиком в каждый из четырёх',
+  moves: 'переезжает целиком в каждый из четырех',
 } as const;
 
 /** Зачин строки «что переезжает» текстовой колонки четвёртой строки кейсов

@@ -41,7 +41,7 @@ test.describe('темы', () => {
     });
 
   test('без выбора кнопка называет и показывает тему системы', async ({ browser }) => {
-    for (const [scheme, name] of [['dark', 'тёмная'], ['light', 'светлая']] as const) {
+    for (const [scheme, name] of [['dark', 'темная'], ['light', 'светлая']] as const) {
       const ctx = await browser.newContext({ colorScheme: scheme });
       const page = await ctx.newPage();
       await page.goto('/');

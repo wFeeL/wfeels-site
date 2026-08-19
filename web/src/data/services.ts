@@ -74,13 +74,13 @@ export const SERVICE_GROUPS: readonly ServiceGroup[] = [
       'Заявки из формы, из бота, с лендинга — в одно место. Оттуда в CRM, ' +
       'почту, таблицы и Telegram.',
     points: [
-      'Одна точка приёма заявок',
+      'Одна точка приема заявок',
       'Доставка туда, где вы работаете',
       'Повтор при сбое — ничего не теряется',
-      'Приём оплат',
+      'Прием оплат',
     ],
     links: [
-      { text: 'Приём заявок и интеграции', href: '/services/integrations', code: 'S5' },
+      { text: 'Прием заявок и интеграции', href: '/services/integrations', code: 'S5' },
       { text: 'Панель обращений', href: '/services/admin-panel', code: 'S6' },
       { text: 'Backend и API', href: '/services/backend-api', code: 'S7' },
     ],
@@ -110,7 +110,7 @@ export const SERVICE_GROUPS: readonly ServiceGroup[] = [
       'Бот или полноценный интерфейс внутри мессенджера — если ваши ' +
       'клиенты уже там.',
     points: [
-      'Приём заявок и уведомления',
+      'Прием заявок и уведомления',
       'Запись, каталог, анкета',
       'Админка и роли',
       'Оплата внутри',

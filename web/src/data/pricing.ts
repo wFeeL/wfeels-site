@@ -93,7 +93,7 @@ export const PRICING: readonly PriceGroup[] = [
       },
       {
         name: "Сайт до 10 страниц",
-        whatIncluded: "то же на большем объёме контента",
+        whatIncluded: "то же на большем объеме контента",
         price: "70 000 ₽",
         priceUsdReference: 875,
         note: null,
@@ -146,7 +146,7 @@ export const PRICING: readonly PriceGroup[] = [
       },
       {
         name: "Панель обращений / админка",
-        whatIncluded: "приём, статусы, фильтры, экспорт, роли",
+        whatIncluded: "прием, статусы, фильтры, экспорт, роли",
         price: "45 000 ₽",
         priceUsdReference: 562,
         note: null,
@@ -179,7 +179,7 @@ export const PRICING: readonly PriceGroup[] = [
     name: "Telegram",
     entries: [
       {
-        name: "Бот-приёмщик заявок",
+        name: "Бот-приемщик заявок",
         whatIncluded: "один сценарий, уведомления, без админки",
         price: "9 000 ₽",
         priceUsdReference: 112,

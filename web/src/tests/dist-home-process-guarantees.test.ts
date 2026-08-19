@@ -47,7 +47,7 @@ describe('dist/index.html — секции 7 и 8', () => {
     expect(html).toContain('Сколько это занимает');
     expect(html).toContain('2–4 дня');
     expect(html).toContain('2–3 недели');
-    expect(html).toContain('от одного до четырёх месяцев');
+    expect(html).toContain('от одного до четырех месяцев');
     // Отменённая формулировка не должна вернуться молча.
     expect(html).not.toContain('4–6 недель');
   });

@@ -49,7 +49,7 @@ describe('process.ts — внутренняя целостность', () => {
       'Оплата половинами',
       'Исходники и инструкция — ваши',
       'Обычный стек, без привязки ко мне',
-      'Тридцать дней на недочёты',
+      'Тридцать дней на недочеты',
       'Сколько это занимает',
     ]);
   });
@@ -58,7 +58,7 @@ describe('process.ts — внутренняя целостность', () => {
     const timing = GUARANTEES[4];
     expect(timing.text).toContain('2–4 дня');
     expect(timing.text).toContain('2–3 недели');
-    expect(timing.note).toContain('от одного до четырёх месяцев');
+    expect(timing.note).toContain('от одного до четырех месяцев');
     expect(timing.note).toContain('беру мало проектов');
   });
 
