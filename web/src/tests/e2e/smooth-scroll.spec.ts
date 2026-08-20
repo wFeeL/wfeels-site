@@ -421,6 +421,53 @@ test('полоса прогресса чтения совпадает с поз�
 /* 4. При reduce плавности нет                                          */
 /* ------------------------------------------------------------------ */
 
+test('на касании плавность не включается — жест остаётся родным', async ({ browser }) => {
+  /* Решение: `syncTouch: false` (умолчание Lenis, назначенное явно). У пальца
+     инерция уже своя, системная; вторая поверх неё читается как залипание.
+     Признак того, что жест НЕ перехвачен, — событие касания не отменено:
+     Lenis зовёт `preventDefault` только на той ветке, где сам ведёт движение. */
+  const ctx = await browser.newContext({
+    reducedMotion: 'no-preference',
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await ctx.newPage();
+  await page.goto('/');
+
+  const result = await page.evaluate(() => {
+    const target = document.body;
+    const touch = new Touch({ identifier: 1, target, clientX: 200, clientY: 400 });
+    const make = (type: string) =>
+      new TouchEvent(type, {
+        cancelable: true,
+        bubbles: true,
+        touches: [touch],
+        targetTouches: [touch],
+        changedTouches: [touch],
+      });
+    const start = make('touchstart');
+    target.dispatchEvent(start);
+    const move = make('touchmove');
+    target.dispatchEvent(move);
+    return {
+      lenis: document.documentElement.className,
+      startPrevented: start.defaultPrevented,
+      movePrevented: move.defaultPrevented,
+    };
+  });
+
+  console.log(
+    `[касание] класс <html> «${result.lenis}», touchstart отменён: ${result.startPrevented}, ` +
+      `touchmove отменён: ${result.movePrevented}`,
+  );
+
+  expect(result.lenis, 'на телефоне экземпляр всё равно живёт — ради колеса и трекпада')
+    .toMatch(/(^|\s)lenis(\s|$)/);
+  expect(result.movePrevented, 'Lenis не должен перехватывать жест пальца').toBe(false);
+  await ctx.close();
+});
+
 test('при уменьшенном движении Lenis не создан, а прокрутка мгновенная', async ({ browser }) => {
   const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: WIDE });
   const page = await ctx.newPage();
