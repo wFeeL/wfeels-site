@@ -63,6 +63,18 @@ describe('dist/index.html — секции 7 и 8', () => {
     expect(section).toContain('по вехам');
   });
 
+  it('в секции 7 срока цифрой нет — итоговая полоса «30 дней» снята правкой владельца 2026-08-20', () => {
+    const start = html.indexOf('id="process"');
+    const end = html.indexOf('id="guarantees"');
+    expect(start, 'секция id="process" не найдена в dist/index.html').toBeGreaterThan(-1);
+    expect(end, 'секция id="guarantees" не найдена в dist/index.html').toBeGreaterThan(start);
+    const section = html.slice(start, end);
+    // `&nbsp;` в разметке — та самая неразрывная связка снятой выноски.
+    expect(/\d+(&nbsp;|\s)*дн/i.test(section)).toBe(false);
+    // Срок при этом обязан остаться словом — шаг 5 не тронут.
+    expect(section).toContain('Тридцать дней');
+  });
+
   it('в секциях 7 и 8 нет упоминания договора и гарантии срока деньгами', () => {
     const start = html.indexOf('id="process"');
     const end = html.indexOf('id="about"');
