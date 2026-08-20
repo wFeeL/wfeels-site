@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { PROCESS_STEPS, GUARANTEES, MILESTONE_THRESHOLD } from '../data/process';
+import { HERO_TERMS } from '../data/terms';
 
 /* Тот же паттерн, что `dist-home-cases.test.ts`: читает `dist/index.html`
  * напрямую, без браузера, — доказывает, что текст секций 7 и 8 присутствует
@@ -32,24 +33,32 @@ describe('dist/index.html — секции 7 и 8', () => {
     }
   });
 
-  it('секция 8: метка, заголовок и все пять гарантий дословно на странице', () => {
+  it('секция 8: метка, заголовок и все четыре гарантии дословно на странице', () => {
     expect(html).toContain('ГАРАНТИИ');
     expect(html).toContain('>Что я гарантирую<');
     for (const g of GUARANTEES) {
       expect(html, g.title).toContain(g.title);
       expect(html, g.text).toContain(g.text);
-      if (g.note) expect(html, g.note).toContain(g.note);
     }
     expect(html).toContain(MILESTONE_THRESHOLD);
   });
 
-  it('пятая гарантия «Сколько это занимает» — перенос секции 6, числа сроков дословны', () => {
-    expect(html).toContain('Сколько это занимает');
-    expect(html).toContain('2–4 дня');
-    expect(html).toContain('2–3 недели');
-    expect(html).toContain('от одного до четырех месяцев');
+  it('гарантии «Сколько это занимает» на странице нет, а срок работ назван по-прежнему', () => {
+    // Правка владельца 2026-08-20 сняла пятую гарантию вместе с доводом про
+    // студии. Проверяется срез секции, а не вся страница: слова «сколько» и
+    // «занимает» могут законно встретиться в другом тексте.
+    const start = html.indexOf('id="guarantees"');
+    const end = html.indexOf('id="about"');
+    const section = html.slice(start, end);
+    expect(section).not.toContain('Сколько это занимает');
+    expect(section).not.toContain('от одного до четырех месяцев');
+    expect(section).not.toContain('беру мало проектов');
     // Отменённая формулировка не должна вернуться молча.
     expect(html).not.toContain('4–6 недель');
+    // Срок работ со страницы не исчез — его называет таблица первого экрана
+    // (`data/terms.ts`), и это единственное оставшееся место. Без этой
+    // строки снятие гарантии могло бы молча унести с сайта сроки целиком.
+    expect(html, 'срок работ из data/terms.ts').toContain(HERO_TERMS[0].term);
   });
 
   it('формулировка оплаты в разметке несёт оговорку про 70 000 ₽', () => {
