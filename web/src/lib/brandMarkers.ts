@@ -11,7 +11,7 @@
 // Неизвестный маркер роняет СБОРКУ, а не тихо остаётся на странице фигурными
 // скобками: опечатка в имени значка обязана обнаружиться до публикации.
 
-export const BRAND_MARKERS = ['claude', 'figma', 'chatgpt'] as const;
+export const BRAND_MARKERS = ['claude', 'figma', 'chatgpt', 'github', 'postgres'] as const;
 
 export type BrandMarkerName = (typeof BRAND_MARKERS)[number];
 
