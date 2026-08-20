@@ -46,9 +46,26 @@ describe('dist/index.html — секция 5', () => {
       expect(html, c.title).toContain(c.title);
       expect(html, c.description!).toContain(c.description);
       expect(html, c.stack!).toContain(c.stack);
-      expect(html, c.slug).toContain(`/cases/${c.slug}`);
     }
-    expect(html).toContain('Разобрать кейс');
+  });
+
+  /* Сторож правки владельца 2026-08-20 (вечер): «пока убираем ссылку с кейса
+     „Этот сайт“, иначе она ведет на несуществующую страницу». Прежде здесь
+     стояло `toContain('/cases/' + c.slug)` и `toContain('Разобрать кейс')` —
+     обе проверки требовали ровно того, что снято, и обе вывернуты, а не
+     удалены: без них ссылка могла бы вернуться молча. Живучесть самой
+     ловушки — обходом всех ссылок главной в `dist-home-links.test.ts`. */
+  it('в блоке кейса нет ни ссылки на страницу кейса, ни метки «Разобрать кейс»', () => {
+    const start = html.indexOf('id="cases"');
+    const end = html.indexOf('id="process"');
+    const section = html.slice(start, end);
+    for (const c of homeCases()) {
+      expect(section, `ссылка на /cases/${c.slug}`).not.toContain(`/cases/${c.slug}`);
+    }
+    expect(section, 'метка «Разобрать кейс →»').not.toContain('Разобрать кейс');
+    // Ни одного `<a>` в секции вовсе: заголовок был единственной ссылкой
+    // блока (вариант В, D-047), других в секции не было и не появилось.
+    expect(section, 'в секции кейсов не должно остаться ссылок').not.toContain('<a ');
   });
 
   /* Сторож снятия кнопки «Все кейсы» (правка владельца 2026-08-20). Прежде

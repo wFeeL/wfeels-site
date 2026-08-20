@@ -2,9 +2,15 @@ import { test, expect } from '@playwright/test';
 
 /* Секция 5 (бриф `70-workshop/specs/site-v3/04-cases-brief.md`, разделы 2–3)
  * — полноширинные блоки вместо карточек: текст и поле иллюстрации,
- * зеркалящиеся по формуле `homeOrder % 2 === 0`, весь блок — ссылка (D-047,
- * вариант В). Тесты ниже проверяют геометрию, зеркало и ссылки, не текст
- * (текст и его дословность проверяет `dist-home-cases.test.ts`). */
+ * зеркалящиеся по формуле `homeOrder % 2 === 0`. Тесты ниже проверяют
+ * геометрию, зеркало и отсутствие перехода, не текст (текст и его
+ * дословность проверяет `dist-home-cases.test.ts`).
+ *
+ * Ссылки в блоке БОЛЬШЕ НЕТ — правка владельца 2026-08-20 сняла её вместе с
+ * меткой «Разобрать кейс →»: страницы `/cases/<slug>` не существует. Тесты
+ * не удалены, а вывернуты: там, где раньше требовался ровно один `<a>` на
+ * блок (вариант В «Цель — весь блок», D-047), теперь требуется ни одного, и
+ * отдельно проверяется, что на месте снятой ссылки не осталось её вида. */
 
 /* Появление полос кейсов по прокрутке сдвигает `.text` и `.illustration»
  * по-разному в момент замера — тесты ниже проверяют раскладку, а не
@@ -13,7 +19,7 @@ import { test, expect } from '@playwright/test';
 test.use({ reducedMotion: 'reduce' });
 
 test.describe('секция 5 — полноширинные блоки кейсов, чередование сторон', () => {
-  test('desktop (1280px): чередование сторон, ровно один <a> на блок', async ({ page }) => {
+  test('desktop (1280px): чередование сторон, ни одной ссылки в блоке', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
     await page.goto('/');
 
@@ -29,10 +35,11 @@ test.describe('секция 5 — полноширинные блоки кейс
       const row = rows.nth(i);
       const mirrored = (i + 1) % 2 === 0; // homeOrder — 1-based, чётный — зеркало
 
-      // Ровно один <a> на блок (D-047, раздел 3.1) — заголовок, растянутый
-      // на весь блок приёмом `a::after`.
+      // Ни одного <a> в блоке: заголовок перестал быть ссылкой, метка
+      // «Разобрать кейс →» снята (правка владельца 2026-08-20).
       const links = row.locator('a');
-      await expect(links, `блок ${i}: ровно один <a>`).toHaveCount(1);
+      await expect(links, `блок ${i}: переход из блока снят — ссылок быть не должно`)
+        .toHaveCount(0);
 
       const textBox = await row.locator('.text').boundingBox();
       const fieldBox = await row.locator('.field').boundingBox();
@@ -51,17 +58,19 @@ test.describe('секция 5 — полноширинные блоки кейс
       const childCount = await row.locator('.field').evaluate((el) => el.childElementCount);
       expect(childCount, `блок ${i}: поле иллюстрации не пусто`).toBeGreaterThan(0);
 
-      // Доступное имя ссылки равно заголовку кейса (критерий приёмки 5).
-      const [linkText, h3Text] = await Promise.all([
-        links.first().innerText(),
-        row.locator('h3').innerText(),
-      ]);
-      expect(linkText.trim()).toBe(h3Text.trim());
+      // Заголовок остался текстом и выглядит текстом. Дизайн-ревью
+      // 2026-08-20 отмечало обратный дефект — ссылку, не похожую на ссылку;
+      // после снятия ссылки опасность зеркальная: вид ссылки без ссылки.
+      const heading = await row.locator('h3').evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { decoration: s.textDecorationLine, cursor: s.cursor };
+      });
+      expect(heading.decoration, `блок ${i}: подчёркивание на заголовке`).toBe('none');
+      expect(heading.cursor, `блок ${i}: курсор-указатель на заголовке`).not.toBe('pointer');
 
-      // Грань слева существует у всех блоков, включая зеркальные (бриф,
-      // раздел 3.1: «она метит блок, а не колонку»).
+      // Грани слева больше нет: она метила блок как ссылку.
       const borderLeftWidth = await row.evaluate((el) => getComputedStyle(el).borderLeftWidth);
-      expect(borderLeftWidth, `блок ${i}: грань слева`).toBe('2px');
+      expect(borderLeftWidth, `блок ${i}: грань слева снята вместе со ссылкой`).toBe('0px');
     }
   });
 
@@ -127,19 +136,18 @@ test.describe('секция 5 — полноширинные блоки кейс
     }
   });
 
-  test('клавиатура: :focus-visible виден на ссылке блока и не обрезан родителем', async ({ page }) => {
+  /* Прежде здесь стоял сторож `:focus-visible` на заголовке-ссылке. Ссылки
+     нет — проверять фокус не на чем, и тест вывернут в проверку того, что
+     блок вообще выпал из порядка обхода с клавиатуры: остаточный фокус на
+     элементе, из которого некуда перейти, был бы ловушкой для клавиатуры. */
+  test('клавиатура: в блоке кейса нет ни одной точки остановки', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
     await page.goto('/');
 
-    const firstLink = page.locator('#cases .rows > .row').first().locator('a').first();
-    await firstLink.focus();
-    const outline = await firstLink.evaluate((el) => getComputedStyle(el).outlineStyle);
-    expect(outline, 'заголовок-ссылка не показывает :focus-visible').toBe('solid');
-
-    const overflow = await page.locator('#cases .rows > .row').first().evaluate(
-      (el) => getComputedStyle(el).overflow,
+    const focusable = page.locator(
+      '#cases .rows > .row a, #cases .rows > .row button, #cases .rows > .row [tabindex]',
     );
-    expect(overflow, 'у .row не должно быть overflow: hidden — обрежет обводку фокуса')
-      .not.toBe('hidden');
+    await expect(focusable, 'блок кейса не ведёт никуда — останавливать фокус не на чем')
+      .toHaveCount(0);
   });
 });
