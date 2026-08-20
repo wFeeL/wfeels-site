@@ -55,18 +55,22 @@ for (const width of WIDTHS) {
     });
 
     const items = await page.locator(ILLO).evaluate((root, selectors) => {
-      const out: { sel: string; text: string; rect: DOMRect; size: number }[] = [];
+      /* Элементы собираются в МНОЖЕСТВО, а не списком по каждому селектору:
+         селекторы пересекаются, и один и тот же элемент попадал бы в замер
+         дважды. Проверка перекрытий тогда сравнивала бы элемент сам с собой
+         и падала с сообщением «„6×“ × „6×“» — ровно это и случилось, когда
+         кратность получила якорь счётчика (`data-count`) и стала подходить
+         сразу под `[data-cell] [data-count]` и под `.mult`. Дефекта на
+         странице при этом не было: сторож ловил свой собственный дубль. */
+      const seen = new Set<Element>();
       for (const sel of selectors) {
-        root.querySelectorAll(sel).forEach((el) => {
-          out.push({
-            sel,
-            text: (el.textContent ?? '').trim().slice(0, 40),
-            rect: el.getBoundingClientRect().toJSON(),
-            size: parseFloat(getComputedStyle(el).fontSize),
-          });
-        });
+        root.querySelectorAll(sel).forEach((el) => seen.add(el));
       }
-      return out;
+      return [...seen].map((el) => ({
+        text: (el.textContent ?? '').trim().slice(0, 40),
+        rect: el.getBoundingClientRect().toJSON(),
+        size: parseFloat(getComputedStyle(el).fontSize),
+      }));
     }, TEXTS);
 
     expect(items.length, 'тексты рисунка не нашлись — сторож проверял бы пустоту').toBeGreaterThan(8);

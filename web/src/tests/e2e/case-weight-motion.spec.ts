@@ -30,11 +30,29 @@ async function shaftProgress(page: Page, seg: number): Promise<number> {
   });
 }
 
-/** Тексты всех четырёх чисел в порядке разметки. */
+/** Тексты всех четырёх чисел сравнения в порядке разметки. */
 async function printedValues(page: Page): Promise<string[]> {
   return Promise.all(
     CELLS.map((c) => page.locator(`${ILLO} [data-cell="${c.key}"] [data-count]`).innerText()),
   );
+}
+
+/** Конечное значение кратности — «6×», выведенное из веса, а не написанное
+ *  здесь: тест не заводит второй копии числа. */
+const FINAL_MULTIPLIER = `${WEIGHT_ILLUSTRATION.multiplier}×`;
+
+/** Текст кратности («6×») и непрозрачность фразы («в шесть раз легче»).
+ *  Снимаются ОДНИМ заходом в страницу: они проверяются на согласованность
+ *  друг с другом, и два раздельных замера читали бы два разных кадра. */
+async function verdictState(page: Page): Promise<{ mult: string; phraseOpacity: number }> {
+  return page.locator(`${ILLO} [data-cell="verdict"]`).evaluate((el) => {
+    const mult = el.querySelector('.mult') as HTMLElement;
+    const phrase = el.querySelector('.phrase') as HTMLElement;
+    return {
+      mult: (mult.textContent ?? '').trim(),
+      phraseOpacity: parseFloat(getComputedStyle(phrase).opacity),
+    };
+  });
 }
 
 test.describe('иллюстрация «Замер» — стрелка и счёт по прокрутке', () => {
@@ -59,10 +77,15 @@ test.describe('иллюстрация «Замер» — стрелка и сч�
 
     // Вывод проявляется последним при разрешённом движении — и обязан стоять
     // готовым при `reduce`: невидимый вывод и есть рисунок без вывода.
-    expect(
-      await page.locator(`${ILLO} [data-cell="verdict"]`).evaluate((el) => getComputedStyle(el).opacity),
-      'вывод рисунка не виден при reduce',
-    ).toBe('1');
+    // Проверяется ФРАЗА, а не строка вывода целиком: с 2026-08-20 прячется
+    // только она (цифра «6×» считается на виду), и замер по `.verdict`
+    // проходил бы теперь вхолостую — у неё нет и не было своей прозрачности.
+    const atRest = await verdictState(page);
+    expect(atRest.phraseOpacity, 'фраза вывода не видна при reduce').toBe(1);
+    // И кратность при `reduce` стоит готовой — она пятое считаемое число, и
+    // правило «конечное состояние — состояние по умолчанию» на неё
+    // распространяется так же, как на четыре остальных.
+    expect(atRest.mult, 'кратность не в конечном значении при reduce').toBe(FINAL_MULTIPLIER);
 
     // Отсчёт от нуля не имеет права оставить нули: при `reduce` счётчик вообще
     // не запускается, и на рисунке стоит ровно то, что уехало в сборку.
@@ -131,6 +154,69 @@ test.describe('иллюстрация «Замер» — стрелка и сч�
     await expect
       .poll(async () => (await printedValues(page)).map((s) => s.trim()), { timeout: 5_000 })
       .toEqual(CELLS.map((c) => c.value));
+
+    await context.close();
+  });
+});
+
+/* Сторож правки владельца 2026-08-20 (кратность): «добавляем такой же
+ * счетчик, как и для других счетчиков в этом кейсе, для „6×“».
+ *
+ * Ловушка правки — не в счётчике, а в СОСЕДЕ цифры. Рядом стоит фраза «в
+ * шесть раз легче», и слово «шесть» ВЫВОДИТСЯ из кратности, а не пишется.
+ * Считающаяся цифра при готовой фразе дала бы на середине пути «3× в шесть
+ * раз легче» — видимую неправду на полсекунды, на странице, весь тезис
+ * которой «каждое число проверяемо». Решение — фраза проявляется только
+ * после конца счёта (`.phrase`, `cover 52%…55%`, счётчик приходит к единице
+ * на `cover 50%`).
+ *
+ * Тест проверяет ОБА следствия сразу, и второе важнее первого:
+ *   (а) кратность действительно считается — хоть в одном кадре она не равна
+ *       конечной. Без этого правка не сделана;
+ *   (б) ни в одном кадре, где цифра не конечная, фраза не видна. Без этого
+ *       правка сделана ценой видимой неправды.
+ * Замер идёт одним заходом в страницу на каждый шаг (`verdictState`): два
+ * раздельных чтения могли бы попасть в разные кадры и «доказать»
+ * согласованность, которой нет. */
+test.describe('иллюстрация «Замер» — кратность считается, и фраза её не опережает', () => {
+  test('на всём пути прокрутки нет кадра «неготовая цифра + готовое слово»', async ({ browser }) => {
+    const context = await browser.newContext({
+      reducedMotion: 'no-preference',
+      viewport: { width: 1440, height: 900 },
+    });
+    const page = await context.newPage();
+    await page.goto('/');
+
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    let sawCounting = false;
+    const contradictions: string[] = [];
+
+    for (let y = 0; y <= height; y += 60) {
+      await page.evaluate((top) => {
+        window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
+        return new Promise<void>((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => r())),
+        );
+      }, y);
+
+      const { mult, phraseOpacity } = await verdictState(page);
+      if (mult !== FINAL_MULTIPLIER) {
+        sawCounting = true;
+        if (phraseOpacity > 0) {
+          contradictions.push(`y=${y}: «${mult}» рядом с видимой фразой (opacity ${phraseOpacity})`);
+        }
+      }
+    }
+
+    expect(
+      sawCounting,
+      'кратность ни разу не отличалась от конечной — счётчик на «6×» не работает ' +
+        '(проверь якорь data-count на .mult и что цифра не спрятана прозрачностью)',
+    ).toBe(true);
+    expect(
+      contradictions,
+      `фраза «в шесть раз легче» видна, пока кратность ещё считается:\n${contradictions.join('\n')}`,
+    ).toEqual([]);
 
     await context.close();
   });
@@ -224,10 +310,15 @@ test.describe('иллюстрация «Замер» — движение поп
           `отрезок ${seg} не дорисован к моменту, когда карточка начала уходить вверх`,
         ).toBeGreaterThan(0.99);
       }
+      const verdict = await verdictState(page);
       expect(
-        await page.locator(`${ILLO} [data-cell="verdict"]`).evaluate((el) => getComputedStyle(el).opacity),
-        'вывод ещё не проявлен к моменту, когда карточка начала уходить вверх',
-      ).toBe('1');
+        verdict.phraseOpacity,
+        'фраза вывода ещё не проявлена к моменту, когда карточка начала уходить вверх',
+      ).toBe(1);
+      expect(
+        verdict.mult,
+        'кратность ещё считается к моменту, когда карточка начала уходить вверх',
+      ).toBe(FINAL_MULTIPLIER);
       expect(
         (await printedValues(page)).map((s) => s.trim()),
         'числа ещё крутятся к моменту, когда карточка начала уходить вверх',
