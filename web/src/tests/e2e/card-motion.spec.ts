@@ -77,7 +77,19 @@ test.describe('появление карточек — ни одна не ост
        краснел при исправном коде — брак был в замере, не в анимации.
        Уменьшать шаг дальше незачем, увеличивать нельзя. */
     for (let y = 0; y <= height; y += 80) {
-      await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' as ScrollBehavior }), y);
+      /* Прыжок прокрутки и ДВА кадра ожидания, а не замер сразу. Значение
+         таймлайна прокрутки коммитит композитор, и сразу после `scrollTo`
+         основной поток ещё может отдать непрозрачность от ПРЕДЫДУЩЕГО
+         положения. С плавной прокруткой (Lenis, `layouts/Base.astro`) каждое
+         событие прокрутки добавляет работы основному потоку, и эта гонка
+         стала видимой — прогон 2026-08-20. Требование осталось прежним
+         («поймать карточку в полёте»), честнее стал замер. */
+      await page.evaluate((top) => {
+        window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
+        return new Promise<void>((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => r())),
+        );
+      }, y);
       seenMidFlight += await page.locator(CARD_SELECTOR).evaluateAll((els) =>
         els.filter((el) => {
           const o = Number(getComputedStyle(el).opacity);

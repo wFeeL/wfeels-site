@@ -82,7 +82,24 @@ test.describe('иллюстрация «Замер» — стрелка и сч�
     let sawCountMidFlight = false;
 
     for (let y = 0; y <= height && !(sawShaftMidFlight && sawCountMidFlight); y += 60) {
-      await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' as ScrollBehavior }), y);
+      /* Прыжок прокрутки и ДВА кадра ожидания, а не замер сразу. Значение
+         таймлайна прокрутки коммитит композитор, и сразу после `scrollTo`
+         основной поток ещё может отдать величину от ПРЕДЫДУЩЕГО положения.
+         Пока по странице не работало ничего постороннего, замер успевал
+         почти всегда; с плавной прокруткой (Lenis, `layouts/Base.astro`)
+         каждое событие прокрутки добавляет работы основному потоку, и гонка
+         стала видимой — прогон 2026-08-20 дал одно падение на шесть, при
+         нуле падений на шести прогонах без Lenis. Проверялась ГОНКА ЗАМЕРА,
+         а не анимация: тот же прогресс, снятый через Web Animations API
+         (`smooth-scroll.spec.ts`), совпадает с обычной прокруткой до нуля.
+         Ожидание кадров ничего не ослабляет — требование «поймать полёт»
+         осталось прежним, замер стал честным. */
+      await page.evaluate((top) => {
+        window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
+        return new Promise<void>((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => r())),
+        );
+      }, y);
       const p = await shaftProgress(page, 1).catch(() => null);
       if (p !== null && p > 0.02 && p < 0.95) sawShaftMidFlight = true;
       const values = await printedValues(page).catch(() => null);
