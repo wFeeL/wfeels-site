@@ -8,13 +8,13 @@
  *  бриф `02-case-illustrations.md`): её доказательства разошлись — «вес
  *  страницы» и «форма внизу» переехали в блок кейса «Этот сайт» (секция 5),
  *  «сколько занимает работа» переехало в «Что я гарантирую» (секция 7).
- *  Секций стало десять, точка рельса «КЕЙСЫ» больше не парная.
+ *  Секций стало десять, точка рельса «КЕЙС» больше не парная.
  *
  *    НАЧАЛО    — 1 первый экран
  *    КАК БЫВАЕТ — 2 как обычно бывает
  *    УСЛУГИ    — 3
  *    ЦЕНЫ      — 4
- *    КЕЙСЫ     — 5 кейсы
+ *    КЕЙС      — 5 кейс
  *    ПРОЦЕСС   — 6 как я работаю
  *    ГАРАНТИИ  — 7 что я гарантирую
  *    ОБО МНЕ   — 8 обо мне
@@ -74,7 +74,7 @@ export const HOME_SECTIONS: readonly HomeSection[] = [
   { id: 'pain', order: 2, title: 'Секция 2 — Как обычно бывает', railLabel: 'КАК БЫВАЕТ', railFirst: true, act: 1 },
   { id: 'services', order: 3, title: 'Секция 3 — Что я делаю', railLabel: 'УСЛУГИ', railFirst: true, act: 2 },
   { id: 'pricing', order: 4, title: 'Секция 4 — Цены', railLabel: 'ЦЕНЫ', railFirst: true, act: 2 },
-  { id: 'cases', order: 5, title: 'Секция 5 — Кейсы', railLabel: 'КЕЙСЫ', railFirst: true, act: 2 },
+  { id: 'cases', order: 5, title: 'Секция 5 — Кейсы', railLabel: 'КЕЙС', railFirst: true, act: 2 },
   { id: 'process', order: 6, title: 'Секция 6 — Как я работаю', railLabel: 'ПРОЦЕСС', railFirst: true, act: 3 },
   { id: 'guarantees', order: 7, title: 'Секция 7 — Что я гарантирую', railLabel: 'ГАРАНТИИ', railFirst: true, act: 3 },
   { id: 'about', order: 8, title: 'Секция 8 — Обо мне', railLabel: 'ОБО МНЕ', railFirst: true, act: 3 },

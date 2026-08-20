@@ -70,8 +70,8 @@ describe('dist/index.html — иллюстрация «Замер»', () => {
   expect(casesStart, 'секция id="cases" не найдена').toBeGreaterThan(-1);
   expect(casesEnd, 'секция id="process" не найдена').toBeGreaterThan(casesStart);
   const weightStart = casesStart;
-  const weightEnd = html.indexOf('class="flow"', weightStart);
-  expect(weightEnd, 'иллюстрация «Одна труба» не найдена следом').toBeGreaterThan(weightStart);
+  const weightEnd = casesEnd;
+  expect(weightEnd, 'секция кейсов пуста').toBeGreaterThan(weightStart);
   const sectionHtml = html.slice(weightStart, weightEnd);
   /** Только сама иллюстрация — без прозы кейса вокруг неё: иначе тексты
    *  соседних блоков подворачивались бы под проверки ниже. */

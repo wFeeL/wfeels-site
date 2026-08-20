@@ -1,4 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
+import { routeWithMarker } from './illustrationRoute';
+
+/* Адрес страницы, на которой сегодня выведен рисунок. Правка владельца
+ * 2026-08-20 сняла кейс «ИИ-консультант» с главной: сегодня такой страницы нет, и
+ * весь набор спит — не удалён и не подогнан под пустоту. Появится страница
+ * каталога кейсов (спека 04) — прогон проснётся сам и пойдёт на неё.
+ * Пояснение механизма — `illustrationRoute.ts`. */
+const ROUTE = routeWithMarker('data-case-dialogue');
+test.skip(ROUTE === null, 'кейс «ИИ-консультант» снят с главной 2026-08-20 (правка владельца), и ни одна страница сборки его рисунок не выводит: набор проснётся со страницей каталога кейсов');
+
 
 /* Окно переписки кейса «ИИ-консультант» — раскрой, кегль, запасное состояние
  * и затвор цикла. Устройство задано эскизом и решениями владельца 2026-08-19
@@ -109,7 +119,7 @@ test.describe('«ИИ-консультант» — раскрой в поле и
   for (const width of WIDTHS) {
     test(`${width} px: окно переписки целиком в поле, текст не мельче ${MIN_FONT_PX} px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto('/');
+      await page.goto(ROUTE ?? '/');
       await page.locator(CHAT).scrollIntoViewIfNeeded();
       const m = await measure(page);
 
@@ -142,7 +152,7 @@ test.describe('«ИИ-консультант» — запасное состоя
       const errors: string[] = [];
       page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
       page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-      await page.goto('/');
+      await page.goto(ROUTE ?? '/');
       await page.locator(CHAT).scrollIntoViewIfNeeded();
 
       const state = await page.evaluate((sel) => {
@@ -179,7 +189,7 @@ test.describe('«ИИ-консультант» — раскадровка цик
   test('вопрос, «печатает», ответ и чип источника приходят по очереди', async ({ browser }) => {
     const context = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
-    await page.goto('/');
+    await page.goto(ROUTE ?? '/');
     await page.locator(CHAT).scrollIntoViewIfNeeded();
 
     const frames = await page.evaluate(
@@ -242,7 +252,7 @@ test.describe('«ИИ-консультант» — затвор цикла', () 
   test('вне окна цикл стоит, в окне идёт', async ({ browser }) => {
     const context = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
-    await page.goto('/');
+    await page.goto(ROUTE ?? '/');
 
     const readTime = () =>
       page.evaluate((sel) => {

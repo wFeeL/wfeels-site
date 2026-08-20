@@ -1,25 +1,38 @@
 import { describe, it, expect } from 'vitest';
-import { CASES, homeCases, CASES_CATALOG_HREF } from './cases';
+import { CASES, homeCases } from './cases';
 
 describe('cases.ts — внутренняя целостность', () => {
   it('пять кейсов всего — «Фабрика ботов» снята правкой владельца 2026-08-19', () => {
     expect(CASES.length).toBe(5);
   });
 
-  it('ровно три кейса на главной', () => {
-    expect(homeCases().length).toBe(3);
+  it('ровно один кейс на главной — правка владельца 2026-08-20', () => {
+    expect(homeCases().length).toBe(1);
   });
 
-  it('три кейса главной в порядке брифа `04-cases-brief.md`, раздел 2.1: ' +
-    'этот сайт → ИИ-консультант → Заявка-Хаб', () => {
-    expect(homeCases().map((c) => c.title)).toEqual([
-      'Этот сайт', 'ИИ-консультант', 'Заявка-Хаб',
-    ]);
+  it('на главной остался «Этот сайт», а «ИИ-консультант» и «Заявка-Хаб» ушли с неё, ' +
+    'оставшись записями с описанием для будущей страницы каталога', () => {
+    expect(homeCases().map((c) => c.title)).toEqual(['Этот сайт']);
+    for (const slug of ['ai-consultant', 'zayavka-hub']) {
+      const c = CASES.find((x) => x.slug === slug);
+      expect(c, slug).toBeDefined();
+      expect(c!.onHome, slug).toBe(false);
+      expect(c!.homeOrder, `${slug}: порядок на главной у снятого кейса не хранится`)
+        .toBeUndefined();
+      expect(c!.description, slug).toBeTruthy();
+    }
   });
 
-  it('стороны чередуются формулой homeOrder % 2 === 0 — зеркальна только вторая', () => {
+  /* Зеркальности при одном блоке НЕ СУЩЕСТВУЕТ, и сторож обязан это
+     утверждать, а не молчать: формула `homeOrder % 2 === 0` осталась в
+     `Cases.astro` и продолжает работать — единственный кейс идёт первым,
+     то есть нечётным, то есть обычной раскладкой. Молчание здесь стоило бы
+     дорого: вернись второй кейс без переизмерения секции, зеркало появилось
+     бы, а сторож бы этого не заметил. */
+  it('зеркальной раскладки на главной нет: единственный блок нечётный', () => {
     const mirrored = homeCases().map((c) => (c.homeOrder ?? 0) % 2 === 0);
-    expect(mirrored).toEqual([false, true, false]);
+    expect(mirrored).toEqual([false]);
+    expect(mirrored.some(Boolean), 'зеркалить при одном блоке нечего').toBe(false);
   });
 
   it('у каждого кейса главной есть описание и строка стека', () => {
@@ -74,7 +87,14 @@ describe('cases.ts — внутренняя целостность', () => {
     expect(new Set(slugs).size).toBe(slugs.length);
   });
 
-  it('каталог кейсов ведёт на /cases', () => {
-    expect(CASES_CATALOG_HREF).toBe('/cases');
+  /* Сторож снятия кнопки «Все кейсы» (правка владельца 2026-08-20). Прежде
+     здесь стояло `expect(CASES_CATALOG_HREF).toBe('/cases')` — проверка
+     ровно того сорта, из-за которого дефект и жил: она подтверждала, что
+     адрес записан правильно, и ничего не говорила о том, что страницы по
+     нему нет. Константа снята вместе с кнопкой; вернуть её молча, без
+     страницы, нельзя. */
+  it('константы адреса каталога в модуле нет — она вернётся вместе со страницей', async () => {
+    const mod = await import('./cases');
+    expect(Object.keys(mod)).not.toContain('CASES_CATALOG_HREF');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   FLOW_SOURCES,
@@ -14,9 +14,46 @@ import {
 /* Критерии приёмки `70-workshop/specs/site-v3/02-case-illustrations.md`,
  * раздел 7, проверяемые на готовой сборке `dist/`, а не рассуждением. Тот же
  * паттерн, что `dist-factory-core.test.ts`. Требует `npm run build` перед
- * `npm run test:unit`. */
+ * `npm run test:unit`.
+ *
+ * Правка владельца 2026-08-20 сняла с главной кейсы «Заявка-Хаб» и
+ * «ИИ-консультант»: сегодня их рисунки не выводятся НИ НА ОДНОЙ странице
+ * сборки. Проверки не удалены и не переписаны под пустоту — они ищут свой
+ * рисунок по всей сборке, а не только в `index.html`, и спят ровно до тех
+ * пор, пока его негде найти. Появится страница каталога кейсов (спека 04) —
+ * они проснутся сами, на той странице, где рисунок окажется, и без правки
+ * этого файла. Пустой прогон был бы хуже: он бы молчал.
+ *
+ * Общие сторожа секции кейсов главной (нет растра, нет настоящей формы)
+ * спать не имеют права и читают `index.html` как прежде. */
 
+const DIST_DIR = fileURLToPath(new URL('../../dist/', import.meta.url));
 const DIST_INDEX = fileURLToPath(new URL('../../dist/index.html', import.meta.url));
+
+/** Все собранные HTML-страницы, включая вложенные (`contact/index.html`). */
+function distPages(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = `${dir}${entry.name}`;
+    if (entry.isDirectory()) out.push(...distPages(`${full}/`));
+    else if (entry.name.endsWith('.html')) out.push(full);
+  }
+  return out;
+}
+
+/** Разметка страницы сборки, на которой сегодня выведен рисунок с этим
+ *  машинным признаком, — или `null`, если такой страницы нет. */
+function renderedPage(marker: string): string | null {
+  if (!existsSync(DIST_DIR)) return null;
+  for (const file of distPages(DIST_DIR)) {
+    const html = readFileSync(file, 'utf8');
+    if (html.includes(marker)) return html;
+  }
+  return null;
+}
+
+const FLOW_PAGE = renderedPage('data-case-flow');
+const DIALOGUE_PAGE = renderedPage('data-case-dialogue');
 
 describe('dist/index.html — иллюстрации «Одна труба» и «Пример диалога»', () => {
   it('сборка существует (npm run build перед этим набором)', () => {
@@ -46,13 +83,17 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
   });
 
   it('внутри секции кейсов нет настоящей формы: ни <input, ни <button (бриф 04, раздел 3.2/13.7)', () => {
-    // Кнопка «Все кейсы» — `<a class="btn secondary">` (Button.astro), не
-    // `<button>`; строка ввода чата — `<div aria-hidden>`, не `<input>`.
+    // Строка ввода чата — `<div aria-hidden>`, а не `<input>`. Кнопки «Все
+    // кейсы» в секции больше нет вовсе (правка владельца 2026-08-20).
     expect(casesHtml).not.toMatch(/<input\b/i);
     expect(casesHtml).not.toMatch(/<button\b/i);
   });
 
-  describe('«Одна труба, четыре отвода» (Заявка-Хаб)', () => {
+  describe.skipIf(FLOW_PAGE === null)('«Одна труба, четыре отвода» (Заявка-Хаб)', () => {
+    // Страница, на которой рисунок выведен сегодня. До правки 2026-08-20 это
+    // была секция кейсов главной; имя переменной сохранено, чтобы правка не
+    // трогала два десятка проверок ниже.
+    const casesHtml = FLOW_PAGE ?? '';
     it('оба раскроя SVG присутствуют в разметке', () => {
       expect(casesHtml).toContain('class="svg ra"');
       expect(casesHtml).toContain('class="svg rb"');
@@ -122,7 +163,8 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
   /* Переписка переработана 2026-08-19 по эскизу и решениям владельца: ровно
    * одна пара реплик, метки поля больше нет, окно зациклено. Проверки ниже
    * переписаны под этот состав, а не подогнаны под прежний. */
-  describe('«Пример диалога» (ИИ-консультант)', () => {
+  describe.skipIf(DIALOGUE_PAGE === null)('«Пример диалога» (ИИ-консультант)', () => {
+    const casesHtml = DIALOGUE_PAGE ?? '';
     it('шапка окна: состояние и собеседник — дословно из данных', () => {
       expect(casesHtml).toContain(DIALOGUE_STATUS_LABEL);
       expect(casesHtml).toContain(DIALOGUE_WINDOW_TITLE);

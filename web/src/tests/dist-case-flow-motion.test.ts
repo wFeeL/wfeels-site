@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 /* Критерии приёмки движения иллюстрации «Заявка-Хаб» (бриф
@@ -18,7 +18,36 @@ import { fileURLToPath } from 'node:url';
  * исходника (условные ветки и слоты могли бы его переставить).
  */
 
+/* С правки владельца 2026-08-20 «Заявка-Хаб» снята с главной, и рисунок не
+ * выводится ни на одной странице сборки. Проверки вывода (критерии 10 и 12)
+ * не удалены: они ищут рисунок по всей сборке и спят, пока его негде найти —
+ * страница каталога кейсов (спека 04) разбудит их сама. Раскадровка (всё
+ * остальное в этом файле) читается из ИСХОДНИКА компонента и работает
+ * по-прежнему: снятие с главной её не касается. */
+const DIST_DIR = fileURLToPath(new URL('../../dist/', import.meta.url));
 const DIST_INDEX = fileURLToPath(new URL('../../dist/index.html', import.meta.url));
+
+function distPages(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = `${dir}${entry.name}`;
+    if (entry.isDirectory()) out.push(...distPages(`${full}/`));
+    else if (entry.name.endsWith('.html')) out.push(full);
+  }
+  return out;
+}
+
+/** Разметка страницы сборки, на которой выведен рисунок, — или `null`. */
+function renderedPage(): string | null {
+  if (!existsSync(DIST_DIR)) return null;
+  for (const file of distPages(DIST_DIR)) {
+    const html = readFileSync(file, 'utf8');
+    if (html.includes('data-case-flow')) return html;
+  }
+  return null;
+}
+
+const FLOW_PAGE = renderedPage();
 const COMPONENT = fileURLToPath(new URL('../components/home/CaseFlowIllustration.astro', import.meta.url));
 
 const source = readFileSync(COMPONENT, 'utf8');
@@ -109,7 +138,7 @@ describe('«Заявка-Хаб» — раскадровка (бриф 07, ра�
   });
 });
 
-describe('dist/index.html — порядок отрисовки и число пакетов (критерии 10 и 12)', () => {
+describe.skipIf(FLOW_PAGE === null)('сборка — порядок отрисовки и число пакетов (критерии 10 и 12)', () => {
   it('сборка существует (npm run build перед этим набором)', () => {
     if (!existsSync(DIST_INDEX)) {
       throw new Error(
@@ -121,7 +150,7 @@ describe('dist/index.html — порядок отрисовки и число п
   });
 
   if (!existsSync(DIST_INDEX)) return;
-  const html = readFileSync(DIST_INDEX, 'utf8');
+  const html = FLOW_PAGE ?? '';
 
   for (const layout of ['ra', 'rb'] as const) {
     const open = html.indexOf(`class="svg ${layout}"`);

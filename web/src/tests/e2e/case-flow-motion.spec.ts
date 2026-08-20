@@ -1,4 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
+import { routeWithMarker } from './illustrationRoute';
+
+/* Адрес страницы, на которой сегодня выведен рисунок. Правка владельца
+ * 2026-08-20 сняла кейс «Заявка-Хаб» с главной: сегодня такой страницы нет, и
+ * весь набор спит — не удалён и не подогнан под пустоту. Появится страница
+ * каталога кейсов (спека 04) — прогон проснётся сам и пойдёт на неё.
+ * Пояснение механизма — `illustrationRoute.ts`. */
+const ROUTE = routeWithMarker('data-case-flow');
+test.skip(ROUTE === null, 'кейс «Заявка-Хаб» снят с главной 2026-08-20 (правка владельца), и ни одна страница сборки его рисунок не выводит: набор проснётся со страницей каталога кейсов');
+
 
 /* Движение иллюстрации «Заявка-Хаб» — бриф `70-workshop/specs/site-v3/
  * 07-flow-motion-brief.md`, раздел 15 (критерии 1–7). Прежняя редакция этого
@@ -72,7 +82,7 @@ test.describe('«Заявка-Хаб» — раскрой в поле и кег�
   for (const w of FIELD_WIDTHS) {
     test(`${w.width} px: раскрой .${w.layout} целиком в поле, подпись не мельче 14 px`, async ({ page }) => {
       await page.setViewportSize({ width: w.width, height: 900 });
-      await page.goto('/');
+      await page.goto(ROUTE ?? '/');
       await page.locator(`#cases svg.${w.layout}`).scrollIntoViewIfNeeded();
       const m = await measureField(page, w.layout);
 
@@ -102,7 +112,7 @@ test.describe('«Заявка-Хаб» — запасное состояние (
     const page = await context.newPage();
     const errors: string[] = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    await page.goto('/');
+    await page.goto(ROUTE ?? '/');
     await page.locator('#cases svg.ra').scrollIntoViewIfNeeded();
 
     const state = await page.evaluate(() => {
@@ -203,7 +213,7 @@ for (const cfg of [
     test(`пакет не перекрывает подпись, пауза единственная, возврат не режет подписи (критерии 3, 4, 7)`, async ({ browser }) => {
       const context = await browser.newContext({ reducedMotion: 'no-preference', viewport: cfg.viewport });
       const page = await context.newPage();
-      await page.goto('/');
+      await page.goto(ROUTE ?? '/');
       await page.locator(`#cases svg.${cfg.layout}`).scrollIntoViewIfNeeded();
 
       const FRAMES = 200;
@@ -301,7 +311,7 @@ test.describe('«Заявка-Хаб» — затвор цикла (критер
   test('вне окна цикл стоит, в окне идёт', async ({ browser }) => {
     const context = await browser.newContext({ reducedMotion: 'no-preference', viewport: A.viewport });
     const page = await context.newPage();
-    await page.goto('/');
+    await page.goto(ROUTE ?? '/');
 
     const readTime = () =>
       page.evaluate(() => {

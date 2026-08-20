@@ -33,7 +33,7 @@ test('на десктопе в шапке пять пунктов навигац
     await expect(links.nth(0)).toHaveText('Услуги');
     await expect(links.nth(0)).toHaveAttribute('href', '/#services');
     await expect(links.nth(1)).toHaveText('Цены');
-    await expect(links.nth(2)).toHaveText('Кейсы');
+    await expect(links.nth(2)).toHaveText('Кейс');
     await expect(links.nth(3)).toHaveText('Гарантии');
     // Последний пункт — «Обо мне», не «Контакты»: пункта с этой целью в
     // навигации больше нет вовсе.

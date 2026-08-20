@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { homeCases, CASES_CATALOG_HREF } from '../data/cases';
+import { homeCases } from '../data/cases';
 import { PAGE_WEIGHT_KB } from '../data/pageWeight';
 
 /* Тот же паттерн, что `dist-home-sections.test.ts`: читает `dist/index.html`
@@ -14,10 +14,15 @@ import { PAGE_WEIGHT_KB } from '../data/pageWeight';
  * `02-case-illustrations.md`) — её проверки отсюда удалены, а не
  * закомментированы: файл раньше назывался `dist-home-cases-proof.test.ts`.
  *
- * «Фабрика ботов» снята с главной правкой владельца 2026-08-19: блоков
- * стало три, её проверки (`dist-factory-shelf.test.ts` и оба e2e-сторожа
- * «Стеллажа») удалены вместе с предметом, а не оставлены пустыми. Сторож
- * отсутствия живёт ниже — по срезу секции, и в `data/cases.test.ts`. */
+ * «Фабрика ботов» снята с главной правкой владельца 2026-08-19: её проверки
+ * (`dist-factory-shelf.test.ts` и оба e2e-сторожа «Стеллажа») удалены вместе
+ * с предметом, а не оставлены пустыми. Сторож отсутствия живёт ниже — по
+ * срезу секции, и в `data/cases.test.ts`.
+ *
+ * Правка владельца 2026-08-20 оставила на главной ОДИН блок — «Этот сайт».
+ * «ИИ-консультант» и «Заявка-Хаб» с неё ушли, но из данных и из кода не
+ * удалены: их проверки не выброшены, а переведены на новое состояние —
+ * сторож ниже требует, чтобы их разметки в секции не было. */
 const DIST_INDEX = fileURLToPath(new URL('../../dist/index.html', import.meta.url));
 
 describe('dist/index.html — секция 5', () => {
@@ -34,9 +39,9 @@ describe('dist/index.html — секция 5', () => {
   if (!existsSync(DIST_INDEX)) return;
   const html = readFileSync(DIST_INDEX, 'utf8');
 
-  it('секция 5: метка, заголовок, три блока кейсов дословно на странице', () => {
+  it('секция 5: метка, заголовок в единственном числе, единственный блок дословно', () => {
     expect(html).toContain('ЧТО УЖЕ СДЕЛАНО');
-    expect(html).toContain('>Кейсы<');
+    expect(html).toContain('>Кейс<');
     for (const c of homeCases()) {
       expect(html, c.title).toContain(c.title);
       expect(html, c.description!).toContain(c.description);
@@ -44,8 +49,33 @@ describe('dist/index.html — секция 5', () => {
       expect(html, c.slug).toContain(`/cases/${c.slug}`);
     }
     expect(html).toContain('Разобрать кейс');
-    expect(html).toContain('Все кейсы');
-    expect(html).toContain(CASES_CATALOG_HREF);
+  });
+
+  /* Сторож снятия кнопки «Все кейсы» (правка владельца 2026-08-20). Прежде
+     на этом месте стояло `expect(html).toContain(CASES_CATALOG_HREF)` — и
+     именно оно держало дефект зелёным: кнопка вела на `/cases`, страницы по
+     адресу не существовало, а тест подтверждал наличие АДРЕСА в разметке.
+     Теперь проверяется отсутствие кнопки, а живучесть самой ловушки —
+     обходом всех ссылок главной в `dist-home-links.test.ts`. */
+  it('кнопки «Все кейсы» на главной нет, и адреса /cases в разметке тоже', () => {
+    const start = html.indexOf('id="cases"');
+    const end = html.indexOf('id="process"');
+    const section = html.slice(start, end);
+    expect(section).not.toContain('Все кейсы');
+    expect(section).not.toContain('href="/cases"');
+  });
+
+  it('снятые с главной кейсы на ней не выводятся: ни заголовка, ни рисунка', () => {
+    const start = html.indexOf('id="cases"');
+    const end = html.indexOf('id="process"');
+    const section = html.slice(start, end);
+    for (const title of ['ИИ-консультант', 'Заявка-Хаб']) {
+      expect(section, title).not.toContain(title);
+    }
+    // Рисунки остались в коде (их возьмёт страница каталога), но на главной
+    // их разметки быть не должно — иначе они молча весили бы страницу.
+    expect(section).not.toContain('data-case-flow');
+    expect(section).not.toContain('data-case-dialogue');
   });
 
   it('блок «Этот сайт»: иллюстрация «Замер» несёт машинный якорь гейта веса', () => {
@@ -63,10 +93,10 @@ describe('dist/index.html — секция 5', () => {
     const start = html.indexOf('id="cases"');
     const end = html.indexOf('id="process"');
     const section = html.slice(start, end);
-    // Задачи 4–5 плана (`02-case-illustrations.md`) построили «Одну трубу» и
-    // «Пример диалога», задача 3 — «Замер». Четвёртое поле («Стеллаж»)
-    // ушло вместе с кейсом «Фабрика ботов» 2026-08-19: полей три, по одному
-    // на блок, и число обязано совпадать с длиной `homeCases()`.
+    // Поле — по одному на блок, и число обязано совпадать с длиной
+    // `homeCases()`. С 2026-08-20 блок один, поле одно — «Замер»; поля
+    // «Одной трубы» и «Примера диалога» ушли с главной вместе со своими
+    // кейсами (их рисунки остались в коде и ждут страницу каталога).
     expect((section.match(/class="field"/g) || []).length,
       'в секции кейсов ровно по одному наполненному полю иллюстрации на блок')
       .toBe(homeCases().length);

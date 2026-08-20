@@ -19,7 +19,11 @@ test.describe('секция 5 — полноширинные блоки кейс
 
     const rows = page.locator('#cases .rows > .row');
     const count = await rows.count();
-    expect(count, 'секция кейсов пуста').toBeGreaterThanOrEqual(3);
+    /* С правки владельца 2026-08-20 блок ОДИН. Порог опущен до одного, а не
+       снят: пустая секция обязана ронять прогон, а зеркальность при одном
+       блоке проверяет `data/cases.test.ts` — здесь цикл ниже всё равно
+       сверит сторону каждого блока формулой, сколько бы их ни было. */
+    expect(count, 'секция кейсов пуста').toBeGreaterThanOrEqual(1);
 
     for (let i = 0; i < count; i++) {
       const row = rows.nth(i);
