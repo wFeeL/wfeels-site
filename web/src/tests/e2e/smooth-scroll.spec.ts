@@ -98,7 +98,18 @@ function traceStats(y0: number, trace: Sample[]) {
       prev = trace[i][1];
     }
   }
-  return { first, last, travelled: last - first, movingFrames: moving, settleAt };
+  /* Время до 90% пути — та величина, которую человек и воспринимает как
+     «страница догнала руку»; полная остановка наступает заметно позже,
+     последние её кадры двигают меньше пикселя. В отчёте называются оба. */
+  const travelled = last - y0;
+  let t90 = settleAt;
+  for (const [t, y] of trace) {
+    if (Math.abs(y - y0) >= Math.abs(travelled) * 0.9) {
+      t90 = t;
+      break;
+    }
+  }
+  return { first, last, travelled, movingFrames: moving, settleAt, t90 };
 }
 
 /* ------------------------------------------------------------------ */
@@ -115,13 +126,19 @@ test('плавность включена: один поворот колеса 
 
   console.log(
     `[плавность] пройдено ${s.travelled} px, кадров с движением ${s.movingFrames}, ` +
-      `остановка на ${s.settleAt} мс, за первый кадр ${firstFrame - s.first} px`,
+      `90% пути за ${s.t90} мс, полная остановка на ${s.settleAt} мс, ` +
+      `за первый кадр ${firstFrame - s.first} px`,
   );
 
   expect(s.travelled, 'колесо на 600 px обязано довезти ровно на 600 px').toBeCloseTo(600, 0);
   expect(s.movingFrames, 'мгновенный скачок — это один кадр с движением').toBeGreaterThan(8);
-  expect(s.settleAt, 'страница не должна тянуться дольше секунды').toBeLessThan(1000);
-  expect(s.settleAt, 'меньше 100 мс — это уже не плавность, а дрожь').toBeGreaterThan(100);
+  /* Судим по времени до 90% пути, а не по полной остановке: хвост движения
+     двигает меньше пикселя за кадр, глазом не читается и от кадровой сетки
+     зависит сильнее самой величины плавности. Полная остановка проверяется
+     тоже, но грубо — как страховка от «повисания». */
+  expect(s.t90, 'страница не должна тянуться за рукой').toBeLessThan(450);
+  expect(s.t90, 'меньше 150 мс — это уже не плавность, а дрожь').toBeGreaterThan(150);
+  expect(s.settleAt, 'движение не должно висеть дольше полутора секунд').toBeLessThan(1400);
   expect(
     firstFrame - s.first,
     'за первый кадр обязана пройти малая часть пути, иначе это скачок',
