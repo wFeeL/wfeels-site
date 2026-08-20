@@ -2,11 +2,23 @@ import { describe, it, expect } from 'vitest';
 import { splitBrandText, stripBrandMarkers, brandTextSegments } from './brandMarkers';
 
 describe('brandMarkers — разбор мест под фирменные значки', () => {
-  it('текст вокруг маркера сохраняется дословно, вместе с пробелом после него', () => {
-    expect(splitBrandText('в {figma} Figma')).toEqual([
+  it('слово после маркера уходит В ПАРУ со значком, а не в соседний кусок', () => {
+    // Смысл разбора: значок и слово, которое он обозначает, дальше печатаются
+    // одной неразрывной обёрткой (`BrandMark.astro`). Пока слово лежало в
+    // соседнем текстовом куске, между ними оставалась точка переноса — и на
+    // 1440 px значок Postgres встал последним символом строки.
+    expect(splitBrandText('в {figma} Figma и дальше')).toEqual([
       { kind: 'text', value: 'в ' },
-      { kind: 'mark', name: 'figma' },
-      { kind: 'text', value: ' Figma' },
+      { kind: 'mark', name: 'figma', word: 'Figma' },
+      { kind: 'text', value: ' и дальше' },
+    ]);
+  });
+
+  it('слово с хвостом препинания уезжает в пару целиком', () => {
+    expect(splitBrandText('через {chatgpt} ChatGPT. Дальше')).toEqual([
+      { kind: 'text', value: 'через ' },
+      { kind: 'mark', name: 'chatgpt', word: 'ChatGPT.' },
+      { kind: 'text', value: ' Дальше' },
     ]);
   });
 
@@ -14,6 +26,14 @@ describe('brandMarkers — разбор мест под фирменные зн�
     expect(splitBrandText('обычное предложение')).toEqual([
       { kind: 'text', value: 'обычное предложение' },
     ]);
+  });
+
+  // Привязать значок не к чему — значит он повиснет на краю строки. Это тот
+  // самый дефект, ради которого механизм и заведён, поэтому он роняет сборку,
+  // а не проезжает молча.
+  it('маркер без слова за ним — ошибка сборки, а не одинокий значок на странице', () => {
+    expect(() => splitBrandText('всё делаю в {figma}')).toThrow(/нет слова/);
+    expect(() => splitBrandText('всё делаю в {figma}, честно')).toThrow(/нет слова/);
   });
 
   it('снятие маркера убирает и один пробел за ним — двойного пробела не остаётся', () => {
@@ -30,10 +50,15 @@ describe('brandMarkers — разбор мест под фирменные зн�
     expect(() => stripBrandMarkers('при помощи {clude} Claude')).toThrow(/clude/);
   });
 
-  it('текстовые куски отдаются без пустых — по ним ищется текст в собранной странице', () => {
-    expect(brandTextSegments('{claude} Claude и {figma} Figma')).toEqual([
-      ' Claude и ',
-      ' Figma',
+  it('куски отдаются без пустых и включают слова при значках', () => {
+    // Слова при значках лежат в разметке внутри неразрывной обёртки, в
+    // соседний текстовый узел они не попадают — без них проверка собранной
+    // страницы перестала бы покрывать сами названия марок.
+    expect(brandTextSegments('{claude} Claude и {figma} Figma тоже')).toEqual([
+      'Claude',
+      ' и ',
+      'Figma',
+      ' тоже',
     ]);
   });
 });

@@ -69,10 +69,14 @@ if (ABOUT_BLOCKS.length !== 2) {
       {/* Текст абзаца несёт места под фирменные значки марок (`{claude}` и
           прочие) прямо внутри предложения — разбор в `lib/brandMarkers.ts`,
           сам знак в `BrandMark.astro`. Кусок текста уходит на страницу
-          дословно, вместе с пробелом после значка. */}
+          дословно.
+          Значок печатается НЕ один: разбор отдаёт его вместе со словом, к
+          которому он относится, и `BrandMark` печатает пару неразрывной
+          обёрткой. Иначе знак встаёт последним символом строки, а его слово
+          уезжает вниз — снимок владельца 2026-08-20, 1440 px, «Postgres». */}
       {ABOUT_BLOCKS.map((text) => (
         <p class="body-text">{splitBrandText(text).map((part) => (
-          part.kind === 'text' ? part.value : <BrandMark name={part.name} />
+          part.kind === 'text' ? part.value : <BrandMark name={part.name} word={part.word} />
         ))}</p>
       ))}
       <p class="closing"><strong>{ABOUT_CLOSING}</strong></p>

@@ -17,7 +17,12 @@ export type BrandMarkerName = (typeof BRAND_MARKERS)[number];
 
 export type BrandTextPart =
   | { kind: 'text'; value: string }
-  | { kind: 'mark'; name: BrandMarkerName };
+  /** Значок ВМЕСТЕ со словом, к которому он относится. Слово не остаётся в
+   *  соседнем текстовом куске намеренно: разрыв строки между значком и его
+   *  словом — дефект, и единственный надёжный способ его исключить —
+   *  не дать им разъехаться уже на разборе. Вывод склеивает пару одной
+   *  неразрывной обёрткой (`BrandMark.astro`). */
+  | { kind: 'mark'; name: BrandMarkerName; word: string };
 
 /** Любая пара фигурных скобок со словом внутри — кандидат в маркер. Шаблон
  *  намеренно ШИРЕ списка известных имён: `{clude}` должен попасть в разбор и
@@ -34,9 +39,18 @@ function assertKnown(name: string): BrandMarkerName {
   return name as BrandMarkerName;
 }
 
-/** Разбирает предложение на куски текста и места под значки, СОХРАНЯЯ текст
- *  дословно — пробел после маркера остаётся в тексте и уезжает на страницу
- *  вместе с ним, поэтому значок и следующее за ним слово не слипаются. */
+/** Разбирает предложение на куски текста и пары «значок + слово», СОХРАНЯЯ
+ *  текст дословно.
+ *
+ *  Слово после маркера забирается из текста в саму пару, а не остаётся в
+ *  соседнем куске: значок и слово, которое он обозначает, обязаны переноситься
+ *  только вместе, при ЛЮБОМ тексте владельца. Пробел между ними тоже уходит в
+ *  пару и печатается обёрткой — двойного пробела не возникает.
+ *
+ *  Маркер БЕЗ слова за ним роняет сборку. Это не педантизм: одинокий значок в
+ *  конце строки и есть тот дефект, ради которого заведён этот механизм, —
+ *  привязать его не к чему, и молча пропустить такой текст значило бы вернуть
+ *  дефект первой же правкой слов. */
 export function splitBrandText(text: string): BrandTextPart[] {
   const parts: BrandTextPart[] = [];
   let last = 0;
@@ -44,8 +58,19 @@ export function splitBrandText(text: string): BrandTextPart[] {
   for (const m of text.matchAll(MARKER_RE)) {
     const name = assertKnown(m[1]);
     if (m.index > last) parts.push({ kind: 'text', value: text.slice(last, m.index) });
-    parts.push({ kind: 'mark', name });
-    last = m.index + m[0].length;
+
+    const after = text.slice(m.index + m[0].length);
+    const bound = /^ (\S+)/.exec(after);
+    if (!bound) {
+      throw new Error(
+        `lib/brandMarkers: за маркером «{${name}}» нет слова. Значок печатается ` +
+        'неразрывно со следующим словом, поэтому маркер обязан стоять ПЕРЕД ' +
+        'словом и отделяться от него ровно одним пробелом: ' +
+        `«{${name}} Название». Одинокий значок повис бы на краю строки.`,
+      );
+    }
+    parts.push({ kind: 'mark', name, word: bound[1] });
+    last = m.index + m[0].length + bound[0].length;
   }
   if (last < text.length) parts.push({ kind: 'text', value: text.slice(last) });
 
@@ -65,12 +90,16 @@ export function stripBrandMarkers(text: string): string {
   });
 }
 
-/** Только текстовые куски, без пустых, — для проверки собранной страницы:
+/** Всё видимое содержимое строки кусками — для проверки собранной страницы:
  *  целиком строку с маркерами в `dist/index.html` не найти, значок разрывает
- *  её на части, и искать надо каждую часть. */
+ *  её на части, и искать надо каждую часть.
+ *
+ *  Слова, привязанные к значкам, отдаются отдельными кусками — в разметке они
+ *  лежат внутри неразрывной обёртки и в соседний текстовый узел не попадают.
+ *  Без них проверка собранной страницы перестала бы покрывать «Claude»,
+ *  «Figma» и остальные названия марок. */
 export function brandTextSegments(text: string): string[] {
   return splitBrandText(text)
-    .filter((p): p is { kind: 'text'; value: string } => p.kind === 'text')
-    .map((p) => p.value)
+    .map((p) => (p.kind === 'text' ? p.value : p.word))
     .filter((v) => v.trim() !== '');
 }
