@@ -4,7 +4,6 @@ import {
   computeActGroups,
   computeLineData,
   footerLineData,
-  isActStitch,
   lineDataFor,
   MEASURED_FOOTER_HEIGHT,
   MEASURED_SECTION_HEIGHT,
@@ -105,30 +104,6 @@ describe('линия на фоне — Ч-4 «Акт» (раздел 4.2)', () =
       expect(MEASURED_SECTION_HEIGHT[s.id], `нет измеренной высоты для ${s.id}`).toBeGreaterThan(0);
     }
     expect(MEASURED_FOOTER_HEIGHT).toBeGreaterThan(0);
-  });
-});
-
-/** `topGap: 'stitch'` (`pages/index.astro`) — раздел 4.2: «GAPS выводит
- *  topGap:'stitch' из смены act». */
-describe('линия на фоне — isActStitch (раздел 4.2)', () => {
-  it('services и process — стык актов (1→2, 2→3)', () => {
-    expect(isActStitch('services')).toBe(true);
-    expect(isActStitch('process')).toBe(true);
-  });
-
-  it('pricing, cases, guarantees, about, faq — внутри акта, не стык', () => {
-    for (const id of ['pricing', 'cases', 'guarantees', 'about', 'faq']) {
-      expect(isActStitch(id), id).toBe(false);
-    }
-  });
-
-  it('hero (первая секция) и pain («вход» → 1) — не стык между пронумерованными актами', () => {
-    expect(isActStitch('hero')).toBe(false);
-    expect(isActStitch('pain')).toBe(false);
-  });
-
-  it('contact (3 → «выход») не считается стыком — этот заход её topGap не трогает', () => {
-    expect(isActStitch('contact')).toBe(false);
   });
 });
 

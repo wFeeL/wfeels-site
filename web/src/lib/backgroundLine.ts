@@ -259,21 +259,3 @@ export function footerLineData(): Pick<LineDatum, 'side'> {
   const last = HOME_SECTIONS[HOME_SECTIONS.length - 1];
   return { side: data[last.id].side };
 }
-
-/** `topGap: 'stitch'` (`pages/index.astro`, `GAP`) выведен из смены `act`
- *  между этой секцией и предыдущей — раздел 4.2: «GAPS выводит topGap:
- *  'stitch' из смены act». Стык считается «стыком акта» только между двумя
- *  ПРОНУМЕРОВАННЫМИ актами (1↔2, 2↔3): границы «вход→1» и «3→выход» несут
- *  смену `act`, но их ритм отступов страница уже решила симметричным
- *  (раздел 3.3, «оба края… сохраняют старое симметричное поведение») — эта
- *  функция считает именно то же самое, а не второе правило рядом. */
-export function isActStitch(
-  id: string,
-  sections: readonly HomeSection[] = HOME_SECTIONS,
-): boolean {
-  const i = sections.findIndex((s) => s.id === id);
-  if (i <= 0) return false;
-  const prevAct = sections[i - 1].act;
-  const act = sections[i].act;
-  return typeof prevAct === 'number' && typeof act === 'number' && prevAct !== act;
-}

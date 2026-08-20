@@ -40,10 +40,11 @@
  *  site-v3/02-background-line.md`, раздел 4.2): `'in'` — первый экран,
  *  `1` — «проблема» (pain), `2` — «дело» (services/pricing/cases),
  *  `3` — «доверие» (process/guarantees/about/faq), `'out'` — выход
- *  (contact). Единственный источник ритма: и отступы страницы
- *  (`pages/index.astro`, вывод `topGap` из смены `act`), и переходы линии на
- *  фоне (`lib/backgroundLine.ts`) читают это поле, второго перечня не
- *  заводится. */
+ *  (contact). Читатель у поля теперь ОДИН — линия на фоне
+ *  (`lib/backgroundLine.ts`, `computeActGroups`): отступы страницы из смены
+ *  `act` больше не выводятся, правка владельца 2026-08-20 сделала зазор между
+ *  секциями одинаковым на всех стыках (`pages/index.astro`, `GAP`). Второго
+ *  перечня актов не заводится. */
 export type HomeAct = 'in' | 1 | 2 | 3 | 'out';
 
 export interface HomeSection {
