@@ -38,6 +38,7 @@
  *  — отдельная работа шага 6 плана, не эта правка.
  */
 import { computeVbH, MEASURED_FOOTER_HEIGHT, MEASURED_SECTION_HEIGHT } from './backgroundLine';
+import { flattenPath, resampleByLength } from './pathGeometry';
 
 /** Толщина штриха линии в единицах `viewBox` (раздел 7.2 брифа `05-line`):
  *  `stroke-width: 34` в `BackgroundLine.astro`. Единственный источник числа
@@ -47,6 +48,19 @@ import { computeVbH, MEASURED_FOOTER_HEIGHT, MEASURED_SECTION_HEIGHT } from './b
  *  тест. */
 export const LINE_STROKE_WIDTH_VB = 34;
 
+/** Один keyframe-стоп раскладки «шторки» (`.line-curtain`, `BackgroundLine.
+ *  astro`) — задача «пролагивает при листании» (D-080, 2026-08-21), механика
+ *  композитной замены `stroke-dashoffset`. `percent` — прогресс анимации
+ *  (0…100), тот же самый прогресс `view()`-таймлайна, что раньше двигал
+ *  `stroke-dashoffset` линейно по ДЛИНЕ дуги. `translate` — на сколько
+ *  процентов СВОЕЙ высоты (`vbH + 2·OVERHANG`, раздел 7.1 брифа `05-line`)
+ *  шторка сдвинута вниз: 0 — перекрывает путь целиком (ничего не нарисовано),
+ *  100 — ушла полностью (путь открыт целиком). */
+export interface RevealStop {
+  percent: number;
+  translate: number;
+}
+
 export interface LinePathEntry {
   /** `viewBox = 0 0 1000 vbH` — та же величина, что несёт таблица 4.1. */
   vbH: number;
@@ -54,6 +68,17 @@ export interface LinePathEntry {
   wide: string;
   /** Путь для мобильной нитки (< 900 px, раздел 8) — прямая на доке. */
   narrow: string;
+  /** Keyframe-стопы шторки для `wide` (см. `RevealStop`) — уже упрощены
+   *  (Дуглас–Пекер, см. `simplifyReveal`), готовы к записи в CSS
+   *  `@keyframes` без второй обработки. */
+  reveal: RevealStop[];
+  /** `OVERHANG / vbH · 100` — на сколько процентов ВЫСОТЫ СЕКЦИИ шторка
+   *  выступает за бокс сверху и снизу (`BackgroundLine.astro`, `.line-
+   *  curtain`, `top`/`height`), чтобы её домен совпадал с доменом самого
+   *  пути (`-OVERHANG … vbH+OVERHANG`), а не только с видимым боксом
+   *  `0…vbH` — иначе шторка не смогла бы скрыть/открыть головной вынос
+   *  пути (Г-2), который целиком лежит выше `y=0`. */
+  overhangPercent: number;
 }
 
 /* ─────────────────────── Рисование (раздел 4.3/4.4/6.2) ─────────────── */
@@ -71,6 +96,111 @@ const STRAIGHT_IN_OUT = 100;
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+/* ─────────────────── Шторка (задача «пролагивает», D-080) ─────────────────
+ *
+ * `stroke-dashoffset` не композитится Chromium — каждый кадр перерисовывает
+ * и растрирует весь бокс `.line` заново (замер владельца, `DECISIONS.md`
+ * D-080). Композируемая замена: путь нарисован ЦЕЛИКОМ и статически, а
+ * открывается шторкой (`.line-curtain`, непрозрачный див того же цвета, что
+ * фон за линией — раздел 6.1 брифа `05-line`: линия красится строго между
+ * фоном `body`/`footer` и всеми в потоке идущими поверхностями, значит цвет
+ * ЗА линией везде один и тот же плоский `--bg`/микс подвала, вторая правда
+ * фона не нужна), которую двигает `translate: 0 <проц>%` на ТОМ ЖЕ
+ * `view()`-таймлайне — `transform` композитится, перерисовки нет вовсе.
+ *
+ * Раньше `stroke-dashoffset` открывал путь ЛИНЕЙНО ПО ДЛИНЕ ДУГИ (`pathLength
+ * = 1`, `dasharray: 1 1`) — для прямых прогонов это то же самое, что линейно
+ * по Y, а для траверсов (S-кривая) — НЕТ: дуга тратит часть длины на
+ * горизонтальный ход, и точка, до которой дошла дуга при прогрессе `p`,
+ * стоит по Y НИЖЕ, чем `p · vbH`. Чтобы картинка на КАЖДОМ шаге прокрутки
+ * осталась той же самой (жёсткое условие D-080), а не только по краям
+ * диапазона, шторка не просто едет линейно 0→100% — её путь по Y считается
+ * ЧИСЛЕННО по ТОЙ ЖЕ геометрии, что несёт сам путь: `resampleByLength`
+ * (`lib/pathGeometry.ts`, тот же инструмент, что и контракт-тест раздела 10
+ * шаг 3) даёт точки, равномерные по ДЛИНЕ ДУГИ — i-я точка при `N` точках
+ * это ровно то положение, в которое старый `stroke-dashoffset` привёл бы
+ * кончик при прогрессе `i/(N-1)`. Для прямых путей (семь из одиннадцати)
+ * таблица выходит линейной автоматически — точки на прямой равномерны по Y
+ * и по длине дуги одновременно, второй ветки «прямая/кривая» здесь не
+ * заводится: один и тот же код проходит через оба случая. */
+
+/** Количество точек ПЕРЕД упрощением — с запасом на кривизну траверсов
+ *  (S-дуга, раздел 4.4): реже — рискуем смазать пик кривизны, чаще —
+ *  не изменит результат после `simplifyReveal`, только время сборки. */
+const REVEAL_SAMPLE_COUNT = 41;
+/** Допуск упрощения Дугласа–Пекера, в тех же единицах, что и оси таблицы
+ *  (проценты по обеим осям) — 0,15 % высоты секции на секции ~1000…2000 px
+ *  это 1,5…3 px, значительно меньше толщины штриха (31…48 px, раздел 5.1):
+ *  зрительно неотличимо от точной кривой, а для семи прямых путей сводит
+ *  таблицу ровно к двум точкам (0 % и 100 %) — CSS не растёт лишним весом
+ *  там, где кривизны нет вовсе. */
+const REVEAL_SIMPLIFY_TOLERANCE = 0.15;
+
+/** Расстояние точки `p` до отрезка `a→b` в той же двумерной системе
+ *  (percent, translate) — обычная проекция на отрезок с зажимом `t∈[0,1]`. */
+function pointToSegmentDistance(p: RevealStop, a: RevealStop, b: RevealStop): number {
+  const dx = b.percent - a.percent;
+  const dy = b.translate - a.translate;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return Math.hypot(p.percent - a.percent, p.translate - a.translate);
+  const t = Math.max(0, Math.min(1, ((p.percent - a.percent) * dx + (p.translate - a.translate) * dy) / len2));
+  const px = a.percent + t * dx;
+  const py = a.translate + t * dy;
+  return Math.hypot(p.percent - px, p.translate - py);
+}
+
+/** Дуглас–Пекер по двум осям (percent, translate) — держит только те стопы,
+ *  без которых кривая отклонилась бы больше допуска. Прямая линия (семь
+ *  путей из одиннадцати) сводится к двум точкам; траверс — к горстке точек
+ *  вокруг S-дуги. Меньше CSS, тот же зрительный результат (раздел 13 брифа
+ *  `05-line`: вес — не вкус). */
+function simplifyReveal(points: readonly RevealStop[], tolerance: number): RevealStop[] {
+  if (points.length <= 2) return [...points];
+  let maxDist = 0;
+  let splitAt = 0;
+  const first = points[0];
+  const last = points[points.length - 1];
+  for (let i = 1; i < points.length - 1; i++) {
+    const d = pointToSegmentDistance(points[i], first, last);
+    if (d > maxDist) {
+      maxDist = d;
+      splitAt = i;
+    }
+  }
+  if (maxDist > tolerance) {
+    const left = simplifyReveal(points.slice(0, splitAt + 1), tolerance);
+    const right = simplifyReveal(points.slice(splitAt), tolerance);
+    return [...left.slice(0, -1), ...right];
+  }
+  return [first, last];
+}
+
+/** Строит таблицу шторки для одного пути — раздел выше. `overhang` здесь и
+ *  в CSS всегда `OVERHANG` (60, раздел 3 брифа `05-line`, Г-2): один и тот
+ *  же вынос у геометрии пути и у домена шторки, второго числа не заводится. */
+function revealKeyframes(d: string, vbH: number): RevealStop[] {
+  const dense = resampleByLength(flattenPath(d), REVEAL_SAMPLE_COUNT);
+  const span = vbH + 2 * OVERHANG;
+  const raw = dense.map((p, i) => ({
+    percent: round2((i / (REVEAL_SAMPLE_COUNT - 1)) * 100),
+    translate: round2(((p.y + OVERHANG) / span) * 100),
+  }));
+  return simplifyReveal(raw, REVEAL_SIMPLIFY_TOLERANCE);
+}
+
+/** Единственная точка сборки записи реестра — раньше каждая запись
+ *  собирала объектный литерал руками, теперь ещё считает шторку и её вынос
+ *  в процентах (раздел выше), не по второму разу на каждый вызов. */
+function buildEntry(vbH: number, wide: string, narrow: string): LinePathEntry {
+  return {
+    vbH,
+    wide,
+    narrow,
+    reveal: revealKeyframes(wide, vbH),
+    overhangPercent: round2((OVERHANG / vbH) * 100),
+  };
 }
 
 /** Прогон — прямая на доке `dockX` (раздел 4.3: «прямая» — секция
@@ -119,13 +249,13 @@ const HAND_DRAWN: Readonly<Record<string, LinePathEntry>> = {
   // неё начинается линия левым доком ([[00-overview]]).
   hero: (() => {
     const h = vbHOf('hero');
-    return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
+    return buildEntry(h, straightPath(h, DOCK_LEFT), narrowPath(h));
   })(),
   // pain — раздел 4.3: «прямая», 663 px < 850 (Г-3) — событие не
   // помещается; продолжает левый док, на котором закончился hero.
   pain: (() => {
     const h = vbHOf('pain');
-    return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
+    return buildEntry(h, straightPath(h, DOCK_LEFT), narrowPath(h));
   })(),
   // services — раздел 4.3: «траверс слева направо» — граница акта 1→2
   // (Ч-4). Карта 6.2: карточки 170…710/730…1270 × +245…853/+905…1426,
@@ -134,17 +264,13 @@ const HAND_DRAWN: Readonly<Record<string, LinePathEntry>> = {
   // карточек (раздел 4.4: «скрыта ими», для Л-2 законно).
   services: (() => {
     const h = vbHOf('services');
-    return {
-      vbH: h,
-      wide: traversePath(h, DOCK_LEFT, DOCK_RIGHT),
-      narrow: narrowPath(h),
-    };
+    return buildEntry(h, traversePath(h, DOCK_LEFT, DOCK_RIGHT), narrowPath(h));
   })(),
   // pricing — раздел 4.3: «прямая, правый причал» — пауза после события
   // services, продолжает правый док, на котором тот закончился.
   pricing: (() => {
     const h = vbHOf('pricing');
-    return { vbH: h, wide: straightPath(h, DOCK_RIGHT), narrow: narrowPath(h) };
+    return buildEntry(h, straightPath(h, DOCK_RIGHT), narrowPath(h));
   })(),
   // cases — раздел 4.3: «прямая, правый причал». До правки владельца
   // 2026-08-20 здесь стоял «выход внутрь и обратно» (`dipPath`, боковой ход
@@ -166,7 +292,7 @@ const HAND_DRAWN: Readonly<Record<string, LinePathEntry>> = {
   // достают из истории, а не рисуют заново.
   cases: (() => {
     const h = vbHOf('cases');
-    return { vbH: h, wide: straightPath(h, DOCK_RIGHT), narrow: narrowPath(h) };
+    return buildEntry(h, straightPath(h, DOCK_RIGHT), narrowPath(h));
   })(),
   // process — раздел 4.3: «траверс справа налево» — граница акта 2→3
   // (Ч-4), высота 1279 px проходит порог 850. Карта 6.2: `.panel`
@@ -175,11 +301,7 @@ const HAND_DRAWN: Readonly<Record<string, LinePathEntry>> = {
   // только в полях по краям.
   process: (() => {
     const h = vbHOf('process');
-    return {
-      vbH: h,
-      wide: traversePath(h, DOCK_RIGHT, DOCK_LEFT),
-      narrow: narrowPath(h),
-    };
+    return buildEntry(h, traversePath(h, DOCK_RIGHT, DOCK_LEFT), narrowPath(h));
   })(),
   // guarantees — раздел 4.3: «прямая». Карта 6.2: «нет ни одной»
   // непрозрачной коробки — линия открыта целиком, поэтому она обязана
@@ -187,21 +309,21 @@ const HAND_DRAWN: Readonly<Record<string, LinePathEntry>> = {
   // превратятся в единственное место, где фон кричит»).
   guarantees: (() => {
     const h = vbHOf('guarantees');
-    return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
+    return buildEntry(h, straightPath(h, DOCK_LEFT), narrowPath(h));
   })(),
   // about — раздел 4.3: «прямая», 574 px. Карта 6.2: «нет ни одной»
   // непрозрачной коробки, как у guarantees — тот же довод: два открытых
   // экрана подряд обязаны оставаться спокойными.
   about: (() => {
     const h = vbHOf('about');
-    return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
+    return buildEntry(h, straightPath(h, DOCK_LEFT), narrowPath(h));
   })(),
   // faq — раздел 4.3: «прямая», 543 px. Карта 6.2: `.panel` 578…1270 ×
   // +96…543 — закрыта правая половина, левая (< 578, наш причал 59)
   // открыта целиком; прямая на левом доке остаётся в открытом поле.
   faq: (() => {
     const h = vbHOf('faq');
-    return { vbH: h, wide: straightPath(h, DOCK_LEFT), narrow: narrowPath(h) };
+    return buildEntry(h, straightPath(h, DOCK_LEFT), narrowPath(h));
   })(),
   // contact — раздел 4.3: «сход к середине (Л-2: и дальше вниз)», боковой
   // ход 440 ед. (44 % — событие по Г-4) — выход (Ч-4), но НЕ до правого
@@ -210,11 +332,7 @@ const HAND_DRAWN: Readonly<Record<string, LinePathEntry>> = {
   contact: (() => {
     const h = vbHOf('contact');
     const xMid = DOCK_LEFT + 440;
-    return {
-      vbH: h,
-      wide: traversePath(h, DOCK_LEFT, xMid, 48),
-      narrow: narrowPath(h),
-    };
+    return buildEntry(h, traversePath(h, DOCK_LEFT, xMid, 48), narrowPath(h));
   })(),
   // footer — раздел 4.3: «прямая, за нижнюю кромку» (Л-2). Продолжает
   // contact с ТОЙ ЖЕ точки x=499 («сход к середине») — раздел 11, п. 3:
@@ -222,7 +340,7 @@ const HAND_DRAWN: Readonly<Record<string, LinePathEntry>> = {
   footer: (() => {
     const h = computeVbH(MEASURED_FOOTER_HEIGHT);
     const xMid = DOCK_LEFT + 440;
-    return { vbH: h, wide: straightPath(h, xMid), narrow: narrowPath(h) };
+    return buildEntry(h, straightPath(h, xMid), narrowPath(h));
   })(),
 };
 
