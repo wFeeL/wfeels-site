@@ -2,7 +2,6 @@
 import Base from '../layouts/Base.astro';
 import Container from '../components/Container.astro';
 import Section from '../components/Section.astro';
-import LangSwitch from '../components/LangSwitch.astro';
 import Prose from '../components/Prose.astro';
 import DraftNotice from '../components/DraftNotice.astro';
 
@@ -23,7 +22,6 @@ const SECTIONS = [
 <Base title="Пользовательское соглашение — wfeels"
       description="Условия оказания услуг."
       noindex={true}>
-  <LangSwitch slot="lang" />
   <Container>
     <Section>
       <DraftNotice>

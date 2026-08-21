@@ -2,7 +2,6 @@
 import Base from '../layouts/Base.astro';
 import Container from '../components/Container.astro';
 import Section from '../components/Section.astro';
-import LangSwitch from '../components/LangSwitch.astro';
 import LeadForm from '../components/LeadForm.astro';
 ---
 <!-- Разметка страницы контактов описывает саму страницу и привязывает её к
@@ -13,7 +12,6 @@ import LeadForm from '../components/LeadForm.astro';
   description="Расскажите о задаче, отвечу в течение дня."
   schema="contact"
 >
-  <LangSwitch slot="lang" />
   <Container>
     <Section label="Контакт">
       <h1 class="t-h1">Расскажите о задаче</h1>

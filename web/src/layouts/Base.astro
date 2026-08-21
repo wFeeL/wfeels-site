@@ -131,9 +131,7 @@ const structured = schema
     <a class="skip" href="#main">
       {t.skip}
     </a>
-    <Header lang={lang} progress={progress} rail={rail}>
-      <slot name="lang" slot="lang" />
-    </Header>
+    <Header lang={lang} progress={progress} rail={rail} />
     <main id="main" tabindex="-1">
       <slot />
     </main>

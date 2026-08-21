@@ -14,13 +14,14 @@ describe('buildMeta', () => {
     expect(m.canonical).toBe('https://wfeels.ru/');
   });
 
-  it('у двуязычной страницы три альтернативы, включая x-default', () => {
+  // До правки владельца 2026-08-21 («убираем переключатель на английский
+  // язык страницы... убрать путь /en») здесь стояло обратное ожидание — три
+  // альтернативы у главной, включая x-default. `BILINGUAL_PATHS` опустел
+  // (`i18n/locales.ts`), `hasTranslation` теперь всегда `false`, и главная
+  // альтернатив не несёт — как и любая другая страница.
+  it('hreflang не рисуется нигде: BILINGUAL_PATHS пуст', () => {
     const m = buildMeta({ title: 'A', description: 'B', pathname: '/', site: SITE });
-    expect(m.alternates).toEqual([
-      { hreflang: 'ru', href: 'https://wfeels.ru/' },
-      { hreflang: 'en', href: 'https://wfeels.ru/en' },
-      { hreflang: 'x-default', href: 'https://wfeels.ru/' },
-    ]);
+    expect(m.alternates).toEqual([]);
   });
 
   // Страница без английской пары не должна звать поисковик на несуществующий

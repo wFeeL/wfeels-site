@@ -1,7 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
 import Container from '../components/Container.astro';
-import LangSwitch from '../components/LangSwitch.astro';
 import { HOME_SECTIONS } from '../lib/sections';
 import HomeSection from '../components/home/HomeSection.astro';
 import MobileCtaBar from '../components/home/MobileCtaBar.astro';
@@ -126,7 +125,6 @@ const GAP: Record<
       Состояние «ни рельса, ни полосы» невозможно ни при какой ширине: два
       элемента разведены общей точкой перелома 1324 px из `tokens.css`, а не
       двумя независимо подобранными числами. */}
-  <LangSwitch slot="lang" />
   {/* Десять секций собираются из `lib/sections.ts` — единственного
       списка, который читают также шапка и рельс. Перечислять секции здесь
       руками нельзя: список путей в этом репозитории уже дважды расходился

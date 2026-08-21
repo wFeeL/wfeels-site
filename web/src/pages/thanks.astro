@@ -2,12 +2,10 @@
 import Base from '../layouts/Base.astro';
 import Container from '../components/Container.astro';
 import Section from '../components/Section.astro';
-import LangSwitch from '../components/LangSwitch.astro';
 import Button from '../components/Button.astro';
 import { TELEGRAM_URL } from '../lib/contacts';
 ---
 <Base title="Заявка отправлена — wfeels" description="Заявка получена." noindex={true}>
-  <LangSwitch slot="lang" />
   <Container>
     <Section label="Контакт">
       <h1 class="t-h1">Заявка ушла</h1>
