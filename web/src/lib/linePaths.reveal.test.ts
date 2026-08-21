@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LINE_PATHS } from './linePaths';
+import { LINE_PATHS, LINE_STROKE_WIDTH_VB } from './linePaths';
 import { flattenPath, resampleByLength } from './pathGeometry';
 
 /** Сторож раскладки «шторки» (`RevealStop[]`, `linePaths.ts`) — задача
@@ -37,6 +37,11 @@ describe('линия на фоне — таблица шторки воспро�
   it.each(Object.keys(LINE_PATHS))('%s: прямые стопы попадают на реальную дугу (допуск 0.2%%)', (id) => {
     const entry = LINE_PATHS[id];
     const vbH = entry.vbH;
+    // Домен таблицы шторки — `OVERHANG` (координата конца пути), не
+    // `CAP_OVERHANG` (раздел у `revealKeyframes`, `linePaths.ts`): таблица
+    // кодирует движение кончика по дуге ПУТИ, а бокс, который накрывает
+    // шторка (`overhangPercent`, проверен отдельным тестом ниже), больше на
+    // `w/2` — это разные величины по конструкции, не расхождение.
     const OVERHANG = 60; // раздел 3 брифа `05-line`, Г-2 — то же число, что и в реестре.
     const span = vbH + 2 * OVERHANG;
     // Плотная дуга — независимый пересчёт по arc-length (не переиспользует
@@ -66,10 +71,15 @@ describe('линия на фоне — таблица шторки воспро�
     }
   });
 
-  it('overhangPercent совпадает с OVERHANG/vbH — тот же вынос, что несёт сам путь', () => {
-    const OVERHANG = 60;
+  it('overhangPercent совпадает с (OVERHANG + w/2)/vbH — прячет и координату, и полукруг торца', () => {
+    // Раздел 3 брифа `05-line`, Г-2 + дефект «оторванный кусок линии»
+    // (ревью 2026-08-21, `CAP_OVERHANG` в `linePaths.ts`): шторка обязана
+    // накрывать не только координату конца пути (`OVERHANG`), но и
+    // закрашенный `round`-полукруг вокруг неё (`w/2`) — иначе он торчит
+    // из-под шторки соседней секции, которая красится позже в DOM.
+    const CAP_OVERHANG = 60 + LINE_STROKE_WIDTH_VB / 2;
     for (const [id, entry] of Object.entries(LINE_PATHS)) {
-      const expected = (OVERHANG / entry.vbH) * 100;
+      const expected = (CAP_OVERHANG / entry.vbH) * 100;
       expect(entry.overhangPercent, id).toBeCloseTo(expected, 1);
     }
   });
