@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { PRICING } from '../data/pricing';
 import { HERO_TERMS } from '../data/terms';
-import { SERVICE_GROUPS, NICHES } from '../data/services';
+import { SERVICE_GROUPS } from '../data/services';
 import { TOP_CARDS, SHELF_CARDS } from '../data/pricingShowcase';
 
 /* Проверяет две вещи разом, требуемые планом (задачи 5–7, «Приёмка»):
@@ -92,15 +92,21 @@ describe('dist/index.html — секции 1–3', () => {
     expect(html).toContain('class="answer-link" href="#guarantees"');
   });
 
-  it('секция 3: метка, заголовок, все четыре карточки и все ниши', () => {
+  it('секция 3: метка, заголовок и все четыре карточки', () => {
     expect(html).toContain('Что я делаю');
     for (const group of SERVICE_GROUPS) {
       expect(html, group.title).toContain(group.title);
       expect(html, group.stack).toContain(group.stack);
       for (const link of group.links) expect(html, link.text).toContain(link.text);
     }
-    for (const niche of NICHES) expect(html, niche.text).toContain(niche.text);
     expect(html).toContain('Все услуги');
+  });
+
+  // Правка владельца 2026-08-21: строка ниш («Под вашу отрасль: …») снята —
+  // ссылки вели на несуществующие нишевые страницы, и в ближайшее время их
+  // не будет. Обратная проверка, чтобы снятие нельзя было молча откатить.
+  it('секция 3: строки ниш «Под вашу отрасль» на странице нет', () => {
+    expect(html).not.toContain('Под вашу отрасль');
   });
 
   it('секция 4: заголовок присутствует, заглушки «Секция 4 — Цены» больше нет', () => {

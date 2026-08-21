@@ -1,13 +1,13 @@
 ---
 /* Секция 3 — что я делаю. Четыре карточки-группы в сетке 2×2 (спека
- * 02-home.md, раздел 6). Содержимое карточек и ниш читается из
+ * 02-home.md, раздел 6). Содержимое карточек читается из
  * `data/services.ts` — единственного источника, второй ручной копии текста
  * здесь нет.
  */
 import Label from '../Label.astro';
 import Button from '../Button.astro';
 import ServiceCard from './ServiceCard.astro';
-import { SERVICE_GROUPS, NICHES, SERVICES_CATALOG_HREF } from '../../data/services';
+import { SERVICE_GROUPS, SERVICES_CATALOG_HREF } from '../../data/services';
 ---
 <Label>УСЛУГИ</Label>
 <h2 class="t-h2">Что я делаю</h2>
@@ -16,16 +16,9 @@ import { SERVICE_GROUPS, NICHES, SERVICES_CATALOG_HREF } from '../../data/servic
   {SERVICE_GROUPS.map((group) => <ServiceCard group={group} />)}
 </div>
 
-<p class="niches">
-  Под вашу отрасль:
-  {NICHES.map((n, i) => (
-    <>
-      {' '}
-      <a href={n.href}>{n.text}</a>
-      {i < NICHES.length - 1 && <span class="sep" aria-hidden="true"> · </span>}
-    </>
-  ))}
-</p>
+{/* Строка ниш («Под вашу отрасль: …») снята правкой владельца 2026-08-21:
+    ссылки на неё вели на несуществующие нишевые страницы, а страниц не
+    будет и в ближайшее время. */}
 
 {/* Правка владельца 2026-08-13, пункт 4: текстовой ссылкой под сеткой она
     терялась («выглядит странно и отстранённо… совсем непримечательно»).
@@ -63,32 +56,6 @@ import { SERVICE_GROUPS, NICHES, SERVICES_CATALOG_HREF } from '../../data/servic
      раз в `styles/base.css` как `.grid > :nth-child(2n)`, а не дважды здесь
      и там: класс `.grid` в разметке уникален для этих двух секций,
      дублировать правило — платить весом за копию. */
-
-  .niches {
-    margin: 32px 0 0;
-    color: var(--text-muted);
-  }
-  .niches a {
-    color: var(--text);
-    text-decoration-color: var(--border);
-    text-underline-offset: 3px;
-    /* Цель нажатия пальцем — дизайн-ревью (мобильные дефекты, часть 2):
-       было 22 px (замер ревью) — ссылка стояла строчным `inline` без
-       собственной коробки, `min-height` на такой элемент браузер просто
-       игнорирует (не блочный и не заменяемый элемент). `inline-flex` даёт
-       ссылке коробку, оставаясь при этом словом внутри предложения —
-       переносится вместе с текстом как обычно. `vertical-align: middle`
-       — без него 44-пиксельная коробка садится нижним краем на базовую
-       линию соседних слов (UA-умолчание `baseline`) и торчит вверх сильнее,
-       чем вниз; `middle` держит её по центру строки, вместе с обычным
-       текстом и разделителем «·». */
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    vertical-align: middle;
-  }
-  .niches a:hover { color: var(--accent); text-decoration-color: var(--accent); }
-  .niches .sep { color: var(--text-faint); }
 
   .all-services {
     margin: 24px 0 0;

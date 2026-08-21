@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SERVICE_GROUPS, NICHES, SERVICES_CATALOG_HREF } from './services';
+import { SERVICE_GROUPS, SERVICES_CATALOG_HREF } from './services';
 
 describe('services.ts — внутренняя целостность', () => {
   it('четыре группы, в порядке Сайты · Автоматизация и интеграции · ИИ · Telegram', () => {
@@ -53,19 +53,9 @@ describe('services.ts — внутренняя целостность', () => {
     }
   });
 
-  it('четыре ниши, дословно из 02-texts.md', () => {
-    expect(NICHES.map((n) => n.text)).toEqual([
-      'зооуслуги',
-      'салоны и барбершопы',
-      'мастера-ремесленники',
-      'клиники',
-    ]);
-  });
-
   it('ссылки уникальны — ни одна посадочная не задвоена', () => {
     const hrefs = [
       ...SERVICE_GROUPS.flatMap((g) => g.links.map((l) => l.href)),
-      ...NICHES.map((n) => n.href),
       SERVICES_CATALOG_HREF,
     ];
     expect(new Set(hrefs).size, 'повтор адреса среди ссылок секции').toBe(hrefs.length);
