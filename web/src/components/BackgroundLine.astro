@@ -115,29 +115,54 @@ function toScaleY(translatePercent: number): string {
   return scaleY.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-/** CSS-текст сгенерированных `@keyframes line-reveal-{id}` — один на каждую
- *  запись реестра, стопы уже упрощены (`lib/linePaths.ts`, `buildEntry`).
- *  Единственный источник геометрии — реестр; здесь она только сериализуется
- *  в CSS (через `toScaleY`, см. выше), второй раз не считается. */
-const revealKeyframesCss = Object.entries(LINE_PATHS)
-  .map(([id, entry]) => {
+/** ПРАВКА 2026-08-21 (та же задача, третий проход, замер владельца): 40
+ *  пропущенных кадров вместо цели ≤10 — при том, что свойство (`scaleY`),
+ *  число кадров и `transform-origin` тут ни при чём (проверено отдельно).
+ *  Причина — КОЛИЧЕСТВО РАЗНЫХ одновременно живых `@keyframes`: браузер
+ *  переставал отдавать их композитору при одиннадцати разных именах и
+ *  переставал — при одном общем. Из одиннадцати записей реестра восемь
+ *  тождественны (простой прогон без событий — ровно два стопа, `0%→scaleY(1)`,
+ *  `100%→scaleY(0)`, см. `simplifyReveal`/`buildEntry`, `lib/linePaths.ts`);
+ *  свои таблицы несут только траверсы (`services`, `process`, `contact`).
+ *  Дедупликация — по СОДЕРЖИМОМУ тела, не по перечню секций руками (список
+ *  протухнет при следующей правке реестра, тождество тел — нет): одинаковые
+ *  тела делят одно имя, у каждого уникального тела имя — `line-reveal-{id}`
+ *  первого id, с которым это тело встретилось. */
+const bodyToName = new Map<string, string>();
+const revealBodies = Object.fromEntries(
+  Object.entries(LINE_PATHS).map(([id, entry]) => {
     const body = entry.reveal
       .map((s) => `${s.percent}%{transform:scaleY(${toScaleY(s.translate)})}`)
       .join('');
-    return `@keyframes line-reveal-${id}{${body}}`;
-  })
+    if (!bodyToName.has(body)) bodyToName.set(body, `line-reveal-${id}`);
+    return [id, body];
+  }),
+);
+/** id → итоговое имя анимации после дедупликации (карта используется и
+ *  для генерации `@keyframes`, и для назначения `animation-name` ниже). */
+const revealNameOf = Object.fromEntries(
+  Object.entries(revealBodies).map(([id, body]) => [id, bodyToName.get(body)!]),
+);
+
+/** CSS-текст сгенерированных `@keyframes` — один на КАЖДОЕ УНИКАЛЬНОЕ тело
+ *  (было: один на каждую запись реестра, одиннадцать). Порядок вставки
+ *  `Map` — порядок первого появления тела при переборе реестра, детерминирован. */
+const revealKeyframesCss = Array.from(bodyToName.entries())
+  .map(([body, name]) => `@keyframes ${name}{${body}}`)
   .join('');
 
-/** CSS-текст, назначающий каждой секции СВОЁ имя анимации по id —
- *  `#hero` пропущен: у героя особое двухимённое правило (`line-reveal-hero,
- *  line-load`), собранное дальше вместе с остальным блоком «Рисование».
- *  `footer` — единственная запись без `id` на элементе линии (подвал не
- *  несёт `id="footer"`), поэтому её селектор — тег, а не `#…`. */
+/** CSS-текст, назначающий каждой секции имя анимации (после дедупликации,
+ *  возможно общее с другими секциями) — `#hero` пропущен: у героя особое
+ *  двухимённое правило (`line-reveal-hero, line-load` — здесь это
+ *  `revealNameOf.hero` + `line-load`), собранное дальше вместе с остальным
+ *  блоком «Рисование». `footer` — единственная запись без `id` на элементе
+ *  линии (подвал не несёт `id="footer"`), поэтому её селектор — тег, а не
+ *  `#…`. */
 const revealNameCss = Object.keys(LINE_PATHS)
   .filter((id) => id !== 'hero')
   .map((id) => {
     const selector = id === 'footer' ? 'footer' : `#${id}`;
-    return `${selector} .line-curtain{animation-name:line-reveal-${id}}`;
+    return `${selector} .line-curtain{animation-name:${revealNameOf[id]}}`;
   })
   .join('');
 
@@ -183,7 +208,7 @@ const drawingSupportsCss =
   revealNameCss +
   `[data-line-last] .line-curtain{animation-range:cover var(--line-lead) exit 0%}` +
   `#hero .line-curtain{` +
-  `animation-name:line-reveal-hero,line-load;` +
+  `animation-name:${revealNameOf.hero},line-load;` +
   `animation-timeline:view(),auto;` +
   `animation-duration:1ms,1400ms;` +
   `animation-timing-function:linear,cubic-bezier(.2,.6,.2,1);` +
