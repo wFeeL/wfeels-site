@@ -1,37 +1,53 @@
 import { test, expect, type Browser } from '@playwright/test';
 
-/* Сторож FOUC-подгонки запасных начертаний (правка 2026-08-21, диагноз —
+/* Сторож FOUC-подгонки запасных начертаний (заведён 2026-08-21, диагноз —
  * заголовок и метка бренда «прыгают» при подмене `system-ui` на настоящий
- * шрифт после его загрузки). Метрики подобраны в `fonts.css` (`Unbounded
- * Fallback`/`Onest Fallback`/`JetBrains Mono Fallback`) так, чтобы коробка
- * запасного начертания заранее совпадала с коробкой настоящего.
+ * шрифт после его загрузки; расширен 2026-08-22 после того, как владелец
+ * поймал дефект на 1000 px, а первая версия сторожа проверяла ОДНУ ширину
+ * (1440) — та самая причина, по которой прыжок доехал до владельца, хотя
+ * дизайн-ревью 2026-08-21 его уже видело. Полоса ширин ниже — из приёмки
+ * задачи «прыжок на перезагрузке», не придумана заново.
  *
- * Мерит ИТОГ, а не намерение: не ищет `size-adjust` в CSS (наличие
- * свойства ничего не говорит о том, верно ли оно подобрано — легко вписать
- * произвольное число и пройти такую проверку), а грузит страницу ДВАЖДЫ
- * в одном прогоне — один раз с заблокированными `*.woff2` (что видит
- * посетитель до и во время `font-display: swap`, включая период, когда
- * навигация уже разрешена и лейаут посчитан на запасном начертании), один
- * раз как обычно, дожидаясь `document.fonts.ready`, — и сравнивает реальную
- * раскладку `getBoundingClientRect()`/`scrollHeight`. Тот же метод и те же
- * селекторы, что у измерительного скрипта `fout.mjs` (корень копии), которым
- * подбирались числа в `fonts.css`.
+ * Мерит ИТОГ на каждой ширине отдельно, а не намерение: не ищет
+ * `size-adjust` в CSS (наличие свойства ничего не говорит о том, верно ли
+ * оно подобрано), а грузит страницу ДВАЖДЫ на каждой ширине в одном
+ * прогоне — один раз с заблокированными `*.woff2` (что видит посетитель до
+ * и во время `font-display: swap`), один раз как обычно, дожидаясь
+ * `document.fonts.ready`, — и сравнивает реальную раскладку
+ * `getBoundingClientRect()`/`scrollHeight`. Тот же метод и те же селекторы,
+ * что у измерительного скрипта калибровки (временный, не входит в комплект),
+ * которым подбирались числа в `fonts.css`.
  *
- * Пороги — из приёмки задачи: `h1` высота ≤4 px (было 79,03 без подгонки),
- * `header .brand` ширина ≤4 px (было 25,63), высота документа ≤16 px (было
- * 157). Красноту проверяли вручную: временный откат `--font-head` в
- * `tokens.css` к `'Unbounded Variable', system-ui, sans-serif` (без звена
- * `Unbounded Fallback`) уронил этот тест с `h1`-расхождением ~79 px —
- * числа те же, что до всей правки, потому что без калиброванного звена
- * запасное начертание — голый `system-ui`, тот же дефект, что был раньше. */
+ * Пороги — из приёмки задачи 2026-08-22: `h1` высота ≤4 px, `header .brand`
+ * ширина ≤4 px, высота документа ≤24 px, на КАЖДОЙ из двенадцати ширин
+ * ниже — не только на концах полосы, как проверялось раньше.
+ *
+ * ИЗВЕСТНЫЙ, ОБЪЯСНЁННЫЙ, НЕ УСТРАНЁННЫЙ ЭТОЙ ПРАВКОЙ ОСТАТОК (см. разбор в
+ * `fonts.css`, комментарий у `Onest Fallback`): секции «Прайсинг» и «Обо
+ * мне» держат расхождение высоты −24…−59 px НЕЗАВИСИМО от `size-adjust`
+ * `Onest Fallback` на всём проверенном диапазоне 90…110% (и от `Unbounded
+ * Fallback`/`JetBrains Mono Fallback` на ещё более широких диапазонах,
+ * правка 2026-08-21) — перенос там происходит не по ширине текста Onest, и
+ * причина не найдена (не `ch`-контейнер `.caption`/`Pricing.astro` —
+ * проверено целенаправленно самосогласованной калибровкой 109,63%, эффекта
+ * нет). Это оставляет ширину документа за порогом ≤24 px на части полосы
+ * (390, 480, 1000, 1100, 1180, 1280, 1440, 1600, 1920 px на момент этой
+ * правки, подробные числа — в отчёте задачи, не здесь). Тест ниже проверяет
+ * `h1` и `header .brand` на всех двенадцати ширинах (обе метрики держат
+ * ≤4 px или лучше — это то, что удалось исправить полностью), а высоту
+ * документа — тоже на всех двенадцати, честно: там, где остаток не устранён,
+ * тест красный, и это осознанно, не недосмотр. Ослаблять порог, чтобы
+ * скрыть остаток, нельзя — тест обязан мерить то же, что и приёмка. */
 
 const SELECTORS = { h1: 'h1', brand: 'header .brand' } as const;
 
 const THRESHOLDS = {
   h1HeightPx: 4,
   brandWidthPx: 4,
-  docHeightPx: 16,
+  docHeightPx: 24,
 } as const;
+
+const WIDTHS = [390, 480, 600, 768, 900, 1000, 1100, 1180, 1280, 1440, 1600, 1920] as const;
 
 type Measured = {
   h1: { w: number; h: number };
@@ -39,9 +55,14 @@ type Measured = {
   docHeight: number;
 };
 
-async function measure(browser: Browser, baseURL: string, blockFonts: boolean): Promise<Measured> {
+async function measure(
+  browser: Browser,
+  baseURL: string,
+  width: number,
+  blockFonts: boolean,
+): Promise<Measured> {
   const ctx = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
+    viewport: { width, height: 1000 },
     // Безголовый Chromium по умолчанию просит `prefers-reduced-motion:
     // reduce` (см. `50-code/CLAUDE.md`, ловушка 5) — здесь нужен обычный
     // путь с движением, тот же, что видит живой посетитель.
@@ -55,8 +76,8 @@ async function measure(browser: Browser, baseURL: string, blockFonts: boolean): 
   if (!blockFonts) {
     await page.evaluate(() => document.fonts.ready);
   }
-  // Тот же отступ, что у `fout.mjs`: даёт осесть шрифту/раскладке после
-  // навигации, не привязан к какой-то конкретной анимации страницы.
+  // Даёт осесть шрифту/раскладке после навигации, не привязан к какой-то
+  // конкретной анимации страницы.
   await page.waitForTimeout(300);
   const out = await page.evaluate((sel) => {
     const box = (selector: string) => {
@@ -79,29 +100,32 @@ async function measure(browser: Browser, baseURL: string, blockFonts: boolean): 
 }
 
 test.describe('FOUC — расхождение раскладки при подмене запасного начертания на настоящее', () => {
-  test('h1 / header .brand / высота документа — в пределах приёмки', async ({ browser, baseURL }) => {
-    test.skip(!baseURL, 'нет baseURL — playwright.config не поднял сервер');
+  for (const width of WIDTHS) {
+    test(`h1 / header .brand / высота документа на ${width}px`, async ({ browser, baseURL }) => {
+      test.skip(!baseURL, 'нет baseURL — playwright.config не поднял сервер');
 
-    const withFonts = await measure(browser, baseURL!, false);
-    const noFonts = await measure(browser, baseURL!, true);
+      const withFonts = await measure(browser, baseURL!, width, false);
+      const noFonts = await measure(browser, baseURL!, width, true);
 
-    const h1Diff = Math.abs(withFonts.h1.h - noFonts.h1.h);
-    const brandDiff = Math.abs(withFonts.brand.w - noFonts.brand.w);
-    const docDiff = Math.abs(withFonts.docHeight - noFonts.docHeight);
+      const h1Diff = Math.abs(withFonts.h1.h - noFonts.h1.h);
+      const brandDiff = Math.abs(withFonts.brand.w - noFonts.brand.w);
+      const docDiff = Math.abs(withFonts.docHeight - noFonts.docHeight);
 
-    expect(
-      h1Diff,
-      `h1: без шрифта ${noFonts.h1.h.toFixed(2)} px, со шрифтом ${withFonts.h1.h.toFixed(2)} px`,
-    ).toBeLessThanOrEqual(THRESHOLDS.h1HeightPx);
+      expect(
+        h1Diff,
+        `h1 @${width}px: без шрифта ${noFonts.h1.h.toFixed(2)} px, со шрифтом ${withFonts.h1.h.toFixed(2)} px`,
+      ).toBeLessThanOrEqual(THRESHOLDS.h1HeightPx);
 
-    expect(
-      brandDiff,
-      `header .brand: без шрифта ${noFonts.brand.w.toFixed(2)} px, со шрифтом ${withFonts.brand.w.toFixed(2)} px`,
-    ).toBeLessThanOrEqual(THRESHOLDS.brandWidthPx);
+      expect(
+        brandDiff,
+        `header .brand @${width}px: без шрифта ${noFonts.brand.w.toFixed(2)} px, со шрифтом ${withFonts.brand.w.toFixed(2)} px`,
+      ).toBeLessThanOrEqual(THRESHOLDS.brandWidthPx);
 
-    expect(
-      docDiff,
-      `высота документа: без шрифта ${noFonts.docHeight} px, со шрифтом ${withFonts.docHeight} px`,
-    ).toBeLessThanOrEqual(THRESHOLDS.docHeightPx);
-  });
+      expect(
+        docDiff,
+        `высота документа @${width}px: без шрифта ${noFonts.docHeight} px, со шрифтом ${withFonts.docHeight} px ` +
+          '(известный остаток «Прайсинг»/«Обо мне» — см. fonts.css, комментарий у Onest Fallback)',
+      ).toBeLessThanOrEqual(THRESHOLDS.docHeightPx);
+    });
+  }
 });
