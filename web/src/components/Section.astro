@@ -71,13 +71,21 @@ const { id, label, heading, topGap, bottomGap, surface = false } = Astro.props;
  * траверс и событие (там, где они есть) уже слиты в один `d` реестра.
  *
  * `<svg>` — инлайновый в DOM (раздел 3.1 брифа `02-background-line`: «без
- * элемента в DOM нет ни stroke-dashoffset, ни pathLength, а без них линия
- * не рисуется, а проявляется»). `viewBox` — `0 0 1000 vbH`, `vbH` в
- * единицах, не пикселях (раздел 4.1 брифа `05-line`, `LINE_PATHS[id].vbH`).
- * `preserveAspectRatio` пишется здесь же, в разметке (геометрия SVG), а
- * `stroke`, `stroke-width` — оформление, в `BackgroundLine.astro`;
- * `vector-effect` там не ставится вовсе (раздел 7.2 брифа `05-line`,
- * раздел 1.1 — он и ломал чернила). */
+ * элемента в DOM нет линии — она не рисуется, а проявляется»). `viewBox` —
+ * `0 0 1000 vbH`, `vbH` в единицах, не пикселях (раздел 4.1 брифа `05-line`,
+ * `LINE_PATHS[id].vbH`). `preserveAspectRatio` пишется здесь же, в
+ * разметке (геометрия SVG), а `stroke`, `stroke-width` — оформление, в
+ * `BackgroundLine.astro`; `vector-effect` там не ставится вовсе (раздел 7.2
+ * брифа `05-line`, раздел 1.1 — он и ломал чернила при старой механике).
+ *
+ * ПРАВКА 2026-08-21 (D-080, «пролагивает при листании»): путь больше не
+ * несёт `pathLength`/`stroke-dasharray`/`stroke-dashoffset` — он рисуется
+ * ЦЕЛИКОМ и статически, раскрытие несёт соседний `<div class="line-
+ * curtain">` через композитный `transform: scaleY(...)` (второй проход
+ * того же дня — заменил первую версию на `translate`, см.
+ * `BackgroundLine.astro`).
+ * Оба элемента читают ОДИН и тот же `LINE_PATHS[id]` — второго источника
+ * геометрии по-прежнему нет. */
 const line = lineDataFor(id);
 const linePath = id ? LINE_PATHS[id] : undefined;
 ---
@@ -89,14 +97,26 @@ const linePath = id ? LINE_PATHS[id] : undefined;
   data-line-turn={line?.turn}
 >
   {linePath && (
-    <svg
-      class="line"
-      viewBox={`0 0 1000 ${linePath.vbH}`}
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <path d={linePath.wide} pathLength="1" />
-    </svg>
+    <>
+      <svg
+        class="line"
+        viewBox={`0 0 1000 ${linePath.vbH}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path d={linePath.wide} />
+      </svg>
+      {/* Шторка — задача «пролагивает при листании» (D-080). Открывает путь
+          выше через `transform: scaleY(...)` (композитится, не перекрашивает),
+          а не через `stroke-dashoffset` пути (перекрашивает бокс на каждом
+          кадре). `--line-overhang-pct` — инлайновый, потому что зависит от
+          `vbH` ЭТОЙ секции (`BackgroundLine.astro` объясняет устройство). */}
+      <div
+        class="line-curtain"
+        style={`--line-overhang-pct:${linePath.overhangPercent}%`}
+        aria-hidden="true"
+      ></div>
+    </>
   )}
   {label && <Label>{label}</Label>}
   {heading && <h2 class="t-h2 section-heading">{heading}</h2>}
