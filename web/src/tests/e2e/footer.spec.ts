@@ -146,6 +146,50 @@ test('на телефоне группы подвала идут столбик�
     expect(overflow, 'страница уехала вбок').toBeLessThanOrEqual(0);
   });
 
+/* Правка владельца 2026-08-21 сняла группу «Юридические документы» из подвала
+ * (тест выше «группы… больше нет»), но сетка `.groups` (`Footer.astro`,
+ * `@media (min-width: 900px)`) была рассчитана на ТРИ колонки
+ * (`1.5fr 1fr 1fr`). У двух оставшихся детей — `.brand-group` и `nav`
+ * («Разделы») — третья колонка съезжала пустым местом: замер ревью
+ * 2026-08-21 на 1180 px — от x 805 (правый край «Разделов») до x 1140
+ * (правый край `.bottom`, полноширинной черты под колонками), 335 px.
+ *
+ * Тест меряет ИТОГ раскладки, а не наличие CSS-свойства: правый край
+ * последней видимой колонки (`nav[aria-labelledby="footer-sections"]`)
+ * обязан совпадать с правым краем `.bottom` — той же черты, что тянется на
+ * всю ширину контейнера независимо от числа колонок в `.groups` и потому
+ * остаётся честным ориентиром «где на самом деле кончается контейнер».
+ * Разница шире одного пикселя (округление сабпиксельного рендера) — уже
+ * пустое поле.
+ *
+ * Красный прогон, которым это доказано: с сеткой `grid-template-columns:
+ * minmax(0, 1.5fr) repeat(2, minmax(0, 1fr))` (то, что стояло до этой
+ * правки) тест падает на всех четырёх ширинах — зазор 300…420 px, растёт
+ * вместе с шириной экрана. С правкой (`minmax(0, 1fr) max-content`) зазор
+ * 0 px на всех четырёх. */
+test('на десктопе справа от последней колонки подвала нет пустого поля',
+  async ({ page }) => {
+    for (const width of [900, 1180, 1440, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/');
+
+      const gap = await page.evaluate(() => {
+        const last = document.querySelector(
+          'footer nav[aria-labelledby="footer-sections"]',
+        );
+        const bottom = document.querySelector('footer .bottom');
+        if (!last || !bottom) return null;
+        return bottom.getBoundingClientRect().right
+          - last.getBoundingClientRect().right;
+      });
+
+      expect(gap, `${width}px: последняя колонка подвала не отрисована`)
+        .not.toBeNull();
+      expect(gap, `${width}px: пустое поле справа от «Разделов» — ${gap}px`)
+        .toBeLessThanOrEqual(1);
+    }
+  });
+
 test('в подвале каждая цель нажатия держит 44 px', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
