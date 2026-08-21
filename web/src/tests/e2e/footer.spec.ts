@@ -127,7 +127,9 @@ test('на телефоне группы подвала идут столбик�
         return { left: r.left, top: r.top, right: r.right };
       }));
 
-    expect(boxes.length, 'групп в подвале не три').toBe(3);
+    // Было три группы (бренд + разделы + юридические), правка владельца
+    // 2026-08-21 сняла третью целиком — сегодня их две.
+    expect(boxes.length, 'групп в подвале не две').toBe(2);
     for (let i = 1; i < boxes.length; i++) {
       expect(boxes[i].top, `группа ${i + 1} стоит не под предыдущей`)
         .toBeGreaterThan(boxes[i - 1].top);
