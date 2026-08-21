@@ -9,6 +9,18 @@ import { dict } from '../i18n/locales';
 import { buildMeta } from '../lib/seo';
 import { pageSchema, serializeSchema, type SchemaKind } from '../lib/schema';
 import { THEME_COLOR } from '../lib/theme';
+/* Предзагрузка двух подмножеств, нужных первому экрану русской страницы
+ * (правка 2026-08-21, диагноз FOUC — прыжок заголовка и метки бренда при
+ * подмене запасного начертания на своё). Только `cyrillic`: `latin` и
+ * `symbols` на первом экране не задействованы (в заголовке и метке бренда
+ * нет латиницы/₽/→), а лишний `<link rel="preload">` сам стоит байтов и
+ * конкурирует за полосу с тем, что реально нужно первому кадру.
+ *
+ * Импорт ассета, а НЕ строка пути: имя файла в сборке хешируется
+ * (`/_astro/unbounded-cyrillic-wght-normal.C627f1f8.woff2`), и вписанная
+ * руками строка протухнет молча на следующей сборке. */
+import unboundedCyrillicHref from '../fonts/unbounded-cyrillic-wght-normal.woff2?url';
+import onestCyrillicHref from '../fonts/onest-cyrillic-wght-normal.woff2?url';
 
 interface Props {
   title: string;
@@ -61,6 +73,14 @@ const structured = schema
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {/* Предзагрузка двух шрифтовых подмножеств первого экрана — раньше
+        favicon и мета-тегов, но после charset/viewport (см. фронтматтер).
+        `crossorigin` обязателен даже для своего домена: без него браузер
+        трактует предзагруженный и настоящий запрос шрифта как разные
+        ресурсы (шрифты всегда идут в анонимном режиме CORS) и скачивает
+        файл дважды. */}
+    <link rel="preload" as="font" type="font/woff2" href={unboundedCyrillicHref} crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href={onestCyrillicHref} crossorigin />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     {/* Полоса браузера над страницей красится в цвет фона темы. Две записи по
         системной схеме — то, что видит посетитель без своего выбора; выбор,

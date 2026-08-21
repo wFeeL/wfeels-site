@@ -58,9 +58,15 @@
      проверено `styles/tokens.test.ts`. */
   --danger: #C01739;
 
-  --font-head: 'Unbounded Variable', system-ui, sans-serif;
-  --font-text: 'Onest Variable', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+  /* Второе звено цепочки — запасное начертание с метриками, подогнанными
+     под настоящий шрифт (`fonts.css`, правка 2026-08-21: до этой правки
+     подмена системного шрифта на загруженный двигала `h1` на 79 px высоты и
+     метку бренда на 26 px ширины — вставленное звено гасит этот скачок,
+     не трогая сам системный шрифт: `local()` в `fonts.css` резолвится в тот
+     же шрифт, что и голый `system-ui`, коробка вокруг него — другая). */
+  --font-head: 'Unbounded Variable', 'Unbounded Fallback', system-ui, sans-serif;
+  --font-text: 'Onest Variable', 'Onest Fallback', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono Fallback', ui-monospace, monospace;
 
   --step: 32px;
   --radius-sm: 8px;
