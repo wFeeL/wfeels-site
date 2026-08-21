@@ -26,6 +26,22 @@ test('список разделов подвала совпадает со сп�
     expect(footer, 'подвал показывает не то, что шапка').toEqual(header);
   });
 
+/* Правка владельца 2026-08-21: «убираем раздел с Юридическим документами.
+ * заполним его позже» — из подвала снята только НАВИГАЦИЯ группы. Страницы
+ * `/privacy`, `/terms`, `/consent` продолжают собираться (на `/consent`
+ * ссылается обязательный чекбокс согласия в `LeadForm.astro`), но подвал
+ * ссылку на них больше не рисует ни на одном языке. До этой правки здесь
+ * стояла проверка ОБРАТНОГО — что группа есть и в ней три ссылки. */
+test('группы «Юридические документы» в подвале больше нет', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('footer #footer-legal')).toHaveCount(0);
+  await expect(page.locator('footer nav[aria-labelledby="footer-legal"]'))
+    .toHaveCount(0);
+  await expect(page.locator('footer a[href="/privacy"]')).toHaveCount(0);
+  await expect(page.locator('footer a[href="/terms"]')).toHaveCount(0);
+  await expect(page.locator('footer a[href="/consent"]')).toHaveCount(0);
+});
+
 test('там, где разделов нет, подвал не рисует пустую группу', async ({ page }) => {
   await page.goto('/en');
   // Английских разделов не существует (`lib/nav.ts`), и оба потребителя списка
@@ -34,9 +50,7 @@ test('там, где разделов нет, подвал не рисует п�
   await expect(page.locator('header nav.nav-wide a')).toHaveCount(0);
   await expect(page.locator(SECTIONS_IN_FOOTER)).toHaveCount(0);
   await expect(page.locator('footer #footer-sections')).toHaveCount(0);
-  // Юридическая группа и прямой выход остаются: подвал не пустеет.
-  await expect(page.locator('footer nav[aria-labelledby="footer-legal"] a'))
-    .toHaveCount(3);
+  // Прямой выход остаётся: подвал не пустеет даже без единого раздела.
   await expect(page.locator('footer a.icon-link')).toHaveCount(2);
 });
 
@@ -205,9 +219,11 @@ test('подчёркивание живёт по месту ссылки: спи
         };
       });
 
+    // Селектора `footer nav[aria-labelledby="footer-legal"] a` здесь БОЛЬШЕ
+    // НЕТ: правка владельца 2026-08-21 сняла группу «Юридические документы»
+    // из подвала целиком (сторож — тест выше, «группы… больше нет»).
     const menuLinks = [
       'footer nav[aria-labelledby="footer-sections"] a',
-      'footer nav[aria-labelledby="footer-legal"] a',
     ];
 
     /* Прямые каналы секции контакта — не пункты меню, а КНОПКИ со значками

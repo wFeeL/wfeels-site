@@ -32,15 +32,12 @@ const year = 2026;
 const SECTIONS = sections(lang);
 const here = Astro.url.pathname;
 
-/* Документы русские на обеих версиях сайта, а их заголовки — на языке
-   страницы. `hreflang` объявляет язык цели там, где он отличается от языка
-   ссылки: англоязычный посетитель узнаёт об этом до нажатия, а не после. */
-const foreign = lang === 'en';
-const LEGAL = [
-  { href: '/privacy', text: t.legalPolicy },
-  { href: '/terms', text: t.legalTerms },
-  { href: '/consent', text: t.legalConsent },
-];
+/* Группа «Юридические документы» (`LEGAL`, заголовок `t.legal`) здесь БОЛЬШЕ
+   НЕТ. Правка владельца 2026-08-21: «убираем раздел с Юридическим
+   документами. заполним его позже» — из подвала уходит только НАВИГАЦИЯ.
+   Сами страницы `/privacy`, `/terms`, `/consent` остаются построенными:
+   ссылка на `/consent` в `LeadForm.astro` несёт обязательный чекбокс
+   согласия — правовое основание обработки данных, снимать которое нельзя. */
 
 /* Три обязательства, снимающие главный страх аудитории: «пропадёт и не
    ответит». Сами формулировки — в словаре, вместе с объяснением, почему они
@@ -124,18 +121,6 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
         </nav>
       )}
 
-      <nav class="group" aria-labelledby="footer-legal">
-        <h2 class="group-title" id="footer-legal">{t.legal}</h2>
-        <ul class="links">
-          {LEGAL.map((l) => (
-            <li>
-              <a href={l.href} hreflang={foreign ? 'ru' : undefined}>
-                <span class="link-label">{l.text}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
     </div>
 
     <div class="bottom">
