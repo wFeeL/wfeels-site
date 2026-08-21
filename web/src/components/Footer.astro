@@ -49,14 +49,23 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
 ---
 <footer data-line-side={tail?.side} data-line-last={tail ? '' : undefined}>
   {tail && tailPath && (
-    <svg
-      class="line"
-      viewBox={`0 0 1000 ${tailPath.vbH}`}
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <path d={tailPath.wide} pathLength="1" />
-    </svg>
+    <>
+      <svg
+        class="line"
+        viewBox={`0 0 1000 ${tailPath.vbH}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path d={tailPath.wide} />
+      </svg>
+      {/* Шторка — та же механика, что в `Section.astro` (D-080, задача
+          «пролагивает при листании»); подробности — `BackgroundLine.astro`. */}
+      <div
+        class="line-curtain"
+        style={`--line-overhang-pct:${tailPath.overhangPercent}%`}
+        aria-hidden="true"
+      ></div>
+    </>
   )}
   <Container>
     <div class="groups">
