@@ -24,12 +24,14 @@ import { test, expect } from '@playwright/test';
 test.use({ reducedMotion: 'reduce' });
 
 const ILLO = '[data-illustration="case-weight"]';
+// Селектора `[data-cell="link"]` здесь БОЛЬШЕ НЕТ: правка владельца
+// 2026-08-21 сняла оговорку «ПОЛНАЯ ЗАГРУЗКА ПРИ 10 МБИТ/С» с рисунка вместе
+// с её клеткой.
 const TEXTS = [
   '[data-cell] [data-count]',
   '[data-cell] .c',
   '[data-cell="verdict"] .mult',
   '[data-cell="verdict"] .phrase',
-  '[data-cell="link"]',
 ];
 
 /** Ширины: 390 — узкий телефон, 900 — точка перелома раскладки, 1180 —
