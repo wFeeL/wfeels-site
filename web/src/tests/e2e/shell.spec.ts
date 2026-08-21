@@ -285,10 +285,11 @@ test('текст в шапке стоит по центру своей цели 
   // цели нажатия, снизу оставалась пустота.
   const bar = await boxMiddle(page.locator('header .bar'));
 
+  // Переключатель языка снят правкой владельца 2026-08-21 (`header a.lang`
+  // больше нет ни на одной странице) — его больше нет и в этом списке.
   const parts = {
     'знак бренда': 'header .brand',
     'пункт навигации': 'header nav.nav-wide a',
-    'переключатель языка': 'header a.lang',
     'кнопка обращения': 'header .btn',
   };
   for (const [name, selector] of Object.entries(parts)) {
@@ -408,7 +409,8 @@ test('первая секция страницы отбита от шапки м
   async ({ page }) => {
     for (const size of [{ width: 1280, height: 900 }, { width: 375, height: 800 }]) {
       await page.setViewportSize(size);
-      for (const path of ['/', '/en', '/contact', '/privacy', '/thanks']) {
+      // `/en` снят правкой владельца 2026-08-21 — маршрута больше нет.
+      for (const path of ['/', '/contact', '/privacy', '/thanks']) {
         await page.goto(path);
         const pad = await page.locator('main section').first().evaluate((el) => {
           const s = getComputedStyle(el);

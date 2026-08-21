@@ -22,6 +22,14 @@ describe('BILINGUAL_PATHS', () => {
       ).toBe(true);
     }
   });
+
+  // Правка владельца 2026-08-21 сняла маршрут `/en` и переключатель — список
+  // пуст, пока их не вернут. До этой правки здесь стояло обратное ожидание
+  // (`['/']`, с настоящей страницей `pages/en/index.astro` рядом).
+  it('пуст, пока английские страницы не вернули', () => {
+    expect(BILINGUAL_PATHS).toEqual([]);
+    expect(existsSync(new URL('../pages/en/index.astro', import.meta.url))).toBe(false);
+  });
 });
 
 describe('localeFromPath', () => {
@@ -43,9 +51,11 @@ describe('stripLocale', () => {
 });
 
 describe('hasTranslation', () => {
-  it('двуязычные страницы', () => {
-    expect(hasTranslation('/')).toBe(true);
-    expect(hasTranslation('/en')).toBe(true);
+  // До правки владельца 2026-08-21 (снят `/en` и переключатель) здесь стояло
+  // обратное ожидание — `true` для `/` и `/en`, единственной двуязычной пары.
+  it('переключателя больше нет — ни одна страница не считается двуязычной', () => {
+    expect(hasTranslation('/')).toBe(false);
+    expect(hasTranslation('/en')).toBe(false);
   });
   it('страница, английской версии которой ещё нет', () => {
     expect(hasTranslation('/about')).toBe(false);

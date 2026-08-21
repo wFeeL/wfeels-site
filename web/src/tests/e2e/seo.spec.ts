@@ -1,14 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
-test('на главной есть canonical, robots и hreflang', async ({ page }) => {
+// До правки владельца 2026-08-21 («убираем переключатель... убрать путь /en»)
+// здесь стояло обратное ожидание — ровно один `link[hreflang="x-default"]`.
+// `BILINGUAL_PATHS` опустел (`i18n/locales.ts`), и `hreflang` не рисуется
+// нигде вовсе, не только на главной.
+test('на главной есть canonical и robots, hreflang не рисуется', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('link[rel="canonical"]')).toHaveCount(1);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
-  await expect(page.locator('link[hreflang="x-default"]')).toHaveCount(1);
+  await expect(page.locator('link[rel="alternate"][hreflang]')).toHaveCount(0);
 });
 
-test('страница контактов и английская главная несут ровно один блок структурированной разметки',
+test('страница контактов несёт ровно один блок структурированной разметки',
   async ({ page }) => {
     const schema = async (path: string) => {
       await page.goto(path);
@@ -22,10 +26,9 @@ test('страница контактов и английская главная
     expect(contact['@type']).toBe('ContactPage');
     expect(contact.url).toContain('/contact');
     expect(contact.isPartOf['@type']).toBe('WebSite');
-
-    const en = await schema('/en');
-    expect(en['@type']).toBe('WebSite');
-    expect(en.inLanguage).toBe('en');
+    // Английская главная (`WebSite`, `inLanguage: 'en'`) сюда больше не входит:
+    // маршрут `/en` снят правкой владельца 2026-08-21. Разметку `WebSite` для
+    // русской главной проверяет отдельный тест ниже.
   });
 
 test('главная несёт два блока структурированной разметки — WebSite и ровно один FAQPage',
@@ -55,4 +58,11 @@ test('sitemap не содержит служебных и юридических
   for (const p of ['/dev/', '/privacy', '/terms', '/consent', '/thanks']) {
     expect(xml).not.toContain(p);
   }
+});
+
+// Маршрут `/en` снят правкой владельца 2026-08-21 — страницы больше нет,
+// и в карте сайта её быть не может ни при каких обстоятельствах.
+test('sitemap не содержит /en', () => {
+  const xml = readFileSync('dist/sitemap-0.xml', 'utf8');
+  expect(xml).not.toContain('/en');
 });

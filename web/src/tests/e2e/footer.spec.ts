@@ -42,17 +42,21 @@ test('группы «Юридические документы» в подвал
   await expect(page.locator('footer a[href="/consent"]')).toHaveCount(0);
 });
 
-test('там, где разделов нет, подвал не рисует пустую группу', async ({ page }) => {
-  await page.goto('/en');
-  // Английских разделов не существует (`lib/nav.ts`), и оба потребителя списка
-  // обязаны отреагировать на это одинаково: не показать ни пункта и ни
-  // заголовка над пустотой.
-  await expect(page.locator('header nav.nav-wide a')).toHaveCount(0);
-  await expect(page.locator(SECTIONS_IN_FOOTER)).toHaveCount(0);
-  await expect(page.locator('footer #footer-sections')).toHaveCount(0);
-  // Прямой выход остаётся: подвал не пустеет даже без единого раздела.
-  await expect(page.locator('footer a.icon-link')).toHaveCount(2);
-});
+// До правки владельца 2026-08-21 (снят маршрут `/en`) здесь проверялась
+// английская версия — единственная страница, у которой список разделов
+// (`lib/nav.ts`, `SECTIONS.en`) пуст. Без `/en` этот случай на сайте больше
+// не встречается: разделы есть у шапки и подвала на КАЖДОЙ странице.
+test('на любой странице шапка и подвал показывают один и тот же непустой список разделов',
+  async ({ page }) => {
+    for (const path of ['/', '/contact', '/privacy', '/terms', '/consent', '/thanks']) {
+      await page.goto(path);
+      const header = await page.locator('header nav.nav-wide a').count();
+      const footer = await page.locator(SECTIONS_IN_FOOTER).count();
+      expect(header, `${path}: в шапке нет разделов`).toBeGreaterThan(0);
+      expect(footer, `${path}: в подвале нет разделов`).toBe(header);
+      await expect(page.locator('footer #footer-sections')).toHaveCount(1);
+    }
+  });
 
 test('в подвале два значка — Telegram и почта, и оба остаются ссылками',
   async ({ page }) => {

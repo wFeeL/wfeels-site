@@ -23,8 +23,10 @@ test('на 375 px все органы управления в шапке при�
     await page.setViewportSize({ width: 375, height: 800 });
     await page.goto('/');
 
+    // `header a.lang` (переключатель языка) снят правкой владельца
+    // 2026-08-21 — в списке органов управления его больше нет.
     const controls = page.locator(
-      'header a.lang, header #theme-toggle, header a.telegram, header summary'
+      'header #theme-toggle, header a.telegram, header summary'
     );
     const count = await controls.count();
     expect(count).toBeGreaterThan(0);

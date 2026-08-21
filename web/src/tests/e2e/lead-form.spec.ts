@@ -194,12 +194,14 @@ test('на /thanks подвал прижат к низу окна', async ({ pag
   }
 });
 
-test('на /thanks есть запасной канал и переключатель языка', async ({ page }) => {
+// До правки владельца 2026-08-21 («убираем переключатель на английский
+// язык страницы») здесь стояло обратное ожидание — переключатель на месте.
+test('на /thanks есть запасной канал, переключателя языка нет', async ({ page }) => {
   await page.goto('/thanks');
   // Запасной путь был дан тому, у кого отправка не получилась, и не дан тому,
   // у кого получилась. Ссылка та же, что в сообщении об ошибке.
   await expect(page.locator('main a[href^="https://t.me/"]')).toBeVisible();
-  await expect(page.locator('header a.lang')).toHaveCount(1);
+  await expect(page.locator('header a.lang')).toHaveCount(0);
 });
 
 test('поле-приманка убрано с глаз и от скринридеров', async ({ page }) => {
