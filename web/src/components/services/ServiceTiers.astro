@@ -1,0 +1,211 @@
+---
+/* Ступени цены услуги — спека `70-workshop/specs/site-v3/08-service-pages.md`,
+ * раздел 4.5. Цена, имя и состав ступени читаются ТОЛЬКО через `priceEntry()`
+ * (`lib/priceLookup.ts`) — эта разметка ни разу не хранит число цены,
+ * критерий 11 брифа проверяет это по `data/servicePages.ts` и всем новым
+ * `.astro`.
+ *
+ * Кнопки внутри карточки нет: основная кнопка страницы одна и уже стоит на
+ * первом экране (`ServiceHero.astro`). Вся сетка завершается одной
+ * вторичной кнопкой к форме. */
+import Card from '../Card.astro';
+import Button from '../Button.astro';
+import { priceEntry } from '../../lib/priceLookup';
+import type { ServicePriceTier } from '../../data/servicePages';
+
+interface Props {
+  tiers: readonly ServicePriceTier[];
+}
+const { tiers } = Astro.props;
+
+/** Состав ступени, разбитый по запятой — тот же приём, что `splitComposition`
+ *  в `data/pricingShowcase.ts`. */
+function splitComposition(whatIncluded: string): string[] {
+  return whatIncluded.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+/** Ставить ли приставку «от» перед ценой ступени.
+ *
+ *  Правило читается из САМИХ данных, а не из списка имён ступеней. В
+ *  `PRICING.md` таблицы «Ступени услуг» несут колонку «Цена «от»», а таблицы
+ *  «Поддержка и доработка» и «Отдельные позиции» — колонку «Цена». Генератор
+ *  сохраняет это различие полем `whatIncluded`: оно есть только у ступеней
+ *  услуг и всегда `null` у позиций поддержки. Значит «от» ставится там, где
+ *  колонка источника так и называется, и не ставится у ставки за час и
+ *  абонплаты, где «от 2 100 ₽/ч» было бы неправдой.
+ *
+ *  Второе условие — цена начинается с цифры: у ступени «Больше 10 страниц»
+ *  цена словесная («считать индивидуально»), и «от» перед словами не встаёт.
+ *
+ *  Дефект, ради которого правило записано (ревью выпуска 2026-08-22): сетка
+ *  ступеней — единственная поверхность сайта, где цена стояла голым числом.
+ *  Первый экран посадочной, плитки каталога и карточки главной приставку
+ *  ставят, и «Лендинг из шаблона — 15 000 ₽» читалось как фиксированная цена
+ *  против правила 2 `PRICING.md` («всегда давать вилку»). Подпись над
+ *  таблицей числа в таблице не отменяет. */
+function fromPrefix(entry: { whatIncluded: string | null; price: string }): boolean {
+  return entry.whatIncluded !== null && /^\d/.test(entry.price);
+}
+
+/** Пункты состава ступени — дефект B4, ревью выпуска 2026-08-22: у ступени
+ *  «Больше 10 страниц» `whatIncluded` в `data/pricing.ts` — литерал «—»
+ *  (нет состава, цена только словесная), и `splitComposition` честно отдаёт
+ *  массив из одного тире, а маркер `.composition li::before` пририсовывал
+ *  перед ним второй — на витрине читалось «— —». Пустой список — законный
+ *  результат для этой ступени, значит фильтруем «—» как несодержательный
+ *  пункт наравне с пустой строкой, а `<ul>` в разметке ниже не рисуется
+ *  вовсе, если после фильтра ничего не осталось (иначе список из нуля
+ *  пунктов рисовал бы пустой `<ul>` с нижним отступом и без содержимого —
+ *  тот же дефект в другом виде). */
+function meaningfulItems(raw: readonly (string | null | undefined)[]): string[] {
+  return raw.filter((s): s is string => Boolean(s) && s !== '—');
+}
+
+/** Цена, разбитая на самостоятельные куски по запятой.
+ *
+ *  В прайсе одна составная цена — «2 100 ₽/ч, минимум 6 000 ₽». Каждый её
+ *  кусок обязан остаться на одной строке («2 100 ₽/ч», «минимум 6 000 ₽»),
+ *  а между кусками перенос допустим: только так строка помещается в
+ *  карточку на 375 px. Для всех остальных цен список из одного куска, и
+ *  поведение то же, что у простого `nowrap`. */
+function priceChunks(price: string): string[] {
+  return price.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+const resolved = tiers.map((t) => {
+  const entry = priceEntry(t.group, t.entry);
+  // `hideNote` (B5) — примечание этой ступени в `data/pricing.ts` не для
+  // витрины (комментарий у `ServicePriceTier.hideNote`, `data/
+  // servicePages.ts`): состав тогда пуст, а не подменяется чем-то другим.
+  const items = entry.whatIncluded
+    ? meaningfulItems(splitComposition(entry.whatIncluded))
+    : t.hideNote ? [] : meaningfulItems([entry.note]);
+  return { tier: t, entry, items };
+});
+---
+<div class="grid" data-count={resolved.length}>
+  {resolved.map(({ tier, entry, items }) => (
+    <Card stack={true}>
+      <div class="body">
+        {/* Имя ступени — дословно PriceEntry.name, НЕ витринное имя
+            (раздел 4.5). */}
+        <h3 class="t-h3">{entry.name}</h3>
+        {items.length > 0 && (
+          <ul class="composition" role="list">
+            {items.map((item) => <li>{item}</li>)}
+          </ul>
+        )}
+      </div>
+      <p class="price">
+        {fromPrefix(entry) && <span class="from">от</span>}
+        <code>{priceChunks(entry.price).map((chunk, i) => (
+          <>{i > 0 && ', '}<span class="chunk">{chunk}</span></>
+        ))}</code>
+        {tier.timeframe && <span class="timeframe">{tier.timeframe}</span>}
+      </p>
+    </Card>
+  ))}
+</div>
+<p class="more">
+  <Button href="#s-zayavka" variant="secondary">Рассчитать мою задачу</Button>
+</p>
+
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+  /* Дефект B2/W5, ревью выпуска: у шести услуг из девяти ровно одна
+     ступень, и `auto-fit` растягивал единственную карточку на всю ширину
+     секции (до ~1100 px на столе) — между ценой и сроком набегало ~600 px
+     пустоты. `[data-count="1"]` — карточка с одной ступенью не тянется на
+     всю строку, а получает ту же верхнюю границу, что и обычная карточка
+     сетки (`minmax(280px, 1fr)` уже ограничивал МНОЖЕСТВО карточек до этой
+     ширины взаимным делением строки — здесь делить не с кем, поэтому
+     граница назначена явно). Радикальная переделка секции (перевод ступеней
+     в горизонтальные строки) в этот заход не входит — отдельное предложение
+     владельцу. */
+  .grid[data-count="1"] {
+    grid-template-columns: minmax(280px, 420px);
+  }
+  .body { display: flex; flex-direction: column; gap: 12px; }
+  /* Дефект B3, design-ревью: «Лендинг с индивидуальным дизайном» на 1280 px
+     рвалось посередине слова («индивидуальны / м») — узкая колонка карточки
+     плюс глобальный `overflow-wrap: break-word` (`styles/base.css`).
+     Заголовок ступени не несёт `&shy;`, значит `hyphens: manual` не рвёт
+     слово по слогам сам — перенос идёт только по пробелам между словами;
+     `overflow-wrap: normal` отменяет побуквенный разрыв ИМЕННО для этого
+     заголовка, не снимая глобальное правило (оно остаётся действовать
+     везде, где `.t-h3` не переопределён так же явно). */
+  .body h3 {
+    overflow-wrap: normal;
+    hyphens: manual;
+  }
+  .composition {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  .composition li::before {
+    content: '—';
+    margin-right: 6px;
+    color: var(--text-faint);
+  }
+  .price {
+    display: flex;
+    /* Дефект W4, design-ревью: на S2 «2 100 ₽/ч, минимум 6 000 ₽» рвалось
+       между разрядами тысяч на 375 px. Цена сама не переносится (`white-
+       space: nowrap` на `code` ниже); `flex-wrap` даёт сроку своё
+       собственное место на новой строке, когда всей строке не хватает
+       ширины, вместо того чтобы сжимать неразрывную цену. */
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    margin: auto 0 0;
+    padding-top: 4px;
+  }
+  /* Приставка «от» набрана заметно мельче числа — та же роль и та же
+     ступень, что у меток `label`, и тот же приём, что на карточках цен
+     главной (`home/Pricing.astro`, `.price .from`). Две поверхности с одним
+     смыслом обязаны выглядеть одинаково. */
+  .price .from {
+    font: 500 0.6875rem/1.3 var(--font-mono);
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+  .price code {
+    font: 700 1.375rem/1.3 var(--font-mono);
+    color: var(--accent);
+    background: none;
+    padding: 0;
+  }
+  /* Неразрывен КУСОК цены, а не вся строка целиком.
+     Сплошной `white-space: nowrap` на всей цене (первая правка дефекта W4)
+     чинил разрыв «от 15 / 000 / ₽», но ломал единственную составную цену
+     прайса — «2 100 ₽/ч, минимум 6 000 ₽»: на 375 px она не помещалась в
+     карточку и давала 9 px горизонтальной прокрутки, что поймал новый
+     сторож `services-catalog.spec.ts`. Разрыв разрешён там, где он
+     осмыслен, — по запятой между самостоятельными частями цены, — и
+     запрещён внутри числа и между числом и знаком валюты. */
+  .price code .chunk { white-space: nowrap; }
+  /* Дефект B2/W5 — «прижать срок к цене»: `margin-left: auto` растягивал
+     срок к правому краю карточки, и на единственной ступени (`[data-count
+     ="1"]`, до правки выше — карточка на всю ширину секции) между ценой и
+     сроком набегало ~600 px пустоты. Срок теперь стоит сразу после цены
+     через обычный `gap` строки — то же расстояние, что у всех остальных
+     пар «подпись — значение» на странице, а не подобранное auto-margin'ом
+     под ширину карточки. */
+  .timeframe {
+    font: 500 0.6875rem/1.3 var(--font-mono);
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .more { margin: 24px 0 0; }
+</style>

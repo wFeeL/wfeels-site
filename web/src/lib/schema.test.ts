@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pageSchema, serializeSchema, faqPageSchema } from './schema';
+import { pageSchema, serializeSchema, faqPageSchema, breadcrumbSchema } from './schema';
 
 const INPUT = {
   site: 'https://example.com',
@@ -56,6 +56,36 @@ describe('faqPageSchema', () => {
     const data = faqPageSchema(ITEMS);
     expect(data.mainEntity[0].acceptedAnswer.text).toBe('Ответ с полужирным словом.');
     expect(data.mainEntity[0].acceptedAnswer.text).not.toContain('**');
+  });
+});
+
+describe('breadcrumbSchema', () => {
+  const ITEMS = [
+    { text: 'Главная', href: '/' },
+    { text: 'Услуги', href: '/services' },
+    { text: 'Сайт под ключ' },
+  ];
+
+  it('тип BreadcrumbList, позиции по порядку с единицы', () => {
+    const data = breadcrumbSchema(ITEMS, 'https://example.com');
+    expect(data['@context']).toBe('https://schema.org');
+    expect(data['@type']).toBe('BreadcrumbList');
+    expect(data.itemListElement).toHaveLength(3);
+    expect(data.itemListElement.map((i) => i.position)).toEqual([1, 2, 3]);
+    expect(data.itemListElement.map((i) => i.name)).toEqual([
+      'Главная', 'Услуги', 'Сайт под ключ',
+    ]);
+  });
+
+  it('адреса абсолютные, склеены с сайтом без двойного слеша', () => {
+    const data = breadcrumbSchema(ITEMS, 'https://example.com/');
+    expect(data.itemListElement[0].item).toBe('https://example.com/');
+    expect(data.itemListElement[1].item).toBe('https://example.com/services');
+  });
+
+  it('последний элемент — текущая страница — без item', () => {
+    const data = breadcrumbSchema(ITEMS, 'https://example.com');
+    expect(data.itemListElement[2].item).toBeUndefined();
   });
 });
 

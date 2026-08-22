@@ -1,0 +1,80 @@
+---
+/* Хлебные крошки — спека `70-workshop/specs/site-v3/08-service-pages.md`,
+ * раздел 6. Один компонент на весь сайт, а не только на посадочные услуг:
+ * он понадобится страницам кейсов (спека 04) в том же виде.
+ *
+ * `BreadcrumbList` выпускается здесь же (`lib/schema.ts`,
+ * `breadcrumbSchema`) — единственный тип структурированных данных, который
+ * страница подтверждает целиком собой, реально существующей навигацией
+ * (раздел 6). Адреса абсолютные, от `Astro.site`.
+ */
+import { breadcrumbSchema, serializeSchema } from '../lib/schema';
+
+interface Props {
+  items: readonly { text: string; href?: string }[];
+}
+const { items } = Astro.props;
+
+const site = Astro.site?.toString() ?? 'http://localhost:4321';
+const structured = serializeSchema(breadcrumbSchema(items, site));
+---
+<nav class="breadcrumbs" aria-label="Хлебные крошки">
+  <ol>
+    {items.map((item) => (
+      <li>
+        {item.href
+          ? <a href={item.href}>{item.text}</a>
+          : <span aria-current="page">{item.text}</span>}
+      </li>
+    ))}
+  </ol>
+</nav>
+
+{/* `is:inline` обязателен: без него Astro приняла бы JSON за модуль. */}
+<script type="application/ld+json" is:inline set:html={structured} />
+
+<style>
+  .breadcrumbs {
+    /* Список навигации, не проза — подчёркивание только по наведению
+       (D-055 действует на прозу; здесь список ссылок, как меню). */
+    font: 400 1rem/1.5 var(--font-text);
+    color: var(--text-muted);
+  }
+  ol {
+    display: flex;
+    flex-wrap: wrap;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0 8px;
+  }
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  /* Разделитель — декор, законное применение `--text-faint` (раздел 6). */
+  li + li::before {
+    content: '/';
+    color: var(--text-faint);
+  }
+  /* Цель касания — дефект W8, design-ревью: на 375 px ссылки крошек
+     измерялись 61×24 и 52×24 px, ниже минимума 44 px по высоте. Вертикальный
+     `padding` увеличивает область попадания, отрицательный `margin` той же
+     величины возвращает видимый макет (высоту строки, зазор до соседних
+     крошек) к прежним 24 px — техника не раздувает вид, только area клика. */
+  a {
+    display: inline-block;
+    padding-block: 10px;
+    margin-block: -10px;
+    color: inherit;
+    text-decoration: none;
+  }
+  a:hover, a:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  [aria-current="page"] {
+    color: var(--text-muted);
+  }
+</style>

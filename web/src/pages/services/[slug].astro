@@ -1,0 +1,141 @@
+---
+/* Один динамический маршрут поверх SERVICE_PAGES — не девять `.astro`.
+ * Спека `70-workshop/specs/site-v3/08-service-pages.md`, раздел 7.5: у
+ * девяти страниц различается СОДЕРЖИМОЕ, а не форма, значит форма живёт в
+ * одном месте. Скелет — раздел 4, десять блоков, все обязательные.
+ *
+ * `line={false}`, `rail` не передаётся (умолчание `false`) — на посадочных
+ * этим заходом нет ни линии на фоне, ни рельса (раздел 11.2). Полоса
+ * прогресса остаётся (`progress` не передаётся, умолчание `true`).
+ * `noindex` не ставится — посадочные существуют ради поиска (раздел 11.3).
+ * `schema` не передаётся: ни `website`, ни `contact` посадочную не
+ * описывают, а `Service`/`Offer` с ценой этим заходом не выпускается
+ * (раздел 11.4, вопрос владельцу 18.3). */
+import type { GetStaticPaths } from 'astro';
+import Base from '../../layouts/Base.astro';
+import Container from '../../components/Container.astro';
+import Section from '../../components/Section.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Card from '../../components/Card.astro';
+import LeadForm from '../../components/LeadForm.astro';
+import ServiceHero from '../../components/services/ServiceHero.astro';
+import ServiceList from '../../components/services/ServiceList.astro';
+import ServiceTiers from '../../components/services/ServiceTiers.astro';
+import ServiceFaq from '../../components/services/ServiceFaq.astro';
+import Process, { PROCESS_LABEL, PROCESS_HEADING } from '../../components/home/Process.astro';
+import Guarantees from '../../components/home/Guarantees.astro';
+import { SERVICE_PAGES, PRICE_NOTE, type ServicePage } from '../../data/servicePages';
+import { SERVICE_GROUPS } from '../../data/services';
+
+export const getStaticPaths = (() =>
+  SERVICE_PAGES.map((page) => ({
+    params: { slug: page.slug },
+    props: { page },
+  }))) satisfies GetStaticPaths;
+
+const { page } = Astro.props as { page: ServicePage };
+
+/** Название группы услуги, дословно `SERVICE_GROUPS[].title` — метка
+ *  первого экрана (раздел 4.1, пункт 1). Кидает, если код записи
+ *  разошёлся с `SERVICE_GROUPS` (страховка сверх сторожа `servicePages.
+ *  test.ts`, петля с главной). */
+const ownerGroup = SERVICE_GROUPS.find((g) => g.links.some((l) => l.code === page.code));
+if (!ownerGroup) {
+  throw new Error(`pages/services/[slug].astro: у кода «${page.code}» нет группы в SERVICE_GROUPS.`);
+}
+---
+<Base
+  title={page.title}
+  description={page.description}
+  line={false}
+>
+  <Container>
+    <div class="crumbs">
+      <Breadcrumbs items={[
+        { text: 'Главная', href: '/' },
+        { text: 'Услуги', href: '/services' },
+        { text: page.h1 },
+      ]} />
+    </div>
+
+    <Section>
+      <ServiceHero page={page} groupTitle={ownerGroup.title} />
+    </Section>
+
+    <Section id="s-vhodit" label="СОСТАВ" heading="Что входит" topGap="wide" bottomGap="none">
+      <ServiceList items={page.includes} marker="check" columns={2} />
+      {page.includesNote && <p class="includes-note t-small">{page.includesNote}</p>}
+    </Section>
+
+    <Section id="s-granicy" label="ГРАНИЦЫ" heading="Что не входит и считаю отдельно" surface={true} topGap="wide" bottomGap="none">
+      <ServiceList items={page.excludes} marker="dash" />
+    </Section>
+
+    <Section id="s-stupeni" label="ЦЕНА" heading="Сколько стоит и от чего зависит" topGap="wide" bottomGap="none">
+      <p class="price-note t-body">{PRICE_NOTE}</p>
+      <ServiceTiers tiers={page.tiers} />
+    </Section>
+
+    {/* `Process.astro` сам не рисует ни `<Label>`, ни `<h2>` (правка
+        владельца 2026-08-18, пункт 11 — заголовок стал заботой
+        `Section.astro`, `pages/index.astro`, `GAP.process`). Раздел 4.6
+        брифа 08 требует «Section получает только id, иначе заголовок
+        задвоится» — это предполагало, что `Process.astro` рисует заголовок
+        сама, как `Guarantees.astro`. На деле она этого не делает: без
+        label/heading секция «Как я работаю» осталась бы БЕЗ заголовка
+        вовсе. Передаём их из тех же констант, что использует главная —
+        второй копии текста здесь нет, и заголовок не задваивается, потому
+        что дублировать ему нечего (отступление от буквы брифа, раздел 4.6;
+        см. отчёт исполнителя). */}
+    <Section id="s-rabota" label={PROCESS_LABEL} heading={PROCESS_HEADING} topGap="wide" bottomGap="none">
+      <Process />
+    </Section>
+
+    <Section id="s-dokazatelstvo" label="ДОКАЗАТЕЛЬСТВО" heading="Что уже сделано" topGap="wide" bottomGap="none">
+      <Card>
+        <h3 class="t-h3">{page.proof.title}</h3>
+        <p class="t-body proof-text">{page.proof.text}</p>
+        {page.proof.stack && <p class="proof-stack">{page.proof.stack}</p>}
+      </Card>
+    </Section>
+
+    {/* `Guarantees.astro` рисует свою `<Label>`/`<h2>` сама — Section несёт
+        только `id` (раздел 4.6). */}
+    <Section id="s-garantii" topGap="wide" bottomGap="none">
+      <Guarantees />
+    </Section>
+
+    <Section id="s-voprosy" label="FAQ" heading="Вопросы по услуге" surface={true} topGap="wide" bottomGap="none">
+      <ServiceFaq items={page.faq} faqDraft={page.faqDraft} />
+    </Section>
+
+    {/* Последняя секция страницы — как `contact` на главной (`pages/
+        index.astro`, `GAP.contact`): только верхний зазор, нижний остаётся
+        умолчанием (внешний край страницы перед подвалом, не стык между
+        секциями). */}
+    <Section id="s-zayavka" label="ЗАЯВКА" heading="Расскажите о задаче" topGap="wide">
+      <div class="lead-wrap">
+        <LeadForm service={page.code} />
+      </div>
+    </Section>
+  </Container>
+</Base>
+
+<style>
+  .crumbs { padding-top: 24px; }
+
+  .includes-note { margin: 16px 0 0; color: var(--text-muted); }
+
+  .price-note { max-width: 60ch; margin: 0 0 32px; color: var(--text-muted); }
+
+  .proof-text { max-width: 50ch; margin: 0; color: var(--text-muted); }
+  .proof-stack {
+    margin: 4px 0 0;
+    font: 500 1rem/1.5 var(--font-mono);
+    color: var(--text-faint);
+  }
+
+  /* Раскрой одноколоночный, форма до 50 ch (раздел 4.9) — двухколоночный
+     раскрой контакта главной сюда не переносится. */
+  .lead-wrap { max-width: 50ch; }
+</style>
