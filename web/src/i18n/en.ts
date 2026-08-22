@@ -18,7 +18,9 @@ export default {
   write: 'Discuss a project',
   ctaLangNote: 'The contact page is in Russian',
   menu: 'Menu',
-  langSwitch: 'Переключить на русский',
+  /* Оба состояния подсказки — по-английски: её читает тот, кто сейчас на
+     английской странице. Разбор правила — в `ru.ts` у той же пары ключей. */
+  langSwitch: 'Switch to Russian',
   langSwitchNoPage: 'This page has no Russian version — the home page will open',
   legal: 'Legal',
   /* Заголовки переведены, а сами документы остаются русскими — это юридические

@@ -13,6 +13,15 @@
  * кнопка называет, куда она ведёт, а не где читатель стоит. Атрибуты `lang`
  * и `hreflang` объявляют язык цели — без них скринридер прочтёт «EN» русскими
  * правилами чтения.
+ *
+ * Подсказка — наоборот, на языке ТЕКУЩЕЙ страницы: её читает тот, кто сейчас
+ * здесь (разбор — у пары ключей в `i18n/ru.ts`).
+ *
+ * `aria-label` дублирует подсказку и добавлен 2026-08-22 по дизайн-ревью:
+ * до него единственным доступным именем органа были две буквы «RU», а всё
+ * остальное висело на `title` — атрибуте, который скринридеры отдают
+ * ненадёжно, а на телефоне не показывают вовсе. Две буквы без пояснения не
+ * говорят незрячему, что это переключатель языка.
  */
 import { altLocaleUrl, dict, hasTranslation, localeFromPath } from '../i18n/locales';
 
@@ -22,15 +31,19 @@ const target = current === 'ru' ? 'en' : 'ru';
 const t = dict(current);
 const href = altLocaleUrl(path, target);
 const missing = !hasTranslation(path);
+const label = missing ? t.langSwitchNoPage : t.langSwitch;
 ---
 <a
   class="lang"
   href={href}
   hreflang={target}
   lang={target}
-  title={missing ? t.langSwitchNoPage : t.langSwitch}
+  title={label}
+  aria-label={label}
 >
-  {target.toUpperCase()}
+  {/* Сама подпись — вне доступного имени: `aria-label` выше её перекрывает,
+      и две буквы не читаются вслух второй раз. Для глаз они остаются. */}
+  <span aria-hidden="true">{target.toUpperCase()}</span>
 </a>
 
 <style>

@@ -108,6 +108,22 @@ export const ABOUT_CLOSING =
  * безымянный клиент (D-011: имя не называется), «3 Telegram-бота» — то же
  * число.
  *
+ * ГЛАГОЛ «ВЁЛ» — самое опасное место этого перевода, и первый вариант его
+ * провалил. Стояло `I ran a pet-care service in Moscow`, и для носителя языка
+ * это значит «я управлял зоосервисом», то есть был этим бизнесом, а не его
+ * подрядчиком. Русское «вёл» в разделе «Обо мне» читается как «сопровождал
+ * как разработчик»; английское `ran` такой двусмысленности не имеет и выбирает
+ * ровно то прочтение, которого в базе нет: `10-offer/SKILLS.md` называет
+ * зоосервис КЛИЕНТОМ, а не делом владельца. Нашло это ревью выноса наружу
+ * 2026-08-22. Правка — `looked after`: по-английски так говорят про чужие
+ * системы, за которые отвечаешь («I look after their website»), и роль
+ * подрядчика остаётся на месте.
+ *
+ * ПАССИВ «БЫЛИ РАЗРАБОТАНЫ» сохранён намеренно. Активное `I built 3 Telegram
+ * bots` читается сильнее русского оригинала — а перевод не вправе усиливать
+ * утверждение о себе, даже когда `SKILLS.md` его подтверждает. Добавлено
+ * только `for it`: без него английский пассив висит без адресата.
+ *
  * Маркеры `{claude}`, `{figma}`, `{chatgpt}`, `{postgres}`, `{github}` стоят
  * и в переводе: их разбирает `lib/brandMarkers.ts`, и каждый обязан стоять
  * ПЕРЕД словом марки через ровно один пробел — иначе сборка падает. Порядок
@@ -128,8 +144,8 @@ export const ABOUT_BLOCKS_EN: readonly string[] = [
     '{figma} Figma and bring it onto the site through {chatgpt} ChatGPT. ' +
     'Architecture, security and code review stay with me. Tools like these ' +
     'are exactly how I get products built as fast as I do.',
-  `For two years I ran ${ABOUT_CLIENT_LABEL_EN}: 3 Telegram bots were built, ` +
-    'a full Telegram Mini App with online booking, and a {postgres} Postgres ' +
+  `For two years I looked after ${ABOUT_CLIENT_LABEL_EN}: 3 Telegram bots ` +
+    'were built for it, a full Telegram Mini App with online booking, and a {postgres} Postgres ' +
     'database. All of the work was tracked and documented in {github} GitHub — ' +
     'any developer can read the history of the changes and get up to speed on it.',
 ];

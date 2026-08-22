@@ -127,7 +127,11 @@ const CASE_TEXT_EN: Record<string, CaseText> = {
     description:
       'A site that is itself the proof of the service: a static build, two ' +
       'themes, two languages, an enquiry form that notifies me in Telegram. ' +
-      'Most of what works here is part of an ordinary order.',
+      /* «Much», а не «Most»: русское «Многое» — осознанно осторожная
+         формулировка, а «Most» утверждает большинство, и проверить его нечем
+         — состав «обычного заказа» нигде не замерен. Найдено ревью выноса
+         наружу 2026-08-22. */
+      'Much of what works here is part of an ordinary order.',
   },
   'ai-consultant': {
     title: 'AI consultant',
