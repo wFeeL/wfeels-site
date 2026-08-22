@@ -32,8 +32,9 @@ body {
   font-size: 1.125rem;
   line-height: 1.65;
   overflow-wrap: break-word;
-  transition: background-color var(--dur-micro) var(--ease),
-              color var(--dur-micro) var(--ease);
+  /* Переход темы для самого `body` — общее правило чуть ниже
+     (`*, *::before, *::after`) уже несёт `background-color`/`color` тем же
+     токеном, вторая копия здесь была бы дублем. */
   /* `position: relative` даёт линии на фоне (`BackgroundLine.astro`, задача
      13) точку отсчёта для `position: absolute; inset: 0` на всю фактическую
      высоту страницы. `isolation: isolate` создаёт свой контекст наложения:
@@ -46,6 +47,38 @@ body {
 }
 
 main { flex: 1 0 auto; }
+
+/* Переход между светлой и тёмной темой — общий на весь документ, не только
+   на `body`. Замер дизайн-ревью 2026-08-22 (находка 3): у `body` стоял
+   `transition-duration: 0.16s` по `background-color, color`
+   (`var(--dur-micro)`), а у `header`, `main`, `h1`, `.draft`, `footer` —
+   `0s`: своего перехода не было объявлено нигде. Кадр через 70 мс после
+   нажатия показывал шапку уже финального цвета, а фон страницы — ещё в
+   пути: половина страницы плывёт, половина щёлкает. Правило — здесь, а не
+   правкой каждого компонента по отдельности: новый узел получает переход по
+   умолчанию, забыть его нельзя.
+
+   Специфичность универсального селектора — ноль (как и у `box-sizing`
+   выше в этом же файле): любой компонент, объявивший `transition` для тех
+   же свойств сам (например, `.icon-links :global(.icon-link):hover` —
+   `color`, `border-color`), продолжает побеждать этим правилом как раньше,
+   ничего не задваивается и не откатывается.
+
+   Только `background-color`, `border-color`, `color` — те свойства, что
+   меняются при смене `data-theme` через каскад переменных `tokens.css`.
+   `fill`/`stroke` намеренно не включены: ими управляют собственные
+   анимации `BackgroundLine.astro`/`Rail.astro` кадр за кадром через
+   `requestAnimationFrame`, и переход поверх такого цикла добавил бы лаг
+   там, где сегодня его нет.
+
+   `prefers-reduced-motion: reduce` гасит переход глобально — тем же
+   правилом `transition-duration: 0.01ms !important`, что уже стоит ниже в
+   этом файле для остальной анимации; второго правила не заводится. */
+*, *::before, *::after {
+  transition: background-color var(--dur-micro) var(--ease),
+              border-color var(--dur-micro) var(--ease),
+              color var(--dur-micro) var(--ease);
+}
 
 /* Первая секция страницы отбивается от шапки вдвое меньше остальных.
    Заголовок страницы обязан начинаться близко к верху: 96 px сверху отправляли
