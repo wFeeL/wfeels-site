@@ -62,16 +62,16 @@ if (!ownerGroup) {
       <ServiceHero page={page} groupTitle={ownerGroup.title} />
     </Section>
 
-    <Section id="s-vhodit" label="СОСТАВ" heading="Что входит">
+    <Section id="s-vhodit" label="СОСТАВ" heading="Что входит" topGap="wide" bottomGap="none">
       <ServiceList items={page.includes} marker="check" columns={2} />
       {page.includesNote && <p class="includes-note t-small">{page.includesNote}</p>}
     </Section>
 
-    <Section id="s-granicy" label="ГРАНИЦЫ" heading="Что не входит и считаю отдельно" surface={true}>
+    <Section id="s-granicy" label="ГРАНИЦЫ" heading="Что не входит и считаю отдельно" surface={true} topGap="wide" bottomGap="none">
       <ServiceList items={page.excludes} marker="dash" />
     </Section>
 
-    <Section id="s-stupeni" label="ЦЕНА" heading="Сколько стоит и от чего зависит">
+    <Section id="s-stupeni" label="ЦЕНА" heading="Сколько стоит и от чего зависит" topGap="wide" bottomGap="none">
       <p class="price-note t-body">{PRICE_NOTE}</p>
       <ServiceTiers tiers={page.tiers} />
     </Section>
@@ -87,11 +87,11 @@ if (!ownerGroup) {
         второй копии текста здесь нет, и заголовок не задваивается, потому
         что дублировать ему нечего (отступление от буквы брифа, раздел 4.6;
         см. отчёт исполнителя). */}
-    <Section id="s-rabota" label={PROCESS_LABEL} heading={PROCESS_HEADING}>
+    <Section id="s-rabota" label={PROCESS_LABEL} heading={PROCESS_HEADING} topGap="wide" bottomGap="none">
       <Process />
     </Section>
 
-    <Section id="s-dokazatelstvo" label="ДОКАЗАТЕЛЬСТВО" heading="Что уже сделано">
+    <Section id="s-dokazatelstvo" label="ДОКАЗАТЕЛЬСТВО" heading="Что уже сделано" topGap="wide" bottomGap="none">
       <Card>
         <h3 class="t-h3">{page.proof.title}</h3>
         <p class="t-body proof-text">{page.proof.text}</p>
@@ -101,15 +101,19 @@ if (!ownerGroup) {
 
     {/* `Guarantees.astro` рисует свою `<Label>`/`<h2>` сама — Section несёт
         только `id` (раздел 4.6). */}
-    <Section id="s-garantii">
+    <Section id="s-garantii" topGap="wide" bottomGap="none">
       <Guarantees />
     </Section>
 
-    <Section id="s-voprosy" label="FAQ" heading="Вопросы по услуге" surface={true}>
+    <Section id="s-voprosy" label="FAQ" heading="Вопросы по услуге" surface={true} topGap="wide" bottomGap="none">
       <ServiceFaq items={page.faq} faqDraft={page.faqDraft} />
     </Section>
 
-    <Section id="s-zayavka" label="ЗАЯВКА" heading="Расскажите о задаче">
+    {/* Последняя секция страницы — как `contact` на главной (`pages/
+        index.astro`, `GAP.contact`): только верхний зазор, нижний остаётся
+        умолчанием (внешний край страницы перед подвалом, не стык между
+        секциями). */}
+    <Section id="s-zayavka" label="ЗАЯВКА" heading="Расскажите о задаче" topGap="wide">
       <div class="lead-wrap">
         <LeadForm service={page.code} />
       </div>
@@ -127,7 +131,7 @@ if (!ownerGroup) {
   .proof-text { max-width: 50ch; margin: 0; color: var(--text-muted); }
   .proof-stack {
     margin: 4px 0 0;
-    font: 500 0.9375rem/1.5 var(--font-mono);
+    font: 500 1rem/1.5 var(--font-mono);
     color: var(--text-faint);
   }
 

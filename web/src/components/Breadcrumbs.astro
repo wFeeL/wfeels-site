@@ -58,7 +58,15 @@ const structured = serializeSchema(breadcrumbSchema(items, site));
     content: '/';
     color: var(--text-faint);
   }
+  /* Цель касания — дефект W8, design-ревью: на 375 px ссылки крошек
+     измерялись 61×24 и 52×24 px, ниже минимума 44 px по высоте. Вертикальный
+     `padding` увеличивает область попадания, отрицательный `margin` той же
+     величины возвращает видимый макет (высоту строки, зазор до соседних
+     крошек) к прежним 24 px — техника не раздувает вид, только area клика. */
   a {
+    display: inline-block;
+    padding-block: 10px;
+    margin-block: -10px;
     color: inherit;
     text-decoration: none;
   }

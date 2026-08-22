@@ -29,7 +29,7 @@ import { servicePage } from '../../data/servicePages';
 
     {SERVICE_GROUPS.map((group) => (
       <div class="group">
-        <Label>{group.title}</Label>
+        <Label as="h2">{group.title}</Label>
         <div class="grid">
           {group.links.map((link) => {
             const page = servicePage(
@@ -41,7 +41,7 @@ import { servicePage } from '../../data/servicePages';
             return (
               <Card href={link.href} stack={true}>
                 <h3 class="t-h3">{link.text}</h3>
-                <p class="line t-small">{page.catalogLine}</p>
+                <p class="tile-line t-small">{page.catalogLine}</p>
                 <p class="meta">
                   {page.heroPricePrefix && <span class="prefix">{page.heroPricePrefix}</span>}
                   <code>{price}</code>
@@ -73,14 +73,20 @@ import { servicePage } from '../../data/servicePages';
     gap: 24px;
   }
 
-  .line { margin: 8px 0 0; color: var(--text-muted); }
+  .tile-line { margin: 8px 0 0; color: var(--text-muted); }
 
   .meta {
     margin: auto 0 0;
     padding-top: 16px;
     display: flex;
+    /* Дефект W4, design-ревью: на 375 px «от 15 000 ₽» рвалось на три строки
+       («от 15 / 000 / ₽») — цена ломалась между разрядами тысяч. Цена сама
+       не переносится (`white-space: nowrap` на `code` ниже); когда всей
+       строке «от · цена · срок» не хватает ширины, в свою строку уходит
+       срок — самый длинный и наименее хрупкий кусок строки, а не число. */
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 8px;
+    gap: 4px 8px;
     font: 500 0.875rem/1.4 var(--font-mono);
     color: var(--text-muted);
   }
@@ -90,6 +96,7 @@ import { servicePage } from '../../data/servicePages';
     color: var(--accent);
     background: none;
     padding: 0;
+    white-space: nowrap;
   }
   .sep { color: var(--text-faint); }
 
