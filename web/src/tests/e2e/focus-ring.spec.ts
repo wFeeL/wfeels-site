@@ -1,19 +1,69 @@
 import { test, expect } from '@playwright/test';
+import { existsSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 /* Дизайн-ревью 2026-08-22 (находка «три кольца фокуса»): рецензент замерил
  * `outline` на нескольких остановках табуляции и получил три разных значения
  * — 2px синий, 3px почти чёрный (`--text`) и 3px синий. Сторож ниже проходит
- * ВСЕ семь страниц в ОБЕИХ темах и требует, чтобы `outline` совпадал на
- * КАЖДОЙ остановке табуляции внутри страницы — не только на первой (ловушка
- * 8, `50-code/CLAUDE.md`: проверка обязана покрывать полосу параметров, а не
- * точку).
+ * ВСЕ построенные страницы в ОБЕИХ темах и требует, чтобы `outline` совпадал
+ * на КАЖДОЙ остановке табуляции внутри страницы — не только на первой
+ * (ловушка 8, `50-code/CLAUDE.md`: проверка обязана покрывать полосу
+ * параметров, а не точку).
  *
  * `.status` в LeadForm.astro — намеренное исключение (комментарий у
  * `.status:focus-visible { outline: none }`): панель результата получает
  * фокус программно (`tabindex="-1"`), Tab на неё никогда не попадает, и
- * сторож её не встречает. */
+ * сторож её не встречает.
+ *
+ * ПРАВКА 2026-08-23 — каталог вырос с семи страниц до семнадцати (сведение
+ * услуг, спека `70-workshop/specs/site-v3/08-service-pages.md`), а список
+ * `PAGES` был вписан руками и покрывал только старые семь: ровно ловушка 8 —
+ * «сторож мерит верную величину не в том месте», у проверки с параметром
+ * «страница» полоса вписана как точка. Список ниже выводится обходом
+ * `dist/**\/*.html`, тем же приёмом, что уже применяет `src/tests/dist-
+ * links.test.ts` — протухнуть он больше не может, потому что не хранит
+ * страницы отдельно от сборки, которая их и породила. */
 
-const PAGES = ['/', '/contact', '/consent', '/privacy', '/terms', '/thanks', '/404.html'];
+const DIST = fileURLToPath(new URL('../../../dist/', import.meta.url));
+
+function htmlFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) out.push(...htmlFiles(p));
+    else if (e.name.endsWith('.html')) out.push(p);
+  }
+  return out;
+}
+
+/** Файл сборки → маршрут, по которому Playwright открывает страницу.
+ *  `index.html` уходит в «чистый» URL своего каталога (так реально ходит
+ *  посетитель); `404.html` — особый случай Astro, каталога у него нет, и
+ *  маршрут остаётся собственным именем файла (было так и в ручном списке). */
+function routeFor(relPath: string): string {
+  if (relPath === 'index.html') return '/';
+  if (relPath.endsWith('/index.html')) return '/' + relPath.slice(0, -'index.html'.length - 1);
+  return '/' + relPath;
+}
+
+/* `/dev/ui` — служебная витрина компонентов (`lib/dev-pages.ts`), в боевой
+ * сборке маршрута НЕ существует: он появляется в `dist/` только когда сама
+ * же сборка запущена с `DEV_PAGES=1` — так делает `webServer` в этом
+ * `playwright.config.ts` для нужд e2e (на витрине стоят свои проверки
+ * примитивов). Найден на практике: обход дал 18 страниц вместо 17, потому
+ * что предыдущий прогон уже пересобрал `dist/` с этим флагом, и он остался
+ * на диске к моменту сбора тестов. Исключение поимённое, не молчаливое: без
+ * него список страниц зависел бы от того, кто и когда последним запускал
+ * сборку — то есть от порядка запуска, а не от состава сайта. */
+const EXCLUDED_ROUTES = new Set(['/dev/ui']);
+
+const PAGES = htmlFiles(DIST)
+  .map((f) => routeFor(f.slice(DIST.length)))
+  .filter((route) => !EXCLUDED_ROUTES.has(route))
+  .sort();
+
 const THEMES = ['light', 'dark'] as const;
 
 /** Проходит табуляцией страницу и возвращает `outline`/`outline-offset`
@@ -42,6 +92,16 @@ async function walkFocusRing(page: import('@playwright/test').Page) {
   }
   return stops;
 }
+
+test.describe('сборка построена и список страниц не пуст', () => {
+  test('иначе сторож ослеп — сначала `npm run build`', () => {
+    expect(
+      PAGES.length,
+      `нашлось ${PAGES.length} страниц в ${DIST} — сначала выполни \`npm run build\` в web/`,
+    ).toBeGreaterThan(10);
+    expect(PAGES, 'сама главная').toContain('/');
+  });
+});
 
 for (const theme of THEMES) {
   test.describe(`кольцо фокуса — тема ${theme}`, () => {

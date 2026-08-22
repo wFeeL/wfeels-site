@@ -20,7 +20,49 @@ const DIST = fileURLToPath(new URL('../web/dist/', import.meta.url));
 const MAX_PAGE_BYTES = 500 * 1024;
 const MAX_JS_GZIP_BYTES = 30 * 1024;
 
-const PAGES = ['index.html', 'contact/index.html', 'privacy/index.html'];
+/* ПРАВКА 2026-08-23 — список страниц был вписан руками (три штуки) и
+   каталог сведения услуг вырос до семнадцати страниц без единого сторожа
+   веса на десять новых посадочных: ровно ловушка 8 из `50-code/CLAUDE.md`
+   («сторож мерит верную величину не в том месте» — здесь предмет проверки
+   зависит от параметра «страница», а полоса была вписана как три точки).
+
+   Список выводится обходом `dist/`, тем же приёмом, что уже применяет
+   `web/src/tests/dist-links.test.ts` для ссылок: рекурсивный `readdirSync`,
+   а не ручная копия путей, которая молчала бы про каждую новую страницу
+   ровно так же, как молчала про эти десять. `_astro/` — не страница, а
+   каталог собранных ассетов (JS/CSS), исключён явно, иначе обход принял бы
+   хешированные бандлы за HTML-страницы (там их нет, но полагаться на это
+   не стоит). */
+function htmlPages(dir, base = dir) {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries.flatMap((entry) => {
+    if (entry.name === '_astro') return [];
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return htmlPages(full, base);
+    return entry.name.endsWith('.html') ? [relative(base, full)] : [];
+  });
+}
+
+/* `dev/ui/index.html` — служебная витрина компонентов (`web/src/lib/
+   dev-pages.ts`). В боевой сборке (`npm run build`, без `DEV_PAGES=1`) её
+   нет вовсе, но `dist/` — общий каталог: если перед этим сторожем кто-то
+   пересобрал сайт под e2e (`playwright.config.ts` ставит `DEV_PAGES=1` для
+   своего `webServer`), файл остаётся на диске, и без явного исключения
+   гейт напечатал бы 18 страниц вместо 17 — состав списка зависел бы от
+   того, кто последним собирал сайт, а не от того, что реально публикуется.
+   Исключение поимённое, тем же способом, что `WEIGHT_ILLUSTRATION_PAGES`
+   выше решает похожую задачу «эта страница по устройству не такая, как
+   остальные». */
+const EXCLUDED_PAGES = new Set(['dev/ui/index.html']);
+
+const PAGES = htmlPages(DIST)
+  .filter((page) => !EXCLUDED_PAGES.has(page))
+  .sort();
 
 /* Иллюстрация «Замер» (`CaseWeightIllustration.astro`) стоит только в секции
    кейсов главной — `contact` и `privacy` её не несут по устройству страницы,
