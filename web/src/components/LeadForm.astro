@@ -61,16 +61,20 @@ const SENDING = 'Отправляю…';
     <span class="checkbox">
       <input id="f-consent" name="consent" type="checkbox" required />
       {/* Задача 9 (дизайн-ревью 2026-08-22): цель нажатия чекбокса — 24×24 px
-          при минимуме 44. Сам квадрат укрупнять нельзя (замер того же ревью,
-          «Три акта», зафиксировал 24 как нижнюю границу для этого начертания)
-          — укрупняется только ПЛОЩАДЬ НАЖАТИЯ. Пустой `label[for]` переключает
-          чекбокс нативно при клике в любой точке своего прямоугольника, без
-          строки JS: браузер связывает их по `for`/`id`, а не по вложенности в
-          DOM. В таб-порядок `label` не входит и вторым остановом не
-          становится — обходит клавиатура по-прежнему только сам `input`.
-          `aria-hidden`, потому что настоящая подпись уже озвучена отдельным
-          текстовым `label` ниже — второе объявление было бы дублем. */}
-      <label for="f-consent" class="checkbox-hit" aria-hidden="true"></label>
+          при минимуме 44. Первая попытка (пустой `label[for]` поверх поля)
+          укрупняла область нажатия, но заодно перехватывала указатель у
+          самого `input` — `page.check()` в шести сторожах `lead-form.spec.ts`
+          переставал находить кликабельный элемент («intercepts pointer
+          events»), то есть тот же дефект задел бы и часть настоящих
+          пользователей (drag-select, автозаполнение по двойному клику).
+          Вместо оверлея увеличен ХИТБОКС САМОГО `input` (ниже, смещение -10px
+          при 24×24 квадрате-обёртке даёт 44×44) — элемент, получающий клик,
+          остаётся один и тот же, Playwright и реальный указатель видят
+          одно и то же. Видимый квадрат при этом рисует не сам input (его
+          собственная заливка/рамка сняты), а отдельный неинтерактивный узел
+          `.checkbox-box` — та же техника, что уже несёт галочка `.checkbox-mark`
+          ниже, тем же состоянием `:checked` через `~`. */}
+      <span class="checkbox-box" aria-hidden="true"></span>
       <svg class="checkbox-mark" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
         <path d="M3 8.5 6.2 11.5 13 4.5" fill="none" stroke="currentColor"
           stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
@@ -162,41 +166,60 @@ const SENDING = 'Отправляю…';
     height: 24px;
     flex: none;
   }
-  /* Площадь нажатия чекбокса — 44×44 (задача 9). `inset: -10px` расширяет
-     прямоугольник на 10 px с каждой стороны от видимого квадрата 24×24:
-     24 + 10×2 = 44. Стоит ПОСЛЕ `input` в разметке и потому визуально лежит
-     сверху него — клик в любой точке площади либо попадает прямо на `input`,
-     либо на этот `label`, который синтетически кликает связанный `input`
-     (native `for`) — эффект для человека одинаковый. */
-  .checkbox-hit {
-    position: absolute;
-    inset: -10px;
-    cursor: pointer;
-  }
   /* `appearance: none` снимает ТОЛЬКО отрисовку — фокус, клавиатуру,
      `required` и участие в отправке формы система не теряет, чекбокс
-     остаётся настоящим. Заливку и рамку рисуем сами, чтобы у переключения
-     `:checked` было на что накладывать переход (см. `.checkbox-mark`
-     ниже) — нативную закраску браузера, в отличие от CSS-заливки, никаким
-     `transition` не тронуть. */
+     остаётся настоящим. Заливку и рамку теперь несёт `.checkbox-box` ниже,
+     не сам `input` — задача 9 (дизайн-ревью 2026-08-22): хитбокс `input`
+     увеличен до 44×44 (смещение -10px от квадрата-обёртки 24×24 —
+     24 + 10×2 = 44, WCAG 2.5.8), а видимый квадрат должен остаться 24×24
+     («Три акта», 2026-08-13). Раздельные узлы: растянутый бордер/заливка
+     на самом `input` раздули бы видимый квадрат вместе с хитбоксом. */
   .checkbox input[type="checkbox"] {
     appearance: none;
     -webkit-appearance: none;
+    position: absolute;
+    /* `top`/`left` явно, а не `inset: -10px`: у чекбокса в UA-стиле браузера
+       собственная фиксированная intrinsic-ширина/высота (не `auto`), и при
+       заданных СРАЗУ inset со всех четырёх сторон спецификация отбрасывает
+       противоположные (`right`/`bottom`) в пользу intrinsic-размера —
+       хитбокс тогда остаётся 24×24, просто сдвинутым (проверено замером
+       `getBoundingClientRect()`). Явные `width`/`height` снимают
+       неоднозначность целиком. */
+    top: -10px;
+    left: -10px;
+    width: 44px;
+    height: 44px;
     margin: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 1;
+  }
+  /* Видимый квадрат — 24×24, той же геометрии, что нёс голый
+     `input[type="checkbox"]` до задачи 9. `pointer-events: none`: узел
+     декоративный, клики принимает исключительно `input` (он теперь и
+     физически сверху — явный `z-index`, при том что стоит первым в
+     разметке ради комбинатора `~`, см. комментарий выше). */
+  .checkbox-box {
+    position: absolute;
+    inset: 0;
     width: 24px;
     height: 24px;
     border: 1.5px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--surface);
-    cursor: pointer;
+    pointer-events: none;
     transition: background-color var(--dur-micro) var(--ease),
                 border-color var(--dur-micro) var(--ease);
   }
-  .checkbox input[type="checkbox"]:checked {
+  .checkbox input[type="checkbox"]:checked ~ .checkbox-box {
     background: var(--accent);
     border-color: var(--accent);
   }
-  .checkbox input[type="checkbox"]:focus-visible {
+  /* Кольцо фокуса — тоже на `.checkbox-box`, не на самом `input`: у `input`
+     теперь хитбокс 44×44, и обвод по его границе выглядел бы оторванным от
+     видимого квадрата. */
+  .checkbox input[type="checkbox"]:focus-visible ~ .checkbox-box {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
