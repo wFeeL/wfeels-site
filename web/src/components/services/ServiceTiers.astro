@@ -24,6 +24,29 @@ function splitComposition(whatIncluded: string): string[] {
   return whatIncluded.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
+/** Ставить ли приставку «от» перед ценой ступени.
+ *
+ *  Правило читается из САМИХ данных, а не из списка имён ступеней. В
+ *  `PRICING.md` таблицы «Ступени услуг» несут колонку «Цена «от»», а таблицы
+ *  «Поддержка и доработка» и «Отдельные позиции» — колонку «Цена». Генератор
+ *  сохраняет это различие полем `whatIncluded`: оно есть только у ступеней
+ *  услуг и всегда `null` у позиций поддержки. Значит «от» ставится там, где
+ *  колонка источника так и называется, и не ставится у ставки за час и
+ *  абонплаты, где «от 2 100 ₽/ч» было бы неправдой.
+ *
+ *  Второе условие — цена начинается с цифры: у ступени «Больше 10 страниц»
+ *  цена словесная («считать индивидуально»), и «от» перед словами не встаёт.
+ *
+ *  Дефект, ради которого правило записано (ревью выпуска 2026-08-22): сетка
+ *  ступеней — единственная поверхность сайта, где цена стояла голым числом.
+ *  Первый экран посадочной, плитки каталога и карточки главной приставку
+ *  ставят, и «Лендинг из шаблона — 15 000 ₽» читалось как фиксированная цена
+ *  против правила 2 `PRICING.md` («всегда давать вилку»). Подпись над
+ *  таблицей числа в таблице не отменяет. */
+function fromPrefix(entry: { whatIncluded: string | null; price: string }): boolean {
+  return entry.whatIncluded !== null && /^\d/.test(entry.price);
+}
+
 const resolved = tiers.map((t) => ({ tier: t, entry: priceEntry(t.group, t.entry) }));
 ---
 <div class="grid">
@@ -40,6 +63,7 @@ const resolved = tiers.map((t) => ({ tier: t, entry: priceEntry(t.group, t.entry
         </ul>
       </div>
       <p class="price">
+        {fromPrefix(entry) && <span class="from">от</span>}
         <code>{entry.price}</code>
         {tier.timeframe && <span class="timeframe">{tier.timeframe}</span>}
       </p>
@@ -79,6 +103,15 @@ const resolved = tiers.map((t) => ({ tier: t, entry: priceEntry(t.group, t.entry
     gap: 8px;
     margin: auto 0 0;
     padding-top: 4px;
+  }
+  /* Приставка «от» набрана заметно мельче числа — та же роль и та же
+     ступень, что у меток `label`, и тот же приём, что на карточках цен
+     главной (`home/Pricing.astro`, `.price .from`). Две поверхности с одним
+     смыслом обязаны выглядеть одинаково. */
+  .price .from {
+    font: 500 0.6875rem/1.3 var(--font-mono);
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
   }
   .price code {
     font: 700 1.375rem/1.3 var(--font-mono);
