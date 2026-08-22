@@ -59,8 +59,21 @@ const Tag = placeholder ? 'span' : href ? 'a' : 'button';
   .btn:active { transform: translateY(1px); }
   /* Состояние отправки. Правило стоит после `:hover` намеренно: у них равная
      специфичность, и при обратном порядке наведение на выключенную кнопку
-     вернуло бы ей вид рабочей. */
-  .btn:disabled { opacity: 0.6; cursor: progress; transform: none; }
+     вернуло бы ей вид рабочей.
+     Было `opacity: 0.6` — приём смешивал ВСЮ кнопку (заливку и текст) с
+     фоном страницы разом, поэтому текст терял контраст вместе с заливкой:
+     2,56:1 у белой надписи на посветлевшей синей плашке (дизайн-ревью
+     2026-08-22, находка 1) — ниже даже нетекстового порога 3:1, при том что
+     это не «недоступно», а «идёт отправка», единственное сообщение о том,
+     что заявка ушла. Приглушённый фон — `--text-muted`, уже read AA против
+     `--text-on-accent` в обеих темах (5,83:1 светлая / 6,96:1 тёмная,
+     `tokens.css`), второго цвета не заводится. */
+  .btn:disabled {
+    cursor: progress;
+    transform: none;
+    background: var(--text-muted);
+    color: var(--text-on-accent);
+  }
   .primary { background: var(--accent); color: var(--text-on-accent); }
   .secondary { background: transparent; color: var(--text); border-color: var(--border); }
   /* `visibility: hidden`, а не `opacity: 0`: место занимает, но не участвует ни
