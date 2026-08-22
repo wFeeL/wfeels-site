@@ -175,6 +175,82 @@ const BRAND = 'wfeels';
         a.addEventListener('click', () => closeMenu(menu));
       });
     }
+
+    /* Находка 4 дизайн-ревью 2026-08-22: у точек рельса (`Rail.astro`) есть
+     * рабочий `aria-current` на активной секции, у пяти ссылок шапки —
+     * ни `aria-current`, ни визуальной метки ни на одной прокрутке. Ниже
+     * ~1220 px рельса нет вовсе (`display:none`, `Rail.astro`), и указателя
+     * текущего раздела не остаётся ни одного.
+     *
+     * Второй наблюдатель здесь НЕ заводится: чужая территория (`Rail.astro`)
+     * уже решает, какая секция активна, и уже пишет решение в DOM —
+     * `aria-current` активной точки, скроллспаем внутри её собственного
+     * скрипта. Header только ЗЕРКАЛИТ это готовое решение на пункт меню с
+     * тем же адресом через `MutationObserver`, привязанный к точкам рельса —
+     * не заводит свой `scroll`/`resize`, не пересчитывает активность заново.
+     * Рельс существует в DOM на любой ширине (скрыт только `display:none`
+     * ниже 1324px — разметка и скрипт продолжают работать), поэтому то же
+     * зеркало действует и там, где рельса не видно глазом: указатель в
+     * шапке не пропадает, а рельс — единственный источник истины.
+     *
+     * `targetId` каждой точки — id секции (`lib/rail.ts`, `railPoints`,
+     * сегодня точка : секция 1 : 1) — и он же хвост адреса пункта шапки
+     * (`/#id`, `lib/nav.ts`): сопоставление точки с пунктом — точное
+     * совпадение уже готовой строки, без пересчёта якорей заново.
+     *
+     * Значение — `aria-current="true"`, не `"page"`: страница не меняется,
+     * меняется только текущее место на ней, а `[aria-current="page"]` занят
+     * другим, реальным сравнением URL (`samePath`, `lib/nav.ts`) и остаётся
+     * недостижим для якорей намеренно (сторож — `shell.spec.ts`, «в шапке
+     * нет отметки текущей страницы»); смешивать эти два смысла в одном
+     * значении атрибута значило бы включить старый (отклонённый) механизм
+     * заново.
+     *
+     * Оформление активного пункта — `NavLinks.astro`,
+     * `.nav-link[aria-current='true']`: то же самое `--text` против
+     * `--text-muted` у остальных, что уже несёт `aria-current="page"` в
+     * подвале (`Footer.astro`, находка 3 этого же ревью) — общий скромный
+     * словарь, а не новый приём.
+     *
+     * `prefers-reduced-motion`: переключение — мгновенная смена атрибута,
+     * никакой отдельной анимации здесь нет; плавность самого перехода цвета
+     * несёт `transition: color var(--dur-micro) …` на `.nav-link`
+     * (`NavLinks.astro`) и гасится глобальным правилом `base.css` при
+     * `reduce` — второго места, которое могло бы мигать, не заводится. */
+    const rail = document.querySelector<HTMLElement>('nav.rail[data-rail]');
+    if (rail) {
+      const railButtons = Array.from(
+        rail.querySelectorAll<HTMLButtonElement>('button.point[data-target]'),
+      );
+
+      const headerLinksFor = (id: string) =>
+        Array.from(
+          document.querySelectorAll<HTMLAnchorElement>(
+            `header nav a[href="/#${id}"]`,
+          ),
+        );
+
+      const mirror = (btn: HTMLButtonElement) => {
+        const id = btn.dataset.target ?? '';
+        const active = btn.hasAttribute('aria-current');
+        for (const link of headerLinksFor(id)) {
+          if (active) link.setAttribute('aria-current', 'true');
+          else link.removeAttribute('aria-current');
+        }
+      };
+
+      for (const btn of railButtons) {
+        // Начальное состояние читается сразу, а не только через мутацию:
+        // наблюдатель ниже мог подключиться позже, чем скрипт рельса уже
+        // расставил метки при собственной загрузке (порядок двух модульных
+        // скриптов на странице не гарантирован в обе стороны).
+        mirror(btn);
+        new MutationObserver(() => mirror(btn)).observe(btn, {
+          attributes: true,
+          attributeFilter: ['aria-current'],
+        });
+      }
+    }
   </script>
 )}
 
