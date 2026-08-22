@@ -10,11 +10,11 @@ import Button from '../components/Button.astro';
   <Container>
     <Section label="404">
       <h1 class="t-h1">Такой страницы нет</h1>
-      <p class="t-body-lg">
+      <p class="lead t-body-lg">
         Возможно, адрес набран с опечаткой или страница переехала.
       </p>
       <div class="ways">
-        <Button href="/" variant="primary">На главную</Button>
+        <Button href="/" variant="secondary">На главную</Button>
         <Button href="/contact" variant="secondary">Написать</Button>
       </div>
     </Section>
@@ -22,5 +22,17 @@ import Button from '../components/Button.astro';
 </Base>
 
 <style>
+  /* Находка 5 дизайн-ревью 2026-08-22: `h1` (60 px, line-height 1.1) и абзац
+     ничем не разведены — `base.css` ставит на заголовки `margin: 0`, а у
+     `.t-body-lg` своего отступа нет, и Tailwind обнуляет отступ `<p>` по
+     умолчанию. Замер до правки: зазор между строками — 0 px, выносные
+     буквы заголовка почти касаются текста. 16px — шаг шкалы отступов
+     компонента (тот же, что у `.ways` ниже), не число «чтобы прошло». */
+  .lead { margin-top: 16px; }
+  /* Кнопка «На главную» была `primary` вместе с кнопкой «Обсудить задачу» в
+     шапке (шапка её не прячет на 404 — `lib/nav.ts`, `showHeaderCta`): два
+     одинаковых акцентных CTA в одном кадре, правило «одна главная кнопка на
+     вид» нарушено. Обе кнопки тела теперь `secondary` — единственный
+     акцентный призыв на экране остаётся в шапке. */
   .ways { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
 </style>
