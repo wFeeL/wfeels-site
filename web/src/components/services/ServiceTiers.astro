@@ -1,0 +1,96 @@
+---
+/* Ступени цены услуги — спека `70-workshop/specs/site-v3/08-service-pages.md`,
+ * раздел 4.5. Цена, имя и состав ступени читаются ТОЛЬКО через `priceEntry()`
+ * (`lib/priceLookup.ts`) — эта разметка ни разу не хранит число цены,
+ * критерий 11 брифа проверяет это по `data/servicePages.ts` и всем новым
+ * `.astro`.
+ *
+ * Кнопки внутри карточки нет: основная кнопка страницы одна и уже стоит на
+ * первом экране (`ServiceHero.astro`). Вся сетка завершается одной
+ * вторичной кнопкой к форме. */
+import Card from '../Card.astro';
+import Button from '../Button.astro';
+import { priceEntry } from '../../lib/priceLookup';
+import type { ServicePriceTier } from '../../data/servicePages';
+
+interface Props {
+  tiers: readonly ServicePriceTier[];
+}
+const { tiers } = Astro.props;
+
+/** Состав ступени, разбитый по запятой — тот же приём, что `splitComposition`
+ *  в `data/pricingShowcase.ts`. */
+function splitComposition(whatIncluded: string): string[] {
+  return whatIncluded.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+const resolved = tiers.map((t) => ({ tier: t, entry: priceEntry(t.group, t.entry) }));
+---
+<div class="grid">
+  {resolved.map(({ tier, entry }) => (
+    <Card stack={true}>
+      <div class="body">
+        {/* Имя ступени — дословно PriceEntry.name, НЕ витринное имя
+            (раздел 4.5). */}
+        <h3 class="t-h3">{entry.name}</h3>
+        <ul class="composition" role="list">
+          {(entry.whatIncluded ? splitComposition(entry.whatIncluded) : [entry.note ?? ''])
+            .filter(Boolean)
+            .map((item) => <li>{item}</li>)}
+        </ul>
+      </div>
+      <p class="price">
+        <code>{entry.price}</code>
+        {tier.timeframe && <span class="timeframe">{tier.timeframe}</span>}
+      </p>
+    </Card>
+  ))}
+</div>
+<p class="more">
+  <Button href="#s-zayavka" variant="secondary">Рассчитать мою задачу</Button>
+</p>
+
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+  .body { display: flex; flex-direction: column; gap: 12px; }
+  .composition {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  .composition li::before {
+    content: '—';
+    margin-right: 6px;
+    color: var(--text-faint);
+  }
+  .price {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: auto 0 0;
+    padding-top: 4px;
+  }
+  .price code {
+    font: 700 1.375rem/1.3 var(--font-mono);
+    color: var(--accent);
+    background: none;
+    padding: 0;
+  }
+  .timeframe {
+    margin-left: auto;
+    font: 500 0.8125rem/1.3 var(--font-mono);
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .more { margin: 24px 0 0; }
+</style>

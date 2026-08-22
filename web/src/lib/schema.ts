@@ -74,6 +74,38 @@ export function faqPageSchema(items: readonly FaqEntry[]) {
   };
 }
 
+export interface BreadcrumbItem {
+  text: string;
+  /** Отсутствует у последнего элемента — текущей страницы. */
+  href?: string;
+}
+
+/** Разметка `BreadcrumbList` хлебных крошек (`Breadcrumbs.astro`) — спека
+ *  `70-workshop/specs/site-v3/08-service-pages.md`, раздел 6. Единственный
+ *  тип структурированных данных, который посадочная подтверждает целиком
+ *  сама собой (реально существующей навигацией), поэтому он единственный,
+ *  что выпускается на страницах услуг (раздел 11.4).
+ *
+ *  Адреса — абсолютные: `site` приходит от `Astro.site` вызывающей
+ *  страницы, тем же приёмом, что `pageSchema` берёт `ctx.site` выше.
+ *  Последний элемент (без `href`) не получает `item` — у текущей страницы
+ *  в `BreadcrumbList` адрес не обязателен (schema.org, `ListItem`), а
+ *  выдумывать его из `canonical`, которого сюда не передали, было бы вторым
+ *  источником того же адреса. */
+export function breadcrumbSchema(items: readonly BreadcrumbItem[], site: string) {
+  const base = site.replace(/\/$/, '');
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.text,
+      ...(item.href ? { item: `${base}${item.href}` } : {}),
+    })),
+  };
+}
+
 /** JSON для вставки внутрь `<script type="application/ld+json">`.
  *
  *  Разборщик HTML ищет в содержимом скрипта закрывающий тег и не знает ничего

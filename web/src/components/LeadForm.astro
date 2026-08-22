@@ -4,6 +4,25 @@ import Button from './Button.astro';
 import { TELEGRAM_URL } from '../lib/contacts';
 import { SERVICE_GROUPS } from '../data/services';
 
+interface Props {
+  /** Код услуги S1…S9, который надо предвыбрать в списке «Что нужно
+   *  сделать» (спека `70-workshop/specs/site-v3/08-service-pages.md`,
+   *  раздел 10.2 — форма посадочной приходит с уже выбранной услугой).
+   *  Значение проверяется по `SERVICE_GROUPS`: неизвестный код — ошибка
+   *  сборки, а не молча непредвыбранный список. Без пропа разметка не
+   *  меняется ни на байт — главная и `/contact` остаются как были. */
+  service?: string;
+}
+const { service } = Astro.props;
+
+const KNOWN_CODES = SERVICE_GROUPS.flatMap((g) => g.links.map((l) => l.code));
+if (service !== undefined && !KNOWN_CODES.includes(service)) {
+  throw new Error(
+    `LeadForm.astro: код услуги «${service}» не найден среди SERVICE_GROUPS ` +
+    '(data/services.ts) — второй список кодов здесь не заводится.',
+  );
+}
+
 const API_BASE = import.meta.env.PUBLIC_API_BASE ?? '';
 const SENDING = 'Отправляю…';
 ---
@@ -32,11 +51,11 @@ const SENDING = 'Отправляю…';
       второй ручной список здесь расходился бы молча (закреплено
       `services.test.ts`, «коды услуг — ровно S1…S9»). */}
   <Field name="service" label="Что нужно сделать" select={true} required={true}>
-    <option value="" disabled selected hidden>Выберите услугу</option>
+    <option value="" disabled selected={!service} hidden>Выберите услугу</option>
     {SERVICE_GROUPS.map((group) => (
       <optgroup label={group.title}>
         {group.links.map((link) => (
-          <option value={link.code}>{link.text}</option>
+          <option value={link.code} selected={link.code === service}>{link.text}</option>
         ))}
       </optgroup>
     ))}

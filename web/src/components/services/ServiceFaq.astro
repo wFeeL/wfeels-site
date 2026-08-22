@@ -1,0 +1,69 @@
+---
+/* Вопросы по услуге — спека `70-workshop/specs/site-v3/08-service-pages.md`,
+ * раздел 4.8. Раскрывается тем же приёмом, что `home/Faq.astro`:
+ * `<details>/<summary>`, без JavaScript, текст всех ответов присутствует в
+ * собранном HTML независимо от состояния.
+ *
+ * Текст черновой (раздел 14.3): `FAQPage` в `ld+json` не выпускается, пока
+ * `faqDraft === true` (раздел 11.4) — владелец текст построчно не
+ * утверждал. Компонент это решение не переопределяет — читает флаг записи. */
+import { faqPageSchema, serializeSchema } from '../../lib/schema';
+import type { ServiceFaqItem } from '../../data/servicePages';
+
+interface Props {
+  items: readonly ServiceFaqItem[];
+  faqDraft: boolean;
+}
+const { items, faqDraft } = Astro.props;
+
+const structured = faqDraft ? null : serializeSchema(faqPageSchema(items));
+---
+<div class="list">
+  {items.map((item) => (
+    <details class="item">
+      <summary>
+        <span class="question">{item.question}</span>
+        <span class="chevron" aria-hidden="true"></span>
+      </summary>
+      <div class="answer">
+        <p>{item.answer}</p>
+      </div>
+    </details>
+  ))}
+</div>
+
+{structured && <script type="application/ld+json" is:inline set:html={structured} />}
+
+<style>
+  .list { display: flex; flex-direction: column; }
+  .item {
+    border-top: 1px solid var(--border);
+    padding-block: 20px;
+  }
+  .item:last-child { border-bottom: 1px solid var(--border); }
+
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    cursor: pointer;
+    list-style: none;
+    font: 600 1.125rem/1.4 var(--font-text);
+  }
+  summary::-webkit-details-marker { display: none; }
+
+  .chevron {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    border-right: 2px solid var(--text-muted);
+    border-bottom: 2px solid var(--text-muted);
+    transform: rotate(45deg);
+    transition: transform var(--dur-micro) var(--ease);
+  }
+  .item[open] .chevron { transform: rotate(-135deg); }
+
+  .answer { padding-top: 12px; max-width: 60ch; }
+  .answer p { margin: 0; color: var(--text-muted); font-size: 1.0625rem; line-height: 1.6; }
+</style>

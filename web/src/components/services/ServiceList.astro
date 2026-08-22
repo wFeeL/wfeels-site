@@ -1,0 +1,101 @@
+---
+/* Список «Что входит» / «Что не входит и считаю отдельно» — спека
+ * `70-workshop/specs/site-v3/08-service-pages.md`, разделы 4.2 и 4.4.
+ *
+ * Маркер различает списки по смыслу, не по вкусу: галочка читалась бы у
+ * границ объёма как «входит», крестик — как отказ, а речь про «делается, но
+ * считается отдельно» (раздел 4.4) — маркер там тире.
+ *
+ * `text` пункта может нести ровно одну встроенную ссылку markdown-приёмом
+ * `[текст](адрес)` (`data/servicePages.ts`, `SourcedItem`) — тем же родом
+ * решения, что `**жирный**` в `data/faq.ts` (`home/Faq.astro`, `parts()`).
+ * Единственный сегодняшний случай — пункт S2 «Разработка нового сайта с
+ * нуля» со ссылкой на `/services/website`. */
+export interface SourcedItem { text: string; from: 'S' | 'O' | 'N'; }
+
+interface Props {
+  items: readonly SourcedItem[];
+  marker: 'check' | 'dash';
+  /** Одна колонка до 900 px, две от 900 px — только у «Что входит»
+   *  (раздел 4.2). «Что не входит» остаётся одной колонкой: пункты там —
+   *  готовые предложения, а не короткие фразы, и в двух узких колонках
+   *  переносились бы через слово. */
+  columns?: 1 | 2;
+}
+const { items, marker, columns = 1 } = Astro.props;
+
+/** Разбирает `[текст](адрес)` на текстовые и ссылочные куски. Даёт массив
+ *  фрагментов, а не HTML-строку — тем же приёмом, что `parts()` в
+ *  `home/Faq.astro`: `set:html` на текст данных открыл бы инъекцию, здесь
+ *  она и не нужна. */
+function linkParts(text: string): Array<{ href: string | null; value: string }> {
+  const re = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const out: Array<{ href: string | null; value: string }> = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push({ href: null, value: text.slice(last, m.index) });
+    out.push({ href: m[2], value: m[1] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push({ href: null, value: text.slice(last) });
+  return out;
+}
+---
+<ul class:list={['list', { 'list--2col': columns === 2 }]} role="list">
+  {items.map((item) => (
+    <li class="reveal">
+      {marker === 'check' ? (
+        <svg class="mark check" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M3 8.5 6.2 11.5 13 4.5" fill="none" stroke="currentColor"
+            stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      ) : (
+        <span class="mark dash" aria-hidden="true"></span>
+      )}
+      <span>
+        {linkParts(item.text).map((p) =>
+          p.href ? <a href={p.href}>{p.value}</a> : p.value)}
+      </span>
+    </li>
+  ))}
+</ul>
+
+<style>
+  .list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    row-gap: 16px;
+  }
+  @media (min-width: 900px) {
+    .list--2col {
+      grid-template-columns: repeat(2, 1fr);
+      column-gap: 32px;
+    }
+  }
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 1.125rem;
+    line-height: 1.55;
+  }
+  .mark {
+    flex: none;
+    margin-top: calc((1.55em - 14px) / 2);
+  }
+  .check { color: var(--accent); }
+  .dash {
+    width: 14px;
+    height: 1.5px;
+    background: var(--text-faint);
+    margin-top: calc(1.55em / 2 - 1px);
+  }
+  a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+</style>
