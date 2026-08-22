@@ -106,8 +106,21 @@ const { group } = Astro.props;
     min-height: 44px;
   }
   .links a span { color: var(--accent); transition: transform var(--dur-micro) var(--ease); }
-  .links a:hover { color: var(--accent); }
-  .links a:hover span { transform: translateX(2px); }
+  /* Находка дизайн-ревью 2026-08-22 (находка 4, D-055): ссылка стоит в
+     СПИСКЕ (`.links`, под чертой карточки-группы) — по решению подчёркивание
+     у такой ссылки появляется только при наведении и фокусе, в покое его
+     нет. Цвет и сдвиг стрелки здесь уже работали (замер до правки: они и
+     не были дефектом дизайн-ревью); недоставало ровно черты. `:focus-visible`
+     — тем же селектором, что и `:hover`, тот же приём, что и в `NavLinks.astro`
+     (список — не проза, второй словарь для того же правила не заводится). */
+  .links a:hover,
+  .links a:focus-visible {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .links a:hover span,
+  .links a:focus-visible span { transform: translateX(2px); }
 
   .stack {
     margin: auto 0 0;

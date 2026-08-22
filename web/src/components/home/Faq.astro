@@ -149,9 +149,35 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
   /* Мобильная база — 18 px (`.t-body`); от 900 px растёт до 22 px
      (`.t-body-lg`, раздел 5.1 брифа) — тот же приём, что и у остальных
      секций (раздел 0.2). */
-  .question { font-weight: 500; font-size: 1.125rem; line-height: 1.65; color: var(--text); }
+  .question {
+    font-weight: 500;
+    font-size: 1.125rem;
+    line-height: 1.65;
+    color: var(--text);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .question { transition: color var(--dur-micro) var(--ease); }
+  }
   @media (min-width: 900px) {
     .question { font-size: 1.375rem; line-height: 1.6; }
+  }
+  /* Находка дизайн-ревью 2026-08-22 (находка 3): `<summary>` — кликабельный
+     заголовок без единого отклика на наведение (замер: цвет, фон и знак
+     «+» одинаковы до и после). Отклик — тем же словарём, что и у ссылок
+     рядом (`.links a:hover` в `ServiceCard.astro`): текст и знак красятся
+     акцентом, никакой новой заливки или тени карточка не получает.
+     `:focus-visible` тем же селектором — с клавиатуры вопрос не имеет права
+     выглядеть беднее, чем под курсором (тот же принцип, что и в
+     `NavLinks.astro`). */
+  summary:hover .question,
+  summary:focus-visible .question {
+    color: var(--accent);
+  }
+  summary:hover .chevron::before,
+  summary:hover .chevron::after,
+  summary:focus-visible .chevron::before,
+  summary:focus-visible .chevron::after {
+    background: var(--accent);
   }
 
   /* Плюс/минус вместо треугольника: два штриха рисуют сам знак, а не
@@ -168,7 +194,12 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
     inset: 0;
     margin: auto;
     background: var(--text-muted);
-    transition: transform var(--dur-micro) var(--ease);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .chevron::before, .chevron::after {
+      transition: transform var(--dur-micro) var(--ease),
+                  background var(--dur-micro) var(--ease);
+    }
   }
   .chevron::before { width: 12px; height: 2px; }
   .chevron::after { width: 2px; height: 12px; }
@@ -219,7 +250,8 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .chevron::before, .chevron::after { transition: none; }
-  }
+  /* `transition` у `.chevron::before/::after` и у `.question` объявлен только
+     внутри `@media (prefers-reduced-motion: no-preference)` выше (находка
+     дизайн-ревью 2026-08-22, находка 3) — при `reduce` его нет вовсе, гасить
+     отдельным правилом уже нечего. */
 </style>
