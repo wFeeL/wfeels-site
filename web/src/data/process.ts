@@ -31,6 +31,8 @@
 
 /** Доля первого платежа в процентах — единственное место, где она названа
  *  числом; разметка читает отсюда, а не хранит «50%» буквально. */
+import { assertParallel, type Locale } from '../i18n/locales';
+
 export const DOWN_PAYMENT_PERCENT = 50;
 
 /** Порог, с которого оплата идёт по вехам, а не двумя половинами. Строка, а
@@ -156,9 +158,110 @@ export const GUARANTEES: readonly Guarantee[] = [
   },
 ];
 
-if (PROCESS_STEPS.length !== 5) {
-  throw new Error('data/process.ts: секция 7 несёт ровно пять шагов.');
+/* ─────────────────────────── Английская версия ────────────────────────────
+ *
+ * Те же пять шагов и те же четыре гарантии — обещания, а не текст, поэтому
+ * переведены так, чтобы их можно было держать слово в слово. Проценты и
+ * порог вехи подставляются из тех же констант, что и в русской версии
+ * (`DOWN_PAYMENT_PERCENT`, `MILESTONE_THRESHOLD`): второго числа в тексте
+ * нет ни на одном языке, и правка PRICING.md меняет обе версии разом.
+ *
+ * Валюта остаётся рублём: `MILESTONE_THRESHOLD` — цитата из
+ * `10-offer/PRICING.md`, и пересчёт её в другую валюту дал бы число, которого
+ * в прайсе нет. Меняется только слово вокруг числа: «от» → «from». */
+const PROCESS_STEPS_EN: readonly ProcessStep[] = [
+  {
+    title: 'Working out the task',
+    text:
+      'Five questions and about ten minutes. Sometimes it turns out that ' +
+      'what you already have covers the task and nothing needs building. ' +
+      'Then that’s what I tell you.',
+  },
+  {
+    title: 'Estimate and plan',
+    text:
+      'I give you a range for the timeline and the price. Then a proposal ' +
+      'with the scope fixed: what I do, what I don’t do, how many rounds ' +
+      'of revisions are included.',
+  },
+  {
+    title: 'Work you can see as it goes',
+    text:
+      'I show the result along the way, not at the end — so that “this ' +
+      'isn’t it” comes up on day two rather than at handover.',
+  },
+  {
+    title: 'Handover',
+    text:
+      'I show you how to use it and hand over the whole project. Exactly ' +
+      'what you get is in the guarantees below.',
+  },
+  {
+    title: 'Thirty days after handover',
+    text:
+      'For thirty days I stay available for any defects — what’s covered ' +
+      'is written below.',
+  },
+];
+
+const GUARANTEES_EN: readonly Guarantee[] = [
+  {
+    title: 'Paid in halves',
+    text:
+      `${DOWN_PAYMENT_PERCENT}% at the start, ${DOWN_PAYMENT_PERCENT}% on ` +
+      `delivery. On work from ${MILESTONE_THRESHOLD} — by milestones: you ` +
+      'pay for the part that’s done, not up front for the whole thing.',
+  },
+  {
+    title: 'The source code and the setup guide are yours',
+    text:
+      'After handover you get the code, the deployment instructions and ' +
+      'every credential. Nothing is left “on the developer’s side”.',
+  },
+  {
+    title: 'An ordinary stack, no lock-in to me',
+    text:
+      'No home-made editors and no closed panels that only I understand. ' +
+      'Want to check? Hand the code to any developer for review — they’ll ' +
+      'find their way around it.',
+  },
+  {
+    title: 'Thirty days to fix defects',
+    text:
+      'Anything that departs from the agreed specification I fix free of ' +
+      'charge for thirty days after handover. Anything new beyond the ' +
+      'specification is quoted separately, at my hourly rate, and we agree ' +
+      'on it in advance.',
+  },
+];
+
+const STEPS_BY_LOCALE: Record<Locale, readonly ProcessStep[]> = {
+  ru: PROCESS_STEPS, en: PROCESS_STEPS_EN,
+};
+const GUARANTEES_BY_LOCALE: Record<Locale, readonly Guarantee[]> = {
+  ru: GUARANTEES, en: GUARANTEES_EN,
+};
+assertParallel('data/process.ts (шаги)', STEPS_BY_LOCALE);
+assertParallel('data/process.ts (гарантии)', GUARANTEES_BY_LOCALE);
+
+export function processSteps(locale: Locale): readonly ProcessStep[] {
+  return STEPS_BY_LOCALE[locale];
 }
-if (GUARANTEES.length !== 4) {
-  throw new Error('data/process.ts: секция 8 несёт ровно четыре гарантии.');
+
+export function guarantees(locale: Locale): readonly Guarantee[] {
+  return GUARANTEES_BY_LOCALE[locale];
+}
+
+/* Пять шагов и четыре гарантии — числа из спеки, а не «сколько получилось».
+   Сторож проверяет ОБА языка: список, из которого перевод потерял шаг, —
+   та же поломка, что список из четырёх шагов. */
+for (const [locale, steps] of Object.entries(STEPS_BY_LOCALE)) {
+  if (steps.length !== 5) {
+    throw new Error(`data/process.ts: секция 7 несёт ровно пять шагов (${locale}: ${steps.length}).`);
+  }
+}
+for (const [locale, items] of Object.entries(GUARANTEES_BY_LOCALE)) {
+  if (items.length !== 4) {
+    throw new Error(`data/process.ts: секция 8 несёт ровно четыре гарантии (${locale}: ${items.length}).`);
+  }
 }

@@ -20,7 +20,7 @@ const DIST = fileURLToPath(new URL('../web/dist/', import.meta.url));
 const MAX_PAGE_BYTES = 500 * 1024;
 const MAX_JS_GZIP_BYTES = 30 * 1024;
 
-const PAGES = ['index.html', 'contact/index.html', 'privacy/index.html'];
+const PAGES = ['index.html', 'en/index.html', 'contact/index.html', 'privacy/index.html'];
 
 /* Иллюстрация «Замер» (`CaseWeightIllustration.astro`) стоит только в секции
    кейсов главной — `contact` и `privacy` её не несут по устройству страницы,
@@ -33,7 +33,41 @@ const PAGES = ['index.html', 'contact/index.html', 'privacy/index.html'];
    08-14]], раздел 1 и раздел 4.1): гейт перецеплен с прозаической фразы
    «Она весит N КБ… в N раз больше» (удалена со страницы) на срез разметки
    самой иллюстрации. */
-const WEIGHT_ILLUSTRATION_PAGES = new Set(['index.html']);
+/* Иллюстрацию несут ОБЕ главные, и утверждения на них одни и те же числа,
+   записанные по правилам своего языка: «410 КБ» и «410 KB», «2,4 МБ» и
+   «2.4 MB», «в шесть раз легче» и «six times lighter». Отдельный словарь на
+   версию, а не одна регулярка «на любой язык»: шаблон, принимающий и точку и
+   запятую как разделитель, принял бы «2.4 МБ» — запись, которой нет ни в
+   одном из двух языков, — и молча пропустил бы её на страницу.
+
+   Английские числительные не совпадают с русскими один в один: `twice` не
+   берёт слова `times`. Поэтому слово берётся из таблицы целиком, а шаблон
+   только обрамляет его, — та же логика, что в `data/pageWeight.ts`. */
+const RU_CLAIMS = {
+  weight: /(\d+)\s*КБ/,
+  weightHint: 'ожидалось «N КБ» в клетке data-cell="weight-ours"',
+  median: /(\d+),(\d+)\s*МБ/,
+  medianHint: 'ожидалось «N,N МБ» в клетке data-cell="weight-typical"',
+  words: ['', '', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь',
+    'девять', 'десять', 'одиннадцать', 'двенадцать'],
+  phrase: (word) => new RegExp(`в\\s+${word}\\s+раз`, 'i'),
+  phraseHint: (word) => `ожидалось «в ${word} раз(а) легче» в той же клетке`,
+};
+const EN_CLAIMS = {
+  weight: /(\d+)\s*KB/,
+  weightHint: 'ожидалось «N KB» в клетке data-cell="weight-ours"',
+  median: /(\d+)\.(\d+)\s*MB/,
+  medianHint: 'ожидалось «N.N MB» в клетке data-cell="weight-typical"',
+  words: ['', '', 'twice', 'three times', 'four times', 'five times', 'six times',
+    'seven times', 'eight times', 'nine times', 'ten times', 'eleven times',
+    'twelve times'],
+  phrase: (word) => new RegExp(`${word}\\s+lighter`, 'i'),
+  phraseHint: (word) => `ожидалось «${word} lighter» в той же клетке`,
+};
+const WEIGHT_ILLUSTRATION_PAGES = new Map([
+  ['index.html', RU_CLAIMS],
+  ['en/index.html', EN_CLAIMS],
+]);
 const WEIGHT_ILLUSTRATION_MARKER = 'data-illustration="case-weight"';
 
 // Вырезает поддерево `<div …marker…>…</div>` из HTML по БАЛАНСУ тегов, а не
@@ -441,6 +475,7 @@ for (const page of PAGES) {
      проверяет не то» — и на этот раз лечится не регуляркой точнее, а тем,
      что сверке вообще нечего искать вне этого среза. */
   if (WEIGHT_ILLUSTRATION_PAGES.has(page)) {
+    const claims = WEIGHT_ILLUSTRATION_PAGES.get(page);
     const weightSlice = extractElementByMarker(html, WEIGHT_ILLUSTRATION_MARKER);
 
     if (weightSlice === null) {
@@ -480,11 +515,11 @@ for (const page of PAGES) {
         failed = true;
       }
 
-      const weightClaim = oursCell !== null ? oursCell.match(/(\d+)\s*КБ/) : null;
+      const weightClaim = oursCell !== null ? oursCell.match(claims.weight) : null;
       if (!weightClaim) {
         console.error(
           `✗ ${page} — иллюстрация «Замер» не называет вес страницы ` +
-          '(ожидалось «N КБ» в клетке data-cell="weight-ours").'
+          `(${claims.weightHint}).`
         );
         failed = true;
       } else {
@@ -501,11 +536,11 @@ for (const page of PAGES) {
         }
       }
 
-      const medianClaim = typicalCell !== null ? typicalCell.match(/(\d+),(\d+)\s*МБ/) : null;
+      const medianClaim = typicalCell !== null ? typicalCell.match(claims.median) : null;
       if (!medianClaim) {
         console.error(
           `✗ ${page} — иллюстрация «Замер» называет вес, но не называет медиану ` +
-          '(ожидалось «N,N МБ» в клетке data-cell="weight-typical"). Кратность сверить не с чем.'
+          `(${claims.medianHint}). Кратность сверить не с чем.`
         );
         failed = true;
       }
@@ -524,14 +559,12 @@ for (const page of PAGES) {
          класса, ради которого слово выводится из числа: сверяется здесь, на
          собранной странице, а не только в модуле, который их считает. */
       if (coefficientClaim) {
-        const WORDS = ['', '', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь',
-          'девять', 'десять', 'одиннадцать', 'двенадцать'];
         const claimedRatio = Number(coefficientClaim[1]);
-        const word = WORDS[claimedRatio];
-        if (!word || !new RegExp(`в\\s+${word}\\s+раз`, 'i').test(verdictCell)) {
+        const word = claims.words[claimedRatio];
+        if (!word || !claims.phrase(word).test(verdictCell)) {
           console.error(
             `✗ ${page} — вывод рисунка утверждает ${claimedRatio}×, но словом этого не ` +
-            'повторяет (ожидалось «в ' + (word || '…') + ' раз(а) легче» в той же клетке). ' +
+            `повторяет (${claims.phraseHint(word || '…')}). ` +
             'Цифра и слово разошлись — их обязан выводить один расчёт ' +
             '(data/pageWeight.ts, WEIGHT_MULTIPLIER_PHRASE).'
           );

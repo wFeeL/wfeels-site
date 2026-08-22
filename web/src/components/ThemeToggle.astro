@@ -1,4 +1,26 @@
-<button id="theme-toggle" type="button" aria-label="Тема оформления">
+---
+/* Подписи кнопки приходят из словаря страницы: `aria-label` рисуется здесь,
+ * а состояние («светлая» / «light») дописывает скрипт ниже. Скрипт берёт
+ * слова НЕ из импорта словаря, а из `data-`атрибутов этого же элемента —
+ * иначе в клиентский бандл уехал бы весь словарь обоих языков ради трёх
+ * строк, а гейт веса (`scripts/check-budget.mjs`, 30 КБ сжатого JS) считает
+ * именно этот бандл. */
+import { dict, type Locale } from '../i18n/locales';
+
+interface Props {
+  lang: Locale;
+}
+const { lang } = Astro.props;
+const t = dict(lang);
+---
+<button
+  id="theme-toggle"
+  type="button"
+  aria-label={t.theme}
+  data-theme-label={t.theme}
+  data-theme-light={t.themeLight}
+  data-theme-dark={t.themeDark}
+>
   {/* Значок рисует CSS, а не скрипт, и оба варианта лежат в разметке.
       Причина: до правки в разметке стоял третий значок «системная», и человек,
       у которого система тёмная, первым кадром видел не тот знак — а потом
@@ -27,11 +49,19 @@
 <script>
   import { THEME_COLOR } from '../lib/theme';
 
-  const NAME = { light: 'светлая', dark: 'темная' } as const;
-  type State = keyof typeof NAME;
+  type State = 'light' | 'dark';
 
   const btn = document.getElementById('theme-toggle');
   if (btn) {
+    /* Слова берутся с самого элемента, а не из словаря по импорту: словарь
+       нужен только разметке, и втягивать его в клиентский бандл ради трёх
+       строк незачем. Запасные значения — на случай, если разметку когда-нибудь
+       отрисуют без атрибутов: пустой `aria-label` хуже английского. */
+    const THEME_WORD = btn.dataset.themeLabel ?? 'Theme';
+    const NAME: Record<State, string> = {
+      light: btn.dataset.themeLight ?? 'light',
+      dark: btn.dataset.themeDark ?? 'dark',
+    };
     const themeColors =
       document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
     const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -65,7 +95,7 @@
     /* Подпись — единственное, что скрипт обязан обновлять всегда: значок
        рисуется стилями, а читалка стилей не видит. */
     const label = (state: State) => {
-      btn.setAttribute('aria-label', `Тема оформления: ${NAME[state]}`);
+      btn.setAttribute('aria-label', `${THEME_WORD}: ${NAME[state]}`);
     };
 
     /* Полоса браузера над страницей. В разметке лежат две записи с `media` по

@@ -40,6 +40,10 @@ import Prose from '../Prose.astro';
 import LeadForm from '../LeadForm.astro';
 import TelegramMark from '../TelegramMark.astro';
 import { TELEGRAM_URL, emailButtonHtml } from '../../lib/contacts';
+import { dict, localeFromPath } from '../../i18n/locales';
+
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
 ---
 <div class="layout">
   <div class="intro">
@@ -50,22 +54,22 @@ import { TELEGRAM_URL, emailButtonHtml } from '../../lib/contacts';
         ревью «левая половина секции контакта пустая»). Теперь обе колонки
         стартуют от одной горизонтали, и верх формы совпадает с верхом
         МЕТКИ «ПОСЛЕДНИЙ ШАГ», не с верхом заголовка. */}
-    <Label>ПОСЛЕДНИЙ ШАГ</Label>
-    <h2 class="t-h2">Расскажите о задаче</h2>
+    <Label>{t.contactLabel}</Label>
+    <h2 class="t-h2">{t.contactHeading}</h2>
 
     <Prose>
-      <p>Напишите пару строк: что нужно — или что сейчас не работает.</p>
+      <p>{t.contactLead}</p>
     </Prose>
 
     <div class="direct-actions">
       <a class="contact-action" href={TELEGRAM_URL} rel="me">
         <TelegramMark size={20} />
-        <span>Написать в Telegram</span>
+        <span>{t.footerTelegram}</span>
       </a>
-      <Fragment set:html={emailButtonHtml('Написать на почту', 'contact-action')} />
+      <Fragment set:html={emailButtonHtml(t.footerEmail, 'contact-action')} />
     </div>
 
-    <p class="reply">Отвечу в течение дня.</p>
+    <p class="reply">{t.contactReply}</p>
   </div>
 
   <div class="form-col">

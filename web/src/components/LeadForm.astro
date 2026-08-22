@@ -2,15 +2,22 @@
 import Field from './Field.astro';
 import Button from './Button.astro';
 import { TELEGRAM_URL } from '../lib/contacts';
-import { SERVICE_GROUPS } from '../data/services';
+import { serviceGroups } from '../data/services';
+import { dict, localeFromPath } from '../i18n/locales';
+
+/* Язык формы — язык страницы, на которой она стоит. Проп сюда не приходит:
+   форму зовут и главная (`home/Contact.astro`), и страница `/contact`, и
+   витрина компонентов, и каждому пришлось бы про язык помнить. */
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
 
 const API_BASE = import.meta.env.PUBLIC_API_BASE ?? '';
-const SENDING = 'Отправляю…';
+const SENDING = t.formSending;
 ---
 <form id="lead-form" method="post" action={`${API_BASE}/api/lead`}
       data-sending-label={SENDING}>
-  <Field name="name" label="Как вас зовут" required={true} autocomplete="name"
-         placeholder="Например, Мария" />
+  <Field name="name" label={t.formName} required={true} autocomplete="name"
+         placeholder={t.formNamePlaceholder} />
   <!-- `autocomplete` здесь намеренно НЕ задан. Атрибут объявляет браузеру, чем
        поле ЯВЛЯЕТСЯ, а это поле принимает два разных вида значения, и половина
        людей вводит `@handle`. Значения «почта или ник» в списке autofill нет:
@@ -19,8 +26,8 @@ const SENDING = 'Отправляю…';
        `off` тоже не выход: он выключает и подстановку тем, кто вводит почту.
        Без атрибута поле наследует `on` и получает историю ввода самого браузера
        — то есть ровно то, что человек писал сюда в прошлый раз, ник или почту. -->
-  <Field name="contact" label="Telegram или почта" required={true}
-         placeholder="@wfeels или почта" />
+  <Field name="contact" label={t.formContact} required={true}
+         placeholder={t.formContactPlaceholder} />
 
   {/* Задача 18 (правка 2026-08-19): было текстовым полем «Что нужно
       сделать» — стало выпадающим списком с тем же лейблом, поле обязательное
@@ -31,9 +38,9 @@ const SENDING = 'Отправляю…';
       (`data/services.ts`), откуда их уже берёт секция 3 «Что я делаю» —
       второй ручной список здесь расходился бы молча (закреплено
       `services.test.ts`, «коды услуг — ровно S1…S9»). */}
-  <Field name="service" label="Что нужно сделать" select={true} required={true}>
-    <option value="" disabled selected hidden>Выберите услугу</option>
-    {SERVICE_GROUPS.map((group) => (
+  <Field name="service" label={t.formService} select={true} required={true}>
+    <option value="" disabled selected hidden>{t.formServicePlaceholder}</option>
+    {serviceGroups(locale).map((group) => (
       <optgroup label={group.title}>
         {group.links.map((link) => (
           <option value={link.code}>{link.text}</option>
@@ -42,11 +49,11 @@ const SENDING = 'Отправляю…';
     ))}
   </Field>
 
-  <Field name="message" label="О задаче (необязательно)" textarea={true}
-         hint="Чем конкретнее задача, тем точнее смета." autocomplete="off"
-         placeholder="Например: нужен лендинг, дедлайн через месяц" />
-  <Field name="budget" label="Бюджет (необязательно)" autocomplete="off"
-         placeholder="Порядок цифр, если уже прикинули" />
+  <Field name="message" label={t.formMessage} textarea={true}
+         hint={t.formMessageHint} autocomplete="off"
+         placeholder={t.formMessagePlaceholder} />
+  <Field name="budget" label={t.formBudget} autocomplete="off"
+         placeholder={t.formBudgetPlaceholder} />
 
   <p class="consent">
     {/* Задача 19 (правка 2026-08-18): плавная анимация галочки согласия.
@@ -65,8 +72,16 @@ const SENDING = 'Отправляю…';
           stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </span>
+    {/* Документ согласия существует только по-русски — это юридический текст,
+        и его перевод был бы не переводом, а вторым документом (`i18n/en.ts`,
+        комментарий у `legalPolicy`). Поэтому подпись переведена, а ссылка
+        помечена языком цели: `hreflang="ru"` объявляет, что за ней русский
+        текст, вместо того чтобы умолчать об этом. */}
     <label for="f-consent">
-      Согласен на <a href="/consent">обработку персональных данных</a><span class="req" aria-hidden="true"> *</span>
+      {t.formConsentBefore}<a
+        href="/consent"
+        hreflang={locale === 'ru' ? undefined : 'ru'}
+      >{t.formConsentLink}</a><span class="req" aria-hidden="true"> *</span>
     </label>
   </p>
 
@@ -80,19 +95,19 @@ const SENDING = 'Отправляю…';
   <input class="hp" name="website" type="text" tabindex="-1" aria-hidden="true"
          autocomplete="off" />
 
-  <Button type="submit" variant="primary">Отправить</Button>
+  <Button type="submit" variant="primary">{t.formSubmit}</Button>
 
   <!-- Роли живой области объявляют результат незрячему, `tabindex="-1"` даёт
        перенести на него фокус. Одного показа блока мало: он появляется ниже
        кнопки, за краем экрана, и до правки не было ни прокрутки, ни объявления —
        нажатие оставалось без ответа для всех. -->
   <div class="status ok" data-form-status="success" role="status" tabindex="-1" hidden>
-    <p class="t-label">Отправлено</p>
-    <p>Заявка ушла. Отвечу в течение дня.</p>
+    <p class="t-label">{t.formOkTitle}</p>
+    <p>{t.formOkText}</p>
   </div>
   <div class="status fail" data-form-status="error" role="alert" tabindex="-1" hidden>
-    <p class="t-label">Не отправлено</p>
-    <p>Не получилось отправить. Напишите напрямую: <a href={TELEGRAM_URL}>Telegram</a></p>
+    <p class="t-label">{t.formFailTitle}</p>
+    <p>{t.formFailText}<a href={TELEGRAM_URL}>Telegram</a></p>
   </div>
 </form>
 

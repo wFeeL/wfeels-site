@@ -7,13 +7,17 @@
 import Label from '../Label.astro';
 import Button from '../Button.astro';
 import ServiceCard from './ServiceCard.astro';
-import { SERVICE_GROUPS, SERVICES_CATALOG_HREF } from '../../data/services';
+import { serviceGroups, SERVICES_CATALOG_HREF } from '../../data/services';
+import { dict, localeFromPath } from '../../i18n/locales';
+
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
 ---
-<Label>УСЛУГИ</Label>
-<h2 class="t-h2">Что я делаю</h2>
+<Label>{t.servicesLabel}</Label>
+<h2 class="t-h2">{t.servicesHeading}</h2>
 
 <div class="grid">
-  {SERVICE_GROUPS.map((group) => <ServiceCard group={group} />)}
+  {serviceGroups(locale).map((group) => <ServiceCard group={group} />)}
 </div>
 
 {/* Строка ниш («Под вашу отрасль: …») снята правкой владельца 2026-08-21:
@@ -29,7 +33,7 @@ import { SERVICE_GROUPS, SERVICES_CATALOG_HREF } from '../../data/services';
     весом с главным действием страницы. */}
 <p class="all-services">
   <Button href={SERVICES_CATALOG_HREF} variant="secondary">
-    Все услуги <span aria-hidden="true">→</span>
+    {t.servicesAll} <span aria-hidden="true">→</span>
   </Button>
 </p>
 

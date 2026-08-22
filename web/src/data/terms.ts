@@ -15,6 +15,8 @@
 // числа не хранит — только читает отсюда.
 
 /** Один срок таблицы первого экрана. */
+import { assertParallel, type Locale } from '../i18n/locales';
+
 export interface TermEntry {
   /** Название группы — как в таблице первого экрана (спека 02-texts.md,
    *  секция 1). Дословно совпадает с меткой соответствующей строки. */
@@ -53,3 +55,51 @@ export const HERO_TERMS: readonly TermEntry[] = [
       'От 18 000 ₽.»',
   },
 ];
+
+/* ─────────────────────────── Английская версия ────────────────────────────
+ *
+ * Собирается из русской: `source` — цитата из `10-offer/SERVICES.md`, и она
+ * остаётся русской намеренно. Цитата с переведёнными словами перестаёт быть
+ * цитатой, а поле `source` существует ровно затем, чтобы к нему можно было
+ * вернуться и сверить строку с документом базы.
+ *
+ * Сам срок («от 2–4 дней») переводится словом, но не числом: диапазон тот же,
+ * тире то же. */
+interface TermText {
+  label: string;
+  term: string;
+}
+
+const TERM_TEXT_EN: readonly TermText[] = [
+  { label: 'Websites and landing pages', term: 'from 2–4 days' },
+  { label: 'Automation and integrations', term: 'from 1–3 days' },
+  { label: 'AI consultant', term: 'from 3–5 days' },
+];
+
+const HERO_TERMS_EN: readonly TermEntry[] = HERO_TERMS.map((entry, i) => {
+  const text = TERM_TEXT_EN[i];
+  if (!text) {
+    throw new Error(
+      `data/terms.ts: у срока «${entry.label}» нет английской подписи — таблица ` +
+      'первого экрана обязана нести те же три строки на обоих языках.',
+    );
+  }
+  const digits = (value: string) => value.replace(/\D+/g, '');
+  if (digits(text.term) !== digits(entry.term)) {
+    throw new Error(
+      `data/terms.ts: английский срок «${text.term}» несёт другие цифры, чем ` +
+      `русский «${entry.term}». Переводится слово вокруг числа, не само число: ` +
+      'сроки приходят из 10-offer/SERVICES.md.',
+    );
+  }
+  return { ...entry, label: text.label, term: text.term };
+});
+
+const TERMS_BY_LOCALE: Record<Locale, readonly TermEntry[]> = {
+  ru: HERO_TERMS, en: HERO_TERMS_EN,
+};
+assertParallel('data/terms.ts', TERMS_BY_LOCALE);
+
+export function heroTerms(locale: Locale): readonly TermEntry[] {
+  return TERMS_BY_LOCALE[locale];
+}

@@ -50,20 +50,46 @@
  * поле внутри контейнера сдвинуло бы секцию относительно всех остальных.
  */
 import Label from '../Label.astro';
+import { dict, localeFromPath, type Locale } from '../../i18n/locales';
+
+/* Язык — из адреса страницы: секция приходит слотом, пропов у неё нет
+   (разбор — в `home/Hero.astro`). */
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
 
 /** Метка и заголовок секции — читает `pages/index.astro`, передаёт их в
  *  `Section` (пропы `label`/`heading`), которая рисует их снаружи `.panel`. */
-export const PAIN_LABEL = 'ЗНАКОМАЯ БОЛЬ';
-export const PAIN_HEADING = 'Как обычно бывает';
+/* Метка и заголовок секции живут в словаре (`i18n/ru.ts`, `i18n/en.ts`) и
+   рисуются снаружи — `Section.astro` по пропам из `home/HomePage.astro`
+   (правило владельца 2026-08-18, пункт 11). Прежние константы `PAIN_LABEL` /
+   `PAIN_HEADING` отсюда сняты: держать текст в двух языках экспортом из
+   компонента значило бы завести третье место, где страница узнаёт свой
+   язык. */
 
-const PAIN_POINTS = [
-  'Смета растет по ходу, и узнаете вы об этом к сдаче',
-  'Пишете вы одному, отвечает другой',
-  'Исполнитель пропадает, а доступов у вас нет',
-  'Готовое некому подхватить — проще переписать заново',
-];
-if (PAIN_POINTS.length !== 4) {
-  throw new Error('home/Pain.astro: секция 2 несёт ровно четыре пункта боли.');
+const PAIN_POINTS_BY_LOCALE: Record<Locale, readonly string[]> = {
+  ru: [
+    'Смета растет по ходу, и узнаете вы об этом к сдаче',
+    'Пишете вы одному, отвечает другой',
+    'Исполнитель пропадает, а доступов у вас нет',
+    'Готовое некому подхватить — проще переписать заново',
+  ],
+  /* Четыре те же жалобы и в том же порядке: список читается как нарастание
+     («деньги → общение → исчезновение → руины»), и перестановка сломала бы
+     не перевод, а довод. */
+  en: [
+    'The estimate keeps growing, and you find out at handover',
+    'You write to one person and a different one answers',
+    'The contractor vanishes, and you hold none of the credentials',
+    'Nobody can pick up what was built — rewriting is easier',
+  ],
+};
+const PAIN_POINTS = PAIN_POINTS_BY_LOCALE[locale];
+for (const [name, points] of Object.entries(PAIN_POINTS_BY_LOCALE)) {
+  if (points.length !== 4) {
+    throw new Error(
+      `home/Pain.astro: секция 2 несёт ровно четыре пункта боли (${name}: ${points.length}).`,
+    );
+  }
 }
 ---
 <div class="pain-body">
@@ -84,12 +110,9 @@ if (PAIN_POINTS.length !== 4) {
 
   <div class="answer-card reveal">
     {/* Метка называет РОЛЬ карточки, а не повторяет её заголовок. */}
-    <Label>РЕШЕНИЕ</Label>
-    <h3 class="t-h3">Со мной иначе</h3>
-    <p>
-      Договоренность фиксируется до начала работы, а не по ходу. Все
-      сделанное остается у вас — ничего не держится «на моей стороне».
-    </p>
+    <Label>{t.painAnswerLabel}</Label>
+    <h3 class="t-h3">{t.painAnswerHeading}</h3>
+    <p>{t.painAnswerText}</p>
     <a class="answer-link" href="#guarantees">
       {/* Стрелка вниз, а не вправо: ссылка ведёт к секции, которая стоит
           НИЖЕ на этой же странице. Текст и адрес правятся ТОЛЬКО парой:
@@ -98,7 +121,7 @@ if (PAIN_POINTS.length !== 4) {
           прежняя подпись обещала «процесс и гарантии», новая обещает
           гарантии, и вести обязана туда, что названа. Оба идентификатора
           объявлены в `lib/sections.ts`. */}
-      <span aria-hidden="true">↓</span> Гарантии
+      <span aria-hidden="true">↓</span> {t.painAnswerLink}
     </a>
   </div>
 </div>

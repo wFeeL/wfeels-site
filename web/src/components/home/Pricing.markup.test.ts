@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { TOP_CARDS, SHELF_CARDS } from '../../data/pricingShowcase';
+import { TOP_CARDS, SHELF_CARDS, topCards, shelfCards } from '../../data/pricingShowcase';
 
 /* Требование блокера B1 (финальное дизайн-ревью, задача 8 плана): «в разметке
  * секции нет ни одного числа, все приходят из данных». Строже, чем проверка
@@ -74,7 +74,13 @@ describe('Pricing.astro — три верхние карточки и полка
  * статистики, «выбор клиентов», «чаще всего заказывают» и однокоренные/
  * синонимичные варианты) по-прежнему запрещена везде — и в разметке
  * компонента, и в данных витрины. */
-const ALLOWED_DEMAND_LABEL = 'Самый популярный';
+/* Разрешённых строк две — по одной на язык, и вторая появилась 2026-08-22
+   вместе с английской главной. Отмена D-029 была сужена до ОДНОЙ строки, а
+   не до одного языка: английская витрина ставит ту же метку на ту же
+   карточку, и запрет на любую ДРУГУЮ метку спроса действует на ней ровно так
+   же. Без этой пары английская страница осталась бы вне правила, которое
+   русская соблюдает, — и «bestseller» уехал бы на неё молча. */
+const ALLOWED_DEMAND_LABELS = ['Самый популярный', 'Most popular'];
 
 const DEMAND_CLAIM_WORDS = [
   'хит продаж',
@@ -85,6 +91,17 @@ const DEMAND_CLAIM_WORDS = [
   'лидер продаж',
   'самый заказываемый',
   'топ продаж',
+  // Английские формы того же утверждения. `popular` как основа ловит
+  // `popular`, `popularity`, `most popular` — кроме разрешённой строки,
+  // которая вырезается до поиска.
+  'bestseller',
+  'best seller',
+  'best-selling',
+  'popular',
+  'top choice',
+  'customers choose',
+  'most ordered',
+  'top seller',
 ];
 
 /** Ищет запрещённую метку спроса, ПРЕДВАРИТЕЛЬНО вырезав из текста
@@ -93,7 +110,10 @@ const DEMAND_CLAIM_WORDS = [
  *  «популярн…» (не внутри дословной разрешённой строки) по-прежнему красит
  *  тест. */
 function findDemandClaim(text: string): string | null {
-  const withoutAllowed = text.split(ALLOWED_DEMAND_LABEL).join('');
+  let withoutAllowed = text;
+  for (const allowed of ALLOWED_DEMAND_LABELS) {
+    withoutAllowed = withoutAllowed.split(allowed).join('');
+  }
   const lower = withoutAllowed.toLowerCase();
   for (const word of DEMAND_CLAIM_WORDS) {
     if (lower.includes(word)) return word;
@@ -119,10 +139,28 @@ describe('Pricing.astro — сторож меток спроса (отмена D
     }
   });
 
-  it('ярлык рекомендуемой карточки — дословно «Самый популярный», ни одна другая карточка его не несёт', () => {
-    const recommended = TOP_CARDS.filter((c) => c.recommended);
-    expect(recommended).toHaveLength(1);
-    expect(recommended[0].recommended!.label).toBe(ALLOWED_DEMAND_LABEL);
+  it('ярлык рекомендуемой карточки — дословно разрешённая строка своего языка, и ровно на одной карточке', () => {
+    for (const [locale, cards] of [['ru', topCards('ru')], ['en', topCards('en')]] as const) {
+      const recommended = cards.filter((c) => c.recommended);
+      expect(recommended, `${locale}: рекомендуемая карточка обязана быть ровно одна`).toHaveLength(1);
+      expect(ALLOWED_DEMAND_LABELS, `${locale}: ярлык «${recommended[0].recommended!.label}» не из белого списка`)
+        .toContain(recommended[0].recommended!.label);
+    }
+  });
+
+  // Английская витрина проверяется тем же сторожем, что русская: правило одно
+  // на обе версии страницы, и «most popular» в чужом месте — такая же
+  // непроверяемая метка спроса, как «хит продаж».
+  it('в английской витрине нет ни одной ДРУГОЙ метки спроса', () => {
+    for (const card of topCards('en')) {
+      expect(findDemandClaim(card.showcaseName), `карточка «${card.showcaseName}»`).toBeNull();
+      if (card.recommended) {
+        expect(findDemandClaim(card.recommended.label), `ярлык «${card.showcaseName}»`).toBeNull();
+      }
+    }
+    for (const card of shelfCards('en')) {
+      expect(findDemandClaim(card.label), `карточка полки «${card.label}»`).toBeNull();
+    }
   });
 
   // Доказательство, что сторож действительно ловит запрещённые формулировки,
@@ -133,9 +171,16 @@ describe('Pricing.astro — сторож меток спроса (отмена D
   it('доказательство красноты: детектор ловит каждую из запрещённых формулировок', () => {
     expect(findDemandClaim('Это хит продаж сезона')).toBe('хит продаж');
     expect(findDemandClaim('Самое популярное решение')).toBe('популярн');
+    // Тот же детектор на английских формулировках: разрешённая строка
+    // проходит мимо, любая другая — краснеет.
+    expect(findDemandClaim('Most popular')).toBeNull();
+    expect(findDemandClaim('Our bestseller')).toBe('bestseller');
+    expect(findDemandClaim('A popular choice')).toBe('popular');
     expect(findDemandClaim('Выбор клиентов номер один')).toBe('выбор клиентов');
     expect(findDemandClaim('Чаще всего заказывают именно этот пакет')).toBe('чаще всего заказывают');
     expect(findDemandClaim('Обычный нейтральный текст без утверждений о спросе')).toBeNull();
-    expect(findDemandClaim(ALLOWED_DEMAND_LABEL), 'разрешённая строка не должна красить тест').toBeNull();
+    for (const allowed of ALLOWED_DEMAND_LABELS) {
+      expect(findDemandClaim(allowed), `разрешённая строка «${allowed}» не должна красить тест`).toBeNull();
+    }
   });
 });

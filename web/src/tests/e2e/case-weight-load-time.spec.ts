@@ -66,7 +66,7 @@ const TOLERANCE_SLOWER = 1.25;
 const TOLERANCE_FASTER = 0.55;
 
 /** Один прогон: чистый контекст, пустой кэш, троттлинг, полная загрузка. */
-async function measureLoadSeconds(context: BrowserContext, page: Page): Promise<number> {
+async function measureLoadSeconds(context: BrowserContext, page: Page, path: string): Promise<number> {
   const cdp = await context.newCDPSession(page);
   await cdp.send('Network.enable');
   await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
@@ -76,7 +76,7 @@ async function measureLoadSeconds(context: BrowserContext, page: Page): Promise<
     downloadThroughput: (LINK_MBPS * 1000 * 1000) / 8,
     uploadThroughput: (LINK_MBPS * 1000 * 1000) / 8,
   });
-  await page.goto('/', { waitUntil: 'load' });
+  await page.goto(path, { waitUntil: 'load' });
   const ms = await page.evaluate(() => {
     const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
     return nav.loadEventEnd - nav.startTime;
@@ -85,8 +85,16 @@ async function measureLoadSeconds(context: BrowserContext, page: Page): Promise<
   return ms / 1000;
 }
 
+/* Рисунок стоит на ОБЕИХ главных, и число на нём — единственное замеренное
+ * из четырёх. Английская версия печатает своё «0.4 s» с точкой вместо
+ * запятой; сверять его с русским замером нельзя — это другая страница, и
+ * весит она на 18 КБ меньше (`data/pageWeight.ts`, `PAGE_WEIGHT_KB_EN`).
+ * Замер повторяется для каждой версии отдельно. */
+const PAGES = ['/', '/en'];
+
 test.describe('иллюстрация «Замер» — время загрузки не врёт', () => {
-  test('медиана полной загрузки сходится с числом, напечатанным на рисунке', async ({ browser }) => {
+  for (const path of PAGES) {
+  test(`медиана полной загрузки сходится с числом на рисунке (${path})`, async ({ browser }) => {
     test.setTimeout(180_000);
 
     /* `reducedMotion: 'reduce'` — не украшение теста, а условие корректного
@@ -103,9 +111,10 @@ test.describe('иллюстрация «Замер» — время загруз
 
     // Число читается СО СТРАНИЦЫ, а не из исходников: врёт или не врёт именно
     // то, что видит человек.
-    await page.goto('/');
+    await page.goto(path);
     const printed = (await page.locator('[data-cell="time-ours"] [data-count]').innerText()).trim();
-    const claimed = Number(/^([\d,]+)/.exec(printed)?.[1].replace(',', '.'));
+    // Разделитель дробной части свой у каждого языка: «0,4 с» и «0.4 s».
+    const claimed = Number(/^([\d.,]+)/.exec(printed)?.[1].replace(',', '.'));
     expect(Number.isFinite(claimed) && claimed > 0, `на рисунке не нашлось время загрузки: «${printed}»`)
       .toBe(true);
 
@@ -122,7 +131,7 @@ test.describe('иллюстрация «Замер» — время загруз
 
     const samples: number[] = [];
     for (let i = 0; i < WARMUP_RUNS + MEASURED_RUNS; i++) {
-      const seconds = await measureLoadSeconds(context, page);
+      const seconds = await measureLoadSeconds(context, page, path);
       if (i >= WARMUP_RUNS) samples.push(seconds);
     }
     await context.close();
@@ -130,7 +139,7 @@ test.describe('иллюстрация «Замер» — время загруз
     const sorted = [...samples].sort((a, b) => a - b);
     const median = sorted[(sorted.length - 1) >> 1];
     const report =
-      `напечатано ${printed}; прогоны ${sorted.map((s) => s.toFixed(3)).join(' / ')} с; ` +
+      `${path}: напечатано ${printed}; прогоны ${sorted.map((s) => s.toFixed(3)).join(' / ')} с; ` +
       `медиана ${median.toFixed(3)} с`;
 
     expect(
@@ -145,4 +154,5 @@ test.describe('иллюстрация «Замер» — время загруз
       'невыгодную сторону: переизмерить и подставить в `data/pageWeight.ts` (OUR_LOAD_SECONDS).',
     ).toBeGreaterThanOrEqual(claimed * TOLERANCE_FASTER);
   });
+  }
 });

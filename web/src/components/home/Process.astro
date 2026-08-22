@@ -48,7 +48,11 @@
  * страницы, как ведомость `Pain.astro`. Константы ниже — единственный
  * источник текста, читает их `pages/index.astro`.
  */
-import { PROCESS_STEPS } from '../../data/process';
+import { processSteps } from '../../data/process';
+import { localeFromPath } from '../../i18n/locales';
+
+const locale = localeFromPath(Astro.url.pathname);
+const PROCESS_STEPS = processSteps(locale);
 
 if (PROCESS_STEPS.length !== 5) {
   throw new Error('home/Process.astro: секция 7 несёт ровно пять шагов.');
@@ -56,8 +60,10 @@ if (PROCESS_STEPS.length !== 5) {
 
 /** Метка и заголовок секции — передаются в `Section` (пропы
  *  `label`/`heading`), которая рисует их снаружи `.panel`. */
-export const PROCESS_LABEL = 'КАК ЭТО БУДЕТ';
-export const PROCESS_HEADING = 'Как я работаю';
+/* Метка и заголовок секции — в словаре (`i18n/ru.ts`, `i18n/en.ts`); рисует
+   их снаружи `Section.astro` по пропам из `home/HomePage.astro`. Прежние
+   константы `PROCESS_LABEL` / `PROCESS_HEADING` отсюда сняты вместе с
+   переводом секции. */
 ---
 <div class="process">
   {/* `<ol>` без CSS-счётчика: номер — реальный текст «01»…«05», не

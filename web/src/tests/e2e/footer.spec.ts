@@ -42,13 +42,14 @@ test('группы «Юридические документы» в подвал
   await expect(page.locator('footer a[href="/consent"]')).toHaveCount(0);
 });
 
-// До правки владельца 2026-08-21 (снят маршрут `/en`) здесь проверялась
-// английская версия — единственная страница, у которой список разделов
-// (`lib/nav.ts`, `SECTIONS.en`) пуст. Без `/en` этот случай на сайте больше
-// не встречается: разделы есть у шапки и подвала на КАЖДОЙ странице.
+/* Раньше `/en` был исключением: список разделов (`lib/nav.ts`, `SECTIONS.en`)
+   стоял пустым, потому что вести пунктам было некуда. С возвратом английской
+   главной 2026-08-22 разделы у неё те же пять, и `/en` проверяется наравне со
+   всеми — это главная проверка того, что перевод не потерял навигацию на
+   одной из двух версий. */
 test('на любой странице шапка и подвал показывают один и тот же непустой список разделов',
   async ({ page }) => {
-    for (const path of ['/', '/contact', '/privacy', '/terms', '/consent', '/thanks']) {
+    for (const path of ['/', '/en', '/contact', '/privacy', '/terms', '/consent', '/thanks']) {
       await page.goto(path);
       const header = await page.locator('header nav.nav-wide a').count();
       const footer = await page.locator(SECTIONS_IN_FOOTER).count();

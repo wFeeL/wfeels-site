@@ -5,12 +5,16 @@ import Button from './Button.astro';
 import NavLinks from './NavLinks.astro';
 import ReadingProgress from './ReadingProgress.astro';
 import TelegramMark from './TelegramMark.astro';
-import { dict } from '../i18n/locales';
+import LangSwitch from './LangSwitch.astro';
+import { dict, hasTranslation, localeHome, type Locale } from '../i18n/locales';
 import { headerCtaHref, sections, showHeaderCta } from '../lib/nav';
 import { TELEGRAM_URL } from '../lib/contacts';
 
 interface Props {
-  lang: 'ru' | 'en';
+  /** Язык шапки. Приходит из `Base.astro`, который выводит его из адреса
+   *  страницы, — своего вывода у шапки нет, чтобы двух источников языка на
+   *  одной странице не существовало. */
+  lang: Locale;
   progress?: boolean;
   /** Страница несёт рельс (`Rail.astro`, рисует его `Base.astro` вне шапки).
    *  При `true` полоса прогресса становится напарником рельса, а не заменой:
@@ -34,6 +38,15 @@ const cta = showHeaderCta(Astro.url.pathname);
    `showHeaderCta` — сюда попадает уже готовое значение. */
 const ctaHref = headerCtaHref(Astro.url.pathname);
 
+/* Кнопка ведёт на русскую страницу контактов, если английской нет. Молча
+   уводить англоязычного посетителя на русскую форму нельзя, поэтому ссылка
+   помечается языком цели и поясняющей подписью. Условие само истечёт: как
+   только `/contact` появится в `BILINGUAL_PATHS`, пометка исчезнет.
+   Якорь (`#contact`) в эту проверку не попадает: это переход внутри той же
+   страницы, а не уход на другой язык, — и на английской главной кнопка ведёт
+   именно якорем (`headerCtaHref`, `stripLocale`). */
+const ctaForeign = lang === 'en' && !ctaHref.startsWith('#') && !hasTranslation(ctaHref);
+
 /* Перечень разделов приходит из `lib/nav.ts` — оттуда же его берёт подвал.
    Своего списка у шапки нет намеренно: второй ручной перечень тех же путей
    расходится с первым молча. */
@@ -52,7 +65,7 @@ const BRAND = 'wfeels';
 <header>
   <Container>
     <div class="bar">
-      <a class="brand" href={lang === 'ru' ? '/' : '/en'} aria-label={BRAND}>
+      <a class="brand" href={localeHome(lang)} aria-label={BRAND}>
         {BRAND.split('').map((ch, i) => (
           <span class="brand-letter" style={`--i:${i}`} aria-hidden="true">{ch}</span>
         ))}
@@ -79,7 +92,13 @@ const BRAND = 'wfeels';
       )}
 
       <div class="tools">
-        <ThemeToggle />
+        {/* Переключатель языка рисует сама шапка, а не слот со страницы
+            (так было до снятия 2026-08-21). Слот означал бы, что каждая новая
+            страница обязана про переключатель ПОМНИТЬ, а забытый слот — это
+            страница без выхода на второй язык, и провал молчаливый. Честность
+            цели считает сам компонент (`LangSwitch.astro`). */}
+        <LangSwitch />
+        <ThemeToggle lang={lang} />
         {/* Прямой канал рядом с переключателями, доступен с любой страницы и
             никуда не уводит безвозвратно: посетитель посадочной страницы,
             которого пункт меню увёл на главную (см. `lib/nav.ts`), получает
@@ -110,7 +129,12 @@ const BRAND = 'wfeels';
             дополнительно, а десктоп (>=900 px) эта раскладка не задевает. */}
         <span class="cta-slot">
           {cta ? (
-            <Button href={ctaHref} variant="primary">
+            <Button
+              href={ctaHref}
+              variant="primary"
+              hreflang={ctaForeign ? 'ru' : undefined}
+              title={ctaForeign ? t.ctaLangNote : undefined}
+            >
               {t.write}
             </Button>
           ) : (

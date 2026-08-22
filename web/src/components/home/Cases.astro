@@ -24,8 +24,12 @@ import Label from '../Label.astro';
 import CaseRow from './CaseRow.astro';
 import CaseWeightIllustration from './CaseWeightIllustration.astro';
 import { homeCases } from '../../data/cases';
+import { dict, localeFromPath } from '../../i18n/locales';
 
-const cases = homeCases();
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
+
+const cases = homeCases(locale);
 
 /* Высота поля иллюстрации — своя у каждого блока, кратная 32, в коридоре
  * 288…448 (бриф `70-workshop/specs/site-v3/02-case-illustrations.md`, раздел
@@ -77,8 +81,8 @@ const ILLUSTRATIONS: Record<string, any> = {
 };
 
 ---
-<Label>ЧТО УЖЕ СДЕЛАНО</Label>
-<h2 class="t-h2">Кейс</h2>
+<Label>{t.casesLabel}</Label>
+<h2 class="t-h2">{t.casesHeading}</h2>
 
 <div class="rows">
   {cases.map((item) => {

@@ -16,7 +16,14 @@ import {
   WEIGHT_MULTIPLIER_PHRASE,
   OUR_LOAD_SECONDS_TEXT,
   TYPICAL_LOAD_SECONDS_TEXT,
+  TYPICAL_PAGE_MB_TEXT_EN,
+  OUR_LOAD_SECONDS_TEXT_EN,
+  TYPICAL_LOAD_SECONDS_TEXT_EN,
+  PAGE_WEIGHT_KB_EN,
+  weightMultiplier,
+  weightMultiplierPhrase,
 } from './pageWeight';
+import { assertParallel, type Locale } from '../i18n/locales';
 
 // ---------------------------------------------------------------------
 // Иллюстрация 1 — «Замер» (кейс «Этот сайт», бриф раздел 3). Композиция
@@ -60,6 +67,51 @@ export const WEIGHT_CELLS: readonly WeightCell[] = [
   { key: 'weight-ours', side: 'ours', value: `${PAGE_WEIGHT_KB} КБ`, caption: 'Вес нашей страницы' },
   { key: 'weight-typical', side: 'typical', value: `${TYPICAL_PAGE_MB_TEXT} МБ`, caption: 'Вес обычной страницы' },
 ];
+
+/* ─────────────────────────── Английская версия ────────────────────────────
+ *
+ * Клетки собираются из русских: `key` и `side` берутся у оригинала, поэтому
+ * порядок «наша / чужая» и раскладка в две колонки на английской странице
+ * не могут разъехаться. Переводятся подпись и ЕДИНИЦА, а величина остаётся
+ * той же — 409 КБ и 409 KB это одни и те же байты.
+ *
+ * Разделитель дробной части приходит из `pageWeight.ts` уже английским
+ * («0.4», не «0,4»): на английской странице запятая читается как разделитель
+ * разрядов и меняет число в тысячу раз. */
+const WEIGHT_CELLS_EN: readonly WeightCell[] = [
+  { key: 'time-ours', side: 'ours', value: `${OUR_LOAD_SECONDS_TEXT_EN} s`, caption: 'Our page load time' },
+  { key: 'time-typical', side: 'typical', value: `${TYPICAL_LOAD_SECONDS_TEXT_EN} s`, caption: 'A typical page load time' },
+  { key: 'weight-ours', side: 'ours', value: `${PAGE_WEIGHT_KB_EN} KB`, caption: 'Our page weight' },
+  { key: 'weight-typical', side: 'typical', value: `${TYPICAL_PAGE_MB_TEXT_EN} MB`, caption: 'A typical page weight' },
+];
+
+const WEIGHT_CELLS_BY_LOCALE: Record<Locale, readonly WeightCell[]> = {
+  ru: WEIGHT_CELLS, en: WEIGHT_CELLS_EN,
+};
+assertParallel('data/case-illustrations.ts (клетки веса)', WEIGHT_CELLS_BY_LOCALE);
+
+for (const [locale, cells] of Object.entries(WEIGHT_CELLS_BY_LOCALE)) {
+  const keys = cells.map((c) => c.key).join(' ');
+  if (keys !== WEIGHT_CELLS.map((c) => c.key).join(' ')) {
+    throw new Error(
+      `data/case-illustrations.ts: клетки языка «${locale}» идут в другом порядке ` +
+      'или несут другие ключи — рисунок перестал быть одним и тем же.',
+    );
+  }
+}
+
+export function weightIllustration(locale: Locale) {
+  return {
+    cells: WEIGHT_CELLS_BY_LOCALE[locale],
+    /* Кратность считается от веса СВОЕЙ страницы: английская версия легче
+       русской на 18 КБ (разбор — у `PAGE_WEIGHT_KB_EN`), и брать чужое число
+       значило бы печатать на рисунке вывод из чужого замера. Сегодня обе
+       версии дают «×6»; разойдись они — рисунки скажут разное, и это будет
+       правдой. */
+    multiplier: weightMultiplier(locale),
+    multiplierPhrase: weightMultiplierPhrase(locale),
+  };
+}
 
 export const WEIGHT_ILLUSTRATION = {
   cells: WEIGHT_CELLS,
@@ -240,7 +292,11 @@ if (WEIGHT_CELLS.map((c) => c.side).join(' ') !== 'ours typical ours typical') {
     '«наша / чужая» — на этом держится раскладка в две колонки.',
   );
 }
-if (WEIGHT_CELLS.some((c) => !/^[\d,]+\s\S/.test(c.value))) {
+/* Точка в шаблоне ниже — английский разделитель дробной части («0.4 s»), а
+   не «любой символ»: класс `[\d.,]` перечисляет цифры, точку и запятую. Обе
+   версии рисунка обязаны укладываться в один шаблон, потому что читает его
+   один и тот же счётчик на прокрутке (`CaseWeightIllustration.astro`). */
+if ([...WEIGHT_CELLS, ...WEIGHT_CELLS_EN].some((c) => !/^[\d.,]+\s\S/.test(c.value))) {
   throw new Error(
     'data/case-illustrations.ts: значение клетки обязано начинаться с числа и нести ' +
     'единицу в той же строке — счётчик на прокрутке переписывает только цифры, ' +

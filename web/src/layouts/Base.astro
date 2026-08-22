@@ -5,7 +5,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import Rail from '../components/Rail.astro';
 import BackgroundLine from '../components/BackgroundLine.astro';
-import { dict } from '../i18n/locales';
+import { dict, localeFromPath, type Locale } from '../i18n/locales';
 import { buildMeta } from '../lib/seo';
 import { pageSchema, serializeSchema, type SchemaKind } from '../lib/schema';
 import { THEME_COLOR } from '../lib/theme';
@@ -25,7 +25,17 @@ import onestCyrillicHref from '../fonts/onest-cyrillic-wght-normal.woff2?url';
 interface Props {
   title: string;
   description: string;
-  lang?: 'ru' | 'en';
+  /** Язык страницы. По умолчанию ВЫВОДИТСЯ ИЗ АДРЕСА (`localeFromPath`), а не
+   *  задаётся страницей: `/en` и всё под ним — английские, остальное русское.
+   *
+   *  Так атрибут `lang` на `<html>` не может разойтись с содержимым страницы.
+   *  Раньше язык объявляла сама страница пропом, и английская главная была
+   *  единственным местом, где его помнили; страница, забывшая проп, молча
+   *  отдавала бы английский текст с `lang="ru"` — а это не косметика:
+   *  переносы, чтение с экрана и `hyphens: auto` работают по объявленному
+   *  языку. Проп остаётся как перекрытие для случая, когда адрес и язык
+   *  расходятся намеренно, и в сегодняшнем коде им никто не пользуется. */
+  lang?: Locale;
   noindex?: boolean;
   progress?: boolean;
   /** Страница несёт рельс-скроллспай (`Rail.astro`) — сегодня только главная
@@ -44,8 +54,8 @@ interface Props {
   schema?: SchemaKind;
 }
 const {
-  title, description, lang = 'ru', noindex = false, progress = true,
-  rail = false, line = false, schema,
+  title, description, lang = localeFromPath(Astro.url.pathname), noindex = false,
+  progress = true, rail = false, line = false, schema,
 } = Astro.props;
 const t = dict(lang);
 
