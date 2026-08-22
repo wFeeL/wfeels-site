@@ -220,10 +220,19 @@ const BRAND = 'wfeels';
      мельче цены и заголовков карточек (30 px) — вес 800 и есть его отличие,
      а не собственный кегль. Без центрирования строка вставала по верху
      коробки — оно решено `align-items: center`, а не размером. */
+  /* Не `var(--font-head)` — своя цепочка запасного начертания. `header
+     .brand` бьёт слово «wfeels» на отдельные `<span class="brand-letter">`
+     (нужно для покадровой анимации подскока ниже), а это рвёт кернинг в
+     один прогон: реальный Unbounded и системный шрифт теряют от разбивки
+     разную долю ширины, и запасное начертание, откалиброванное на цельной
+     строке `h1` (`Unbounded Fallback`, `fonts.css`), недобирает ширину
+     марки на живой разметке. `Unbounded Fallback Brand` — отдельный
+     `@font-face` той же системной гарнитуры, калиброванный на самом узле
+     `.brand` (разбор чисел — `fonts.css`, комментарий у объявления). */
   .brand {
     display: inline-flex;
     align-items: center;
-    font: 800 1.375rem/1 var(--font-head);
+    font: 800 1.375rem/1 'Unbounded Variable', 'Unbounded Fallback Brand', system-ui, sans-serif;
     color: var(--text);
     text-decoration: none;
   }
