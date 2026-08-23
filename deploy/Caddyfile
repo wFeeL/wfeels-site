@@ -1,3 +1,13 @@
+{
+	# Публичный Caddy на VPS удаляет поддельный X-Forwarded-For и добавляет реальный
+	# адрес посетителя. Этот внутренний Caddy доступен только через loopback-порт
+	# Docker, поэтому доверяет приватному адресу хоста и сохраняет цепочку до API.
+	servers {
+		trusted_proxies static private_ranges
+		trusted_proxies_strict
+	}
+}
+
 http://{$SITE_DOMAIN}, http://www.{$SITE_DOMAIN} {
 	encode zstd gzip
 

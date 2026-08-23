@@ -59,7 +59,7 @@ capability сброшены, повышение привилегий запре�
 ротируются (`json-file`, 10 МБ × 3): пока Telegram не настроен, заявка целиком
 уходит в лог, а он не должен расти без предела.
 
-    cd deploy && cp .env.example .env      # заполнить SITE_DOMAIN, SITE_URL, токен бота
+    cd deploy && cp .env.example .env      # заполнить SITE_DOMAIN, SITE_URL, токен и chat_id бота
     cd ../web && SITE_URL=https://<домен> npm run build
     cd ../deploy && docker compose config  # синтаксис
     docker compose up -d
@@ -78,3 +78,11 @@ capability сброшены, повышение привилегий запре�
 
 Секреты только в `deploy/.env` — он в `.gitignore`. В git лежит
 `deploy/.env.example` с пустыми значениями.
+
+Если VPS не имеет прямого доступа к Telegram Bot API, в `deploy/.env` можно
+задать прокси только для отправки заявок:
+
+    TELEGRAM_PROXY_URL=http://user:password@proxy.example:8080
+
+Пустое значение означает прямое соединение. Прокси не отключает проверку TLS до
+`api.telegram.org` и не применяется к остальному трафику контейнера.
