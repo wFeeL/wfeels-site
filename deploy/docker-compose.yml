@@ -24,7 +24,8 @@ services:
     image: caddy:2-alpine
     depends_on: [api]
     restart: unless-stopped
-    ports: ["80:80", "443:443"]
+    ports: 
+      - "127.0.0.1:8088:80"
     environment:
       SITE_DOMAIN: ${SITE_DOMAIN}
     volumes:

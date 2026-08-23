@@ -1,5 +1,10 @@
-{$SITE_DOMAIN} {
+http://{$SITE_DOMAIN}, http://www.{$SITE_DOMAIN} {
 	encode zstd gzip
+
+	# Обе DNS-записи ведут на Nasik. `www` не становится вторым адресом сайта:
+	# он всегда возвращает посетителя на канонический домен без `www`.
+	@www host www.{$SITE_DOMAIN}
+	redir @www https://{$SITE_DOMAIN}{uri} permanent
 
 	# `root` объявлен на уровне сайта, а не внутри `handle`: обработчику ошибок
 	# тоже нужно, чем отдавать страницу. Пока `root` жил внутри блока статики,
