@@ -4,16 +4,17 @@ services:
     env_file: .env
     restart: unless-stopped
     expose: ["8000"]
-    # Приложение ничего не пишет на диск: заявка уходит в Telegram, состояние
-    # лимитера живёт в памяти, байткод отключён `PYTHONDONTWRITEBYTECODE`.
-    # Значит и файловая система ему нужна только на чтение.
+    # Код и системная файловая система только для чтения. Запись разрешена лишь
+    # в два постоянных тома: первичная база заявок и локальные резервные копии.
     read_only: true
     tmpfs: ["/tmp"]
+    volumes:
+      - leads_data:/data
+      - leads_backups:/backups
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]
-    # Драйвер по умолчанию логи не ротирует, а перезапуск стоит `unless-stopped`:
-    # без предела лог демона растёт бесконечно. Пока Telegram не настроен,
-    # заявка целиком уходит в лог — то есть это ещё и персональные данные.
+    # Драйвер по умолчанию логи не ротирует. Полный текст заявки в журналы не
+    # пишется даже при сбое Telegram; здесь остаются технические события.
     logging:
       driver: json-file
       options:
@@ -47,3 +48,5 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  leads_data:
+  leads_backups:

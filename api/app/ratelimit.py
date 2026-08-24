@@ -18,3 +18,15 @@ class RateLimiter:
             return False
         hits.append(now)
         return True
+
+    def purge(self, now: float) -> int:
+        """Удаляет адреса, по которым истекло всё скользящее окно."""
+        expired = []
+        for key, hits in self._hits.items():
+            while hits and now - hits[0] >= self._window:
+                hits.popleft()
+            if not hits:
+                expired.append(key)
+        for key in expired:
+            del self._hits[key]
+        return len(expired)

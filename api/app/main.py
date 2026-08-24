@@ -1,4 +1,8 @@
+import asyncio
+import logging
 import time
+from contextlib import asynccontextmanager, suppress
+from datetime import datetime, timezone
 from typing import Awaitable, Callable
 
 from html import escape
@@ -11,11 +15,15 @@ from pydantic import ValidationError
 # `Settings` импортируется рядом с синглтоном: он стоит в аннотации параметра
 # `create_app`, а она вычисляется в момент определения функции.
 from .config import Settings, settings
+from .maintenance import maintenance_loop
 from .ratelimit import RateLimiter
 from .schemas import SERVICE_LABELS, LeadIn
-from .telegram import send_lead
+from .storage import LeadStore, StoredLead
+from .telegram import TelegramDelivery, delete_lead_message, send_lead
 
-Sender = Callable[[str], Awaitable[bool]]
+Sender = Callable[[str], Awaitable[TelegramDelivery | None]]
+Deleter = Callable[[int], Awaitable[bool]]
+log = logging.getLogger(__name__)
 
 
 def error_page(site_url: str, message: str) -> str:
@@ -50,13 +58,14 @@ def client_ip(request: Request, trust_proxy: bool) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def format_lead(lead: LeadIn) -> str:
+def format_lead(lead: LeadIn | StoredLead) -> str:
     # Код услуги ничего не говорит владельцу в мессенджере — попадает
     # название из каталога. Пустой `service` (заявка со старой формы) даёт
     # «—», а не пустую строку: молчание о поле неотличимо от сбоя вёрстки.
     service_label = SERVICE_LABELS.get(lead.service, "—")
     parts = [
         "Новая заявка с сайта",
+        f"ID: {getattr(lead, 'id', 'до записи')}",
         f"Имя: {lead.name}",
         f"Связь: {lead.contact}",
         f"Услуга: {service_label}",
@@ -69,9 +78,11 @@ def format_lead(lead: LeadIn) -> str:
 
 
 def create_app(
-    sender: Sender = send_lead,
+    sender: Sender | None = None,
     clock: Callable[[], float] = time.time,
     config: Settings | None = None,
+    store: LeadStore | None = None,
+    deleter: Deleter | None = None,
 ) -> FastAPI:
     # Настройки принимаются третьим параметром по той же причине, что отправитель
     # и часы: без этого весь набор тестов молча зависел бы от окружения машины.
@@ -80,7 +91,45 @@ def create_app(
     # него и написан `.env.example`), тесты предела частоты и разрешённого
     # источника начали бы падать — не из-за кода, а из-за конфига.
     cfg = config or settings
-    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    lead_store = store or LeadStore(cfg.leads_db_path)
+    limiter = RateLimiter(limit=cfg.rate_limit_per_hour, window_seconds=3600)
+
+    async def configured_sender(text: str) -> TelegramDelivery | None:
+        return await send_lead(text, cfg)
+
+    async def configured_deleter(message_id: int) -> bool:
+        return await delete_lead_message(message_id, cfg)
+
+    telegram_sender = sender or configured_sender
+    telegram_deleter = deleter or configured_deleter
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        task = asyncio.create_task(
+            maintenance_loop(
+                lead_store,
+                sender=telegram_sender,
+                deleter=telegram_deleter,
+                formatter=format_lead,
+                config=cfg,
+                rate_limiter=limiter,
+            )
+        )
+        try:
+            yield
+        finally:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+            lead_store.close()
+
+    app = FastAPI(
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+        lifespan=lifespan,
+    )
+    app.state.lead_store = lead_store
 
     # Отправка идёт с JSON-телом, а такой запрос браузер предваряет проверкой
     # OPTIONS. В бою Caddy проксирует /api на тот же домен и повода для проверки
@@ -95,10 +144,11 @@ def create_app(
         allow_headers=["content-type"],
     )
 
-    limiter = RateLimiter(limit=cfg.rate_limit_per_hour, window_seconds=3600)
-
     @app.get("/api/health")
     async def health() -> dict[str, str]:
+        # Проверка считается зелёной только если первичная база доступна:
+        # работающий HTTP-процесс без записи заявок для этой схемы не здоров.
+        lead_store.count("leads")
         return {"status": "ok"}
 
     # response_model=None обязателен: без него FastAPI видит аннотацию
@@ -191,6 +241,20 @@ def create_app(
                 "принять нельзя.",
             )
 
+        # Согласие связано с теми редакциями документов, которые человек видел
+        # возле формы. Старая вкладка после обновления не должна молча получить
+        # новую версию задним числом: просим перезагрузить страницу.
+        if (
+            payload.consent_version != cfg.consent_version
+            or payload.privacy_version != cfg.privacy_version
+        ):
+            return fail(
+                409,
+                "documents_changed",
+                "Документы формы обновились. Перезагрузите страницу и "
+                "подтвердите актуальное согласие.",
+            )
+
         # Приманка и слишком быстрая отправка: молча принимаем и ничего не шлём.
         # Отвечать ошибкой нельзя — так бот узнает, что его раскусили.
         if payload.website.strip():
@@ -208,11 +272,49 @@ def create_app(
         if payload.elapsed_seconds and payload.elapsed_seconds < cfg.min_fill_seconds:
             return ok
 
+        # Сначала российская первичная база, затем Telegram. Если SQLite
+        # недоступен, Telegram не становится скрытым обходным хранилищем.
+        received_at = datetime.fromtimestamp(now, timezone.utc)
         try:
-            await sender(format_lead(payload))
-        except Exception:
-            # Заявку нельзя терять из-за чужого сбоя: она уже в логе отправителя.
-            pass
+            stored = lead_store.record_lead(
+                payload,
+                received_at=received_at,
+                lead_retention_days=cfg.lead_retention_days,
+                consent_receipt_retention_days=cfg.consent_receipt_retention_days,
+                telegram_retry_minutes=cfg.telegram_retry_minutes,
+                action_text=cfg.consent_action_text,
+            )
+        except Exception as exc:
+            log.error("Не удалось записать заявку: %s", type(exc).__name__)
+            return fail(
+                503,
+                "storage_unavailable",
+                "Заявка временно не принимается. Попробуйте ещё раз позже "
+                "или свяжитесь напрямую.",
+            )
+
+        try:
+            delivery = await telegram_sender(format_lead(stored))
+        except Exception as exc:
+            delivery = None
+            error_code = type(exc).__name__
+        else:
+            error_code = "delivery_failed"
+
+        if delivery is None:
+            lead_store.mark_telegram_retry(
+                stored.id,
+                now=received_at,
+                retry_minutes=cfg.telegram_retry_minutes,
+                error_code=error_code,
+            )
+        else:
+            lead_store.mark_telegram_sent(
+                stored.id,
+                message_id=delivery.message_id,
+                sent_at=received_at,
+                retention_hours=cfg.telegram_retention_hours,
+            )
 
         return ok
 

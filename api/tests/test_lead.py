@@ -3,6 +3,8 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from app.storage import LeadStore
+from app.telegram import TelegramDelivery
 
 
 VALID = {
@@ -13,6 +15,8 @@ VALID = {
     "page": "/services/sajt",
     "website": "",
     "consent": "on",
+    "consent_version": "1.2-2026-08-24",
+    "privacy_version": "1.2-2026-08-24",
     "elapsed_seconds": 0.0,
 }
 
@@ -29,6 +33,10 @@ def make_settings(**overrides) -> Settings:
         rate_limit_per_hour=5,
         min_fill_seconds=2.0,
         trust_proxy=True,
+        leads_db_path=":memory:",
+        backup_directory="",
+        consent_version="1.2-2026-08-24",
+        privacy_version="1.2-2026-08-24",
     )
     return Settings(_env_file=None, **{**base, **overrides})
 
@@ -41,9 +49,9 @@ def sent():
 @pytest.fixture
 def make_client(sent):
     def build(**overrides) -> TestClient:
-        async def fake_send(text: str) -> bool:
+        async def fake_send(text: str) -> TelegramDelivery:
             sent.append(text)
-            return True
+            return TelegramDelivery(message_id=len(sent))
 
         return TestClient(
             create_app(
@@ -70,6 +78,8 @@ def test_valid_json_lead_is_accepted_and_sent(client, sent):
     assert r.status_code == 202
     assert len(sent) == 1
     assert "Мария" in sent[0]
+    assert client.app.state.lead_store.count("leads") == 1
+    assert client.app.state.lead_store.count("consent_receipts") == 1
 
 
 def test_form_encoded_lead_redirects_to_thanks(client, sent):
@@ -123,6 +133,64 @@ def test_lead_without_consent_is_rejected(client, sent):
     assert sent == []
 
 
+def test_stale_legal_document_versions_are_rejected(client, sent):
+    r = client.post(
+        "/api/lead",
+        json={
+            **VALID,
+            "privacy_version": "устаревшая",
+            "elapsed_seconds": 90.0,
+        },
+    )
+    assert r.status_code == 409
+    assert r.json()["status"] == "documents_changed"
+    assert sent == []
+    assert client.app.state.lead_store.count("leads") == 0
+
+
+def test_primary_database_is_written_before_telegram():
+    store = LeadStore(":memory:")
+    observed_counts: list[int] = []
+
+    async def inspect_store(_text: str) -> TelegramDelivery:
+        observed_counts.append(store.count("leads"))
+        return TelegramDelivery(message_id=17)
+
+    app = create_app(
+        sender=inspect_store,
+        clock=lambda: 100.0,
+        config=make_settings(),
+        store=store,
+    )
+    response = TestClient(app).post(
+        "/api/lead",
+        json={**VALID, "elapsed_seconds": 90.0},
+    )
+
+    assert response.status_code == 202
+    assert observed_counts == [1]
+
+
+def test_storage_failure_does_not_fall_back_to_telegram(sent):
+    async def fake_send(text: str) -> TelegramDelivery:
+        sent.append(text)
+        return TelegramDelivery(message_id=1)
+
+    app = create_app(
+        sender=fake_send,
+        clock=lambda: 100.0,
+        config=make_settings(leads_db_path="/dev/null/leads.sqlite3"),
+    )
+    response = TestClient(app).post(
+        "/api/lead",
+        json={**VALID, "elapsed_seconds": 90.0},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "storage_unavailable"
+    assert sent == []
+
+
 def test_short_message_is_rejected(client):
     r = client.post(
         "/api/lead",
@@ -162,13 +230,14 @@ def test_rate_limit_blocks_sixth_request(client, sent):
 
 
 def test_telegram_failure_still_returns_success():
-    async def broken(text: str) -> bool:
+    async def broken(text: str) -> TelegramDelivery:
         raise RuntimeError("телеграм недоступен")
 
     app = create_app(sender=broken, clock=lambda: 100.0, config=make_settings())
     c = TestClient(app)
     r = c.post("/api/lead", json={**VALID, "elapsed_seconds": 90.0})
     assert r.status_code == 202
+    assert c.app.state.lead_store.count("leads") == 1
 
 
 def test_form_failure_answers_with_a_page_not_json(make_client):

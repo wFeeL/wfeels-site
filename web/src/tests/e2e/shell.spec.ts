@@ -467,14 +467,10 @@ test('заголовок первой страницы начинается бл
   }
 });
 
-test('в подвале нет юридических ссылок, строка про ИИ осталась', async ({ page }) => {
-  // Правка владельца 2026-08-21 сняла группу «Юридические документы» из
-  // подвала (навигация — сами страницы остаются построенными, на /consent
-  // по-прежнему ссылается чекбокс согласия формы). До этой правки здесь
-  // стояла проверка ОБРАТНОГО — что все три ссылки видны.
+test('в подвале есть юридические ссылки и строка про ИИ', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('footer a[href="/privacy"]')).toHaveCount(0);
-  await expect(page.locator('footer a[href="/terms"]')).toHaveCount(0);
-  await expect(page.locator('footer a[href="/consent"]')).toHaveCount(0);
+  await expect(page.locator('footer a[href="/privacy"]')).toBeVisible();
+  await expect(page.locator('footer a[href="/terms"]')).toBeVisible();
+  await expect(page.locator('footer a[href="/consent"]')).toBeVisible();
   await expect(page.locator('footer')).toContainText('вместе с ИИ');
 });
