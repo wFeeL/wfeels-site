@@ -24,8 +24,10 @@ import {
  * они проснутся сами, на той странице, где рисунок окажется, и без правки
  * этого файла. Пустой прогон был бы хуже: он бы молчал.
  *
- * Общие сторожа секции кейсов главной (нет растра, нет настоящей формы)
- * спать не имеют права и читают `index.html` как прежде. */
+ * Общие сторожа секции кейсов главной читают `index.html` как прежде. С
+ * 2026-08-24 у галереи Telegram Mini App законно появились один ленивый
+ * растр первой загрузки и две кнопки навигации; остальные медиа и элементы
+ * формы по-прежнему запрещены. */
 
 const DIST_DIR = fileURLToPath(new URL('../../dist/', import.meta.url));
 const DIST_INDEX = fileURLToPath(new URL('../../dist/index.html', import.meta.url));
@@ -75,18 +77,36 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
   expect(casesEnd, 'секция id="process" не найдена').toBeGreaterThan(casesStart);
   const casesHtml = html.slice(casesStart, casesEnd);
 
-  it('внутри секции кейсов нет растра, видео, canvas или background-image: url()', () => {
-    expect(casesHtml).not.toMatch(/<img\b/i);
+  it('внутри секции по одному img на галерею; видео, canvas и background-image нет', () => {
+    const images = casesHtml.match(/<img\b[^>]*>/gi) ?? [];
+    expect(images).toHaveLength(2);
+    expect(images[0]).toContain('/cases/storefront/yasmina-home.avif');
+    expect(images[0]).toContain('data-storefront-screen');
+    expect(images[0]).toContain('loading="lazy"');
+    expect(images[1]).toContain('data-website-screen');
+    expect(images[1]).toContain('loading="lazy"');
+    expect(images[1]).not.toMatch(/\bsrc=/);
     expect(casesHtml).not.toMatch(/<video\b/i);
     expect(casesHtml).not.toMatch(/<canvas\b/i);
     expect(casesHtml).not.toContain('url(');
   });
 
-  it('внутри секции кейсов нет настоящей формы: ни <input, ни <button (бриф 04, раздел 3.2/13.7)', () => {
-    // Строка ввода чата — `<div aria-hidden>`, а не `<input>`. Кнопки «Все
-    // кейсы» в секции больше нет вовсе (правка владельца 2026-08-20).
+  it('внутри секции нет формы; каждая галерея содержит ровно две стрелки', () => {
     expect(casesHtml).not.toMatch(/<input\b/i);
-    expect(casesHtml).not.toMatch(/<button\b/i);
+    expect(casesHtml).not.toMatch(/<form\b/i);
+    const buttons = casesHtml.match(/<button\b[^>]*>/gi) ?? [];
+    expect(buttons).toHaveLength(4);
+    const arrows = buttons.filter((button) => button.includes('data-step='));
+    expect(arrows).toHaveLength(4);
+    expect(casesHtml).not.toContain('data-app-index');
+    expect(casesHtml).not.toContain('data-screen-index');
+    expect(casesHtml).toContain('data-storefront-store');
+    expect(casesHtml).toContain('data-website-site');
+    for (const button of arrows) {
+      expect(button).toContain('data-step=');
+      expect(button).toContain('aria-label=');
+      expect(button).toContain('type="button"');
+    }
   });
 
   describe.skipIf(FLOW_PAGE === null)('«Одна труба, четыре отвода» (Заявка-Хаб)', () => {
@@ -245,8 +265,8 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
       expect(divStart, 'контейнер строки ввода не найден перед подсказкой').toBeGreaterThan(-1);
       const inputTag = before.slice(divStart);
       expect(inputTag).not.toContain('tabindex');
-      // Кнопка отправки — `<span>`, не `<button>`: проверяется общим сторожем
-      // «внутри секции кейсов нет <button>» выше.
+      // Кнопка отправки — `<span>`, не `<button>`: две реальные кнопки
+      // секции принадлежат только галерее Storefront и проверяются выше.
     });
 
     it('затвор цикла доехал до сборки: инлайновый скрипт с IntersectionObserver', () => {

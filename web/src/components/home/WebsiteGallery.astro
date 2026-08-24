@@ -1,0 +1,205 @@
+---
+/* Третий кейс главной: три самостоятельных направления сайта, по три
+ * горизонтальных экрана на каждое. В исходной разметке у изображения нет
+ * `src`: этот блок находится глубоко ниже первого экрана, и общий контроллер
+ * `Cases.astro` подставляет первый AVIF через IntersectionObserver незадолго
+ * до появления галереи. Остальные восемь файлов загружаются только по
+ * стрелкам. Так девять полноразмерных кадров не входят в первую загрузку.
+ *
+ * Поле остаётся `bare`: скриншот сам является визуальной плоскостью. Все
+ * девять кадров подготовлены в одном размере 1586×992 и занимают сцену 16:10
+ * одинаково; `object-fit: contain` страхует геометрию без растяжения. */
+import phosphor from '@iconify-json/ph/icons.json';
+import { CASE_GALLERIES_URL, WEBSITE_SLIDES } from '../../data/case-galleries';
+
+const CARET_LEFT = phosphor.icons['caret-left'].body;
+const CARET_RIGHT = phosphor.icons['caret-right'].body;
+
+const firstSlide = WEBSITE_SLIDES[0];
+---
+
+<div
+  class="gallery"
+  role="group"
+  aria-label="Экраны сайтов"
+  aria-busy="true"
+  data-case-gallery
+  data-website-gallery
+  data-defer="true"
+  data-loaded="false"
+  data-gallery-key="websites"
+  data-slides-src={CASE_GALLERIES_URL}
+>
+  <div class="stage">
+    <figure>
+      <img
+        alt={firstSlide.alt}
+        width="1586"
+        height="992"
+        loading="lazy"
+        decoding="async"
+        data-gallery-screen
+        data-website-screen
+      />
+    </figure>
+
+    <button
+      class="nav previous"
+      type="button"
+      data-step="-1"
+      aria-label="Предыдущий экран сайта"
+      disabled
+    >
+      <svg viewBox="0 0 256 256" aria-hidden="true">
+        <g set:html={CARET_LEFT}></g>
+      </svg>
+    </button>
+
+    <button
+      class="nav next"
+      type="button"
+      data-step="1"
+      aria-label="Следующий экран сайта"
+      disabled
+    >
+      <svg viewBox="0 0 256 256" aria-hidden="true">
+        <g set:html={CARET_RIGHT}></g>
+      </svg>
+    </button>
+  </div>
+
+  <div class="meta">
+    <span class="site-name" data-gallery-project data-website-site>{firstSlide.project}</span>
+    <span class="counter" data-gallery-counter data-website-counter>01 / 09</span>
+  </div>
+
+  <p class="sr-only" aria-live="polite" data-gallery-status data-website-status>
+    Показан экран {firstSlide.label} сайта {firstSlide.project}, 1 из {WEBSITE_SLIDES.length}
+  </p>
+</div>
+
+<style>
+  .gallery {
+    width: 100%;
+    min-width: 0;
+    margin-inline: auto;
+    align-self: center;
+    display: grid;
+    grid-template-rows: auto auto;
+    gap: 12px;
+  }
+
+  .stage {
+    position: relative;
+    min-width: 0;
+    aspect-ratio: 16 / 10;
+    display: grid;
+    place-items: center;
+    overflow: clip;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+
+  figure {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    display: grid;
+    place-items: center;
+  }
+
+  figure img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+  }
+
+  .gallery[data-loaded='false'] figure img { opacity: 0; }
+
+  .gallery[data-transitioning='out'] figure img,
+  .gallery[data-transitioning='in'] figure img,
+  .gallery[data-transitioning='initial'] figure img {
+    will-change: opacity, transform;
+  }
+
+  .nav {
+    position: absolute;
+    top: 50%;
+    z-index: 1;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition:
+      color var(--dur-micro) var(--ease),
+      background-color var(--dur-micro) var(--ease),
+      border-color var(--dur-micro) var(--ease),
+      opacity var(--dur-micro) var(--ease),
+      transform var(--dur-micro) var(--ease);
+  }
+
+  .previous { left: 16px; }
+  .next { right: 16px; }
+
+  .nav svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+  }
+
+  .nav:hover:not(:disabled) {
+    color: var(--bg);
+    background: var(--text);
+    border-color: var(--text);
+  }
+
+  .nav:active:not(:disabled) { transform: translateY(-50%) scale(0.94); }
+
+  .nav:disabled {
+    opacity: 0;
+    cursor: default;
+  }
+
+  .meta {
+    min-height: 32px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+  }
+
+  .site-name {
+    grid-column: 2;
+    color: var(--text);
+    font: 700 1rem/1.2 var(--font-mono);
+    text-align: center;
+  }
+
+  .counter {
+    grid-column: 3;
+    justify-self: end;
+    color: var(--text-muted);
+    font: 600 1rem/1 var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 899px) {
+    .previous { left: 8px; }
+    .next { right: 8px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nav { transition: none; }
+  }
+</style>

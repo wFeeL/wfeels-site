@@ -136,18 +136,23 @@ test.describe('секция 5 — полноширинные блоки кейс
     }
   });
 
-  /* Прежде здесь стоял сторож `:focus-visible` на заголовке-ссылке. Ссылки
-     нет — проверять фокус не на чем, и тест вывернут в проверку того, что
-     блок вообще выпал из порядка обхода с клавиатуры: остаточный фокус на
-     элементе, из которого некуда перейти, был бы ловушкой для клавиатуры. */
-  test('клавиатура: в блоке кейса нет ни одной точки остановки', async ({ page }) => {
+  /* Переходов на страницы кейсов по-прежнему нет. Интерактивность ограничена
+     стрелками двух галерей; названия проектов остаются обычным текстом. */
+  test('клавиатура: остановки есть только на элементах управления галереи', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
     await page.goto('/');
 
-    const focusable = page.locator(
-      '#cases .rows > .row a, #cases .rows > .row button, #cases .rows > .row [tabindex]',
-    );
-    await expect(focusable, 'блок кейса не ведёт никуда — останавливать фокус не на чем')
-      .toHaveCount(0);
+    await expect(page.locator('#cases .rows > .row a'),
+      'ссылок на страницы кейсов нет').toHaveCount(0);
+    const buttons = page.locator('#cases [data-case-gallery] button');
+    await expect(buttons).toHaveCount(4);
+    await expect(page.locator('#cases [data-storefront-gallery] [data-step]')).toHaveCount(2);
+    await expect(page.locator('#cases [data-website-gallery] [data-step]')).toHaveCount(2);
+    await expect(page.locator('#cases [data-storefront-gallery] [data-app-index]')).toHaveCount(0);
+    await expect(page.locator('#cases [data-storefront-gallery] [data-screen-index]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Предыдущий экран', exact: true })).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Следующий экран', exact: true })).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Предыдущий экран сайта' })).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Следующий экран сайта' })).toHaveCount(1);
   });
 });

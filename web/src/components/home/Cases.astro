@@ -1,19 +1,15 @@
 ---
-/* Секция 5 — кейс. Полноширинный блок (бриф `70-workshop/specs/site-v3/
- * 04-cases-brief.md`), не карточка: слева короткий текст, справа —
+/* Секция 5 — кейсы. Полноширинные блоки (бриф `70-workshop/specs/site-v3/
+ * 04-cases-brief.md`), не карточки: слева короткий текст, справа —
  * иллюстрация. Рисуется циклом по `homeCases()`, а не одним ручным блоком:
- * состав и порядок читаются из данных, и возврат второго кейса будет
- * правкой `data/cases.ts`, а не перевёрсткой секции. Текст читается из
+ * состав и порядок читаются из данных: добавление второго кейса потребовало
+ * записи в `data/cases.ts`, а не перевёрстки секции. Текст читается из
  * `data/cases.ts` — единственного источника, второй ручной копии здесь нет.
  *
- * Блок с 2026-08-20 ОДИН — правка владельца: на главной остаётся «Этот
- * сайт», остальные кейсы уходят на страницу каталога (спека 04). Тогда же
- * снята кнопка «Все кейсы»: страницы `/cases` не существует, и кнопка вела
- * в 404. Кнопка вернётся вместе со страницей, а не раньше неё.
- *
- * Заголовок секции поэтому «Кейс», в единственном числе, и метка рельса —
- * «КЕЙС» (`lib/sections.ts`): заголовок во множественном числе над одним
- * блоком читался бы как недогрузившийся список.
+ * С 2026-08-24 блоков три: к «Этому сайту» добавлены Telegram Mini App и
+ * сайты с тремя самостоятельными визуальными направлениями. Страницы
+ * `/cases` по-прежнему нет, поэтому кнопка «Все кейсы» и переходы из
+ * блоков не возвращаются.
  *
  * Рисунки снятых кейсов (`CaseFlowIllustration.astro`,
  * `CaseDialogueIllustration.astro`) остаются в коде и ждут ту же страницу
@@ -23,6 +19,8 @@
 import Label from '../Label.astro';
 import CaseRow from './CaseRow.astro';
 import CaseWeightIllustration from './CaseWeightIllustration.astro';
+import StorefrontGallery from './StorefrontGallery.astro';
+import WebsiteGallery from './WebsiteGallery.astro';
 import { homeCases } from '../../data/cases';
 
 const cases = homeCases();
@@ -30,11 +28,14 @@ const cases = homeCases();
 /* Высота поля иллюстрации — своя у каждого блока, кратная 32, в коридоре
  * 288…448 (бриф `70-workshop/specs/site-v3/02-case-illustrations.md`, раздел
  * 2.1). Число здесь, а не в `data/cases.ts`: это решение вёрстки секции 5, а
- * не факт о кейсе.
+ * не факт о кейсе. Для Telegram Mini App значения 800/704 остаются в общем
+ * интерфейсе поля, но вариант `bare` снимает фиксированную высоту: прозрачный
+ * контейнер следует за адаптивным скрином, подписью и стрелками и не хранит
+ * невидимую пустоту. Сам скрин ограничен высотой окна.
  *
- * Исключения из коридора БОЛЬШЕ НЕТ. «Пример диалога» держал 576/672 под
- * четыре реплики; с переработкой окна переписки 2026-08-19 (решение
- * владельца: ровно одна пара реплик, метка поля снята) содержимое требует
+ * У прежних иллюстраций исключения из коридора больше нет. «Пример диалога»
+ * держал 576/672 под четыре реплики; с переработкой окна переписки 2026-08-19
+ * (решение владельца: ровно одна пара реплик, метка поля снята) содержимое требует
  * максимум 360 px — это на ширинах 390…900, где вопрос переносится на две
  * строки. 360 + 64 поля паспарту = 424, ближайшее кратное 32 сверху — 448,
  * верхняя граница коридора. Одна высота на все ширины: отдельной мобильной
@@ -42,6 +43,8 @@ const cases = homeCases();
  * поле не прокручивается ни по одной оси. */
 const ILLUSTRATION_HEIGHT: Record<string, number> = {
   'site-v3': 384,
+  storefront: 800,
+  websites: 416,
 };
 
 /* Отдельная мобильная высота осталась одна — у «Замера», и заведена она в
@@ -65,20 +68,23 @@ const SITE_V3_MOBILE_HEIGHT = 416;
 
 const MOBILE_HEIGHT: Record<string, number | undefined> = {
   'site-v3': SITE_V3_MOBILE_HEIGHT,
+  storefront: 704,
+  websites: 288,
 };
 
 /* Компонент иллюстрации по slug — читается тем же циклом, что и текст.
- * Запись остаётся картой, а не единственной переменной: второй кейс на
- * главной будет строкой здесь и строкой в `data/cases.ts`, без правки
- * разметки. */
+ * Запись остаётся картой: новый кейс требует только новой пары slug →
+ * компонент, без отдельной ручной разметки строки. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ILLUSTRATIONS: Record<string, any> = {
   'site-v3': CaseWeightIllustration,
+  storefront: StorefrontGallery,
+  websites: WebsiteGallery,
 };
 
 ---
 <Label>ЧТО УЖЕ СДЕЛАНО</Label>
-<h2 class="t-h2">Кейс</h2>
+<h2 class="t-h2">Кейсы</h2>
 
 <div class="rows">
   {cases.map((item) => {
@@ -89,12 +95,264 @@ const ILLUSTRATIONS: Record<string, any> = {
         mirrored={(item.homeOrder ?? 0) % 2 === 0}
         illustrationHeight={ILLUSTRATION_HEIGHT[item.slug]}
         illustrationMobileHeight={MOBILE_HEIGHT[item.slug]}
+        illustrationBare={item.slug === 'storefront' || item.slug === 'websites'}
+        centerCopy={item.slug === 'storefront' || item.slug === 'websites'}
       >
         {Illustration && <Illustration />}
       </CaseRow>
     );
   })}
 </div>
+
+<!-- Общий контроллер двух галерей находится в самом `Cases.astro`, а не в
+     компонентах, переданных через слот: их обычный поднятый Astro-скрипт
+     теряется при сборке (ловушка 1 в `50-code/CLAUDE.md`). Здесь скрипт
+     безопасно собирается в один сжатый модуль и видит обе готовые строки. -->
+<script>
+  (function () {
+    var manifestPromise;
+    var loadManifest = function (url) {
+      if (!manifestPromise) {
+        manifestPromise = fetch(url).then(function (response) {
+          if (!response.ok) throw new Error('Gallery manifest unavailable');
+          return response.json();
+        });
+      }
+      return manifestPromise;
+    };
+
+    var init = function () {
+      document.querySelectorAll('[data-case-gallery]').forEach(function (root) {
+        if (!(root instanceof HTMLElement) || root.dataset.ready === 'true') return;
+
+        var slidesUrl = root.dataset.slidesSrc;
+        var galleryKey = root.dataset.galleryKey;
+        var image = root.querySelector('[data-gallery-screen]');
+        var counter = root.querySelector('[data-gallery-counter]');
+        var projectName = root.querySelector('[data-gallery-project]');
+        var status = root.querySelector('[data-gallery-status]');
+        var buttons = Array.from(root.querySelectorAll('[data-step]'));
+        if (!slidesUrl || !galleryKey || !(image instanceof HTMLImageElement) || !counter ||
+            !projectName || !status) return;
+
+        var slides = [];
+        var currentIndex = 0;
+        var switching = false;
+        var loaded = root.dataset.defer !== 'true';
+        var queuedSteps = [];
+        var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+        var ensureSlides = async function () {
+          if (slides.length > 0) return slides;
+          var manifest = await loadManifest(slidesUrl);
+          var nextSlides = manifest[galleryKey];
+          if (!Array.isArray(nextSlides) || nextSlides.length === 0) {
+            throw new Error('Gallery data unavailable');
+          }
+          slides = nextSlides;
+          return slides;
+        };
+
+        var setButtonsDisabled = function (disabled) {
+          buttons.forEach(function (button) {
+            if (button instanceof HTMLButtonElement) button.disabled = disabled;
+          });
+        };
+
+        var show = function (nextIndex) {
+          currentIndex = (nextIndex + slides.length) % slides.length;
+          var slide = slides[currentIndex];
+          if (!slide) return;
+
+          image.alt = slide.alt;
+          image.src = slide.src;
+          projectName.textContent = slide.project;
+          counter.textContent = String(currentIndex + 1).padStart(2, '0') + ' / ' +
+            String(slides.length).padStart(2, '0');
+          status.textContent = 'Показан экран ' + slide.label + ' ' + slide.subject + ' ' +
+            slide.project + ', ' + String(currentIndex + 1) + ' из ' + String(slides.length);
+        };
+
+        var waitForImageLoad = function (candidate) {
+          if (candidate.complete) {
+            return candidate.naturalWidth > 0
+              ? Promise.resolve()
+              : Promise.reject(new Error('Gallery image unavailable'));
+          }
+          return new Promise(function (resolve, reject) {
+            candidate.addEventListener('load', function () { resolve(); }, { once: true });
+            candidate.addEventListener('error', function () {
+              reject(new Error('Gallery image unavailable'));
+            }, { once: true });
+          });
+        };
+
+        /* Safari и некоторые Chromium-сборки могут отклонить `decode()` при
+           смене ресурса, хотя сам файл чуть позже успешно приходит по сети.
+           Такой отказ не означает, что изображение сломано: ждём `load`, а не
+           считаем предзагрузку завершённой и не подменяем видимый кадр белым. */
+        var decodeImage = function (candidate) {
+          var loaded = waitForImageLoad(candidate);
+          return typeof candidate.decode === 'function'
+            ? candidate.decode().catch(function () { return loaded; })
+            : loaded;
+        };
+
+        var preload = function (slide) {
+          var candidate = new Image();
+          candidate.decoding = 'async';
+          candidate.src = slide.src;
+          return decodeImage(candidate);
+        };
+
+        var waitForAnimation = function (animation) {
+          return animation.finished.catch(function () {});
+        };
+
+        var revealDeferred = async function () {
+          if (loaded || switching) return;
+          switching = true;
+          root.dataset.transitioning = 'preload';
+          try {
+            await ensureSlides();
+            await preload(slides[0]);
+            show(0);
+            await decodeImage(image);
+            loaded = true;
+            root.dataset.loaded = 'true';
+            root.setAttribute('aria-busy', 'false');
+            if (!reduceMotion.matches) {
+              root.dataset.transitioning = 'initial';
+              var initial = image.animate([
+                { opacity: 0, transform: 'translate3d(0, 8px, 0)' },
+                { opacity: 1, transform: 'translate3d(0, 0, 0)' },
+              ], {
+                duration: 320,
+                easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                fill: 'both',
+              });
+              await waitForAnimation(initial);
+              initial.cancel();
+            }
+          } catch (_error) {
+            root.dataset.error = 'true';
+            root.setAttribute('aria-busy', 'false');
+            status.textContent = 'Не удалось загрузить экраны галереи';
+          } finally {
+            root.dataset.transitioning = 'idle';
+            switching = false;
+            if (loaded) setButtonsDisabled(false);
+          }
+        };
+
+        var switchBy = async function (step) {
+          if (!loaded) return;
+          if (switching) {
+            queuedSteps.push(step);
+            return;
+          }
+
+          switching = true;
+          var previousIndex = currentIndex;
+          var targetIndex = currentIndex;
+          var slide;
+          var direction = step < 0 ? -1 : 1;
+          var outgoing;
+          var incoming;
+          var shown = false;
+
+          try {
+            await ensureSlides();
+            targetIndex = (currentIndex + step + slides.length) % slides.length;
+            slide = slides[targetIndex];
+            if (!reduceMotion.matches) {
+              root.dataset.transitioning = 'preload';
+              await preload(slide);
+              root.dataset.transitioning = 'out';
+              outgoing = image.animate([
+                { opacity: 1, transform: 'translate3d(0, 0, 0)' },
+                { opacity: 0, transform: 'translate3d(' + String(direction * -12) + 'px, 0, 0)' },
+              ], {
+                duration: 160,
+                easing: 'cubic-bezier(0.4, 0, 1, 1)',
+                fill: 'both',
+              });
+              await waitForAnimation(outgoing);
+            }
+
+            show(targetIndex);
+            shown = true;
+
+            if (!reduceMotion.matches) {
+              await decodeImage(image);
+              root.dataset.transitioning = 'in';
+              incoming = image.animate([
+                { opacity: 0, transform: 'translate3d(' + String(direction * 12) + 'px, 0, 0)' },
+                { opacity: 1, transform: 'translate3d(0, 0, 0)' },
+              ], {
+                duration: 280,
+                easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                fill: 'both',
+              });
+              if (outgoing) outgoing.cancel();
+              await waitForAnimation(incoming);
+            }
+          } catch (_error) {
+            if (shown) {
+              show(previousIndex);
+              status.textContent = 'Не удалось загрузить новый экран, показан предыдущий';
+            } else if (slide) {
+              status.textContent = 'Не удалось загрузить новый экран, показан предыдущий';
+            } else if (!slide) {
+              root.dataset.error = 'true';
+              status.textContent = 'Не удалось загрузить экраны галереи';
+              setButtonsDisabled(true);
+            }
+          } finally {
+            if (outgoing) outgoing.cancel();
+            if (incoming) incoming.cancel();
+            root.dataset.transitioning = 'idle';
+            switching = false;
+            var queuedStep = queuedSteps.shift();
+            if (queuedStep) switchBy(queuedStep);
+          }
+        };
+
+        buttons.forEach(function (button) {
+          button.addEventListener('click', function () {
+            switchBy(Number(button.getAttribute('data-step')));
+          });
+        });
+
+        root.dataset.transitioning = 'idle';
+        root.dataset.ready = 'true';
+        if (loaded) {
+          root.dataset.loaded = 'true';
+          root.setAttribute('aria-busy', 'false');
+          setButtonsDisabled(false);
+        } else {
+          setButtonsDisabled(true);
+          if ('IntersectionObserver' in window) {
+            var observer = new IntersectionObserver(function (entries) {
+              if (!entries.some(function (entry) { return entry.isIntersecting; })) return;
+              observer.disconnect();
+              revealDeferred();
+            }, { rootMargin: '400px 0px' });
+            observer.observe(root);
+          } else {
+            revealDeferred();
+          }
+        }
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init, { once: true });
+    } else {
+      init();
+    }
+  })();
+</script>
 
 <style>
   .rows {

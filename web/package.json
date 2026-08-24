@@ -24,6 +24,7 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@iconify-json/ph": "^1.2.2",
     "@playwright/test": "^1.62.1",
     "vitest": "^4.1.10"
   }
