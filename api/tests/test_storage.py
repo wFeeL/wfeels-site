@@ -4,7 +4,7 @@ from app.schemas import LeadIn
 from app.storage import LeadStore
 
 
-NOW = datetime(2026, 8, 24, 1, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 8, 25, 1, 0, tzinfo=timezone.utc)
 
 
 def make_lead() -> LeadIn:
@@ -13,11 +13,10 @@ def make_lead() -> LeadIn:
         contact="@maria",
         service="S1",
         message="Нужен сайт для груминг-салона с записью",
-        budget="100 000 ₽",
         page="/contact",
         consent="on",
-        consent_version="1.2-2026-08-24",
-        privacy_version="1.2-2026-08-24",
+        consent_version="1.3-2026-08-25",
+        privacy_version="1.3-2026-08-25",
     )
 
 

@@ -26,8 +26,8 @@ test('список разделов подвала совпадает со сп�
     expect(footer, 'подвал показывает не то, что шапка').toEqual(header);
   });
 
-/* Группу сняли 2026-08-21 со словами «заполним её позже». `wt/legal`
- * заполняет все три страницы, поэтому навигация снова обязана быть доступна
+/* Группу сняли 2026-08-21 со словами «заполним ее позже». Теперь
+ * все три страницы действуют, поэтому навигация обязана быть доступна
  * на каждой странице, а не только из подписи формы. */
 test('в подвале доступны три действующих юридических документа', async ({ page }) => {
   await page.goto('/');
@@ -106,16 +106,26 @@ test('прямой канал на странице один и тот же ве
   expect(hrefs[0]).toBe(TELEGRAM);
 });
 
-test('три обязательства подвала стоят рядом со значками', async ({ page }) => {
+test('четыре обязательства подвала стоят рядом со значками', async ({ page }) => {
   await page.goto('/');
   const facts = page.locator('footer .facts li');
-  await expect(facts).toHaveCount(3);
-  // Слова проверяются по смыслу, а не по точному тексту: срок ответа, город и
-  // окно доступности. Формулировка правится в словаре без правки теста, но
-  // исчезнуть ни одна из трёх не может.
+  await expect(facts).toHaveCount(4);
+  // Слова проверяются по смыслу: срок ответа, город, окно доступности
+  // и оформление работы.
   await expect(facts.nth(0)).toContainText('в течение дня');
   await expect(facts.nth(1)).toContainText('Санкт-Петербург');
   await expect(facts.nth(2)).toContainText('24:00');
+  await expect(facts.nth(3)).toContainText('по договору');
+  await expect(facts.nth(3)).toContainText('«Мой налог»');
+});
+
+test('в подвале указаны реквизиты самозанятого и юридический email', async ({ page }) => {
+  await page.goto('/');
+  const requisites = page.locator('footer .requisites');
+  await expect(requisites).toContainText('Сабуров Даниил Денисович');
+  await expect(requisites).toContainText('ИНН 183700967882');
+  await expect(requisites).toContainText('Плательщик налога на профессиональный доход');
+  await expect(requisites.locator('a[href="mailto:i@dsaburov.ru"]')).toBeVisible();
 });
 
 test('на телефоне группы подвала идут столбиком и не переполняют экран',

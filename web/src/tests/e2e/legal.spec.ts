@@ -13,7 +13,7 @@ for (const path of PAGES) {
   test(`${path} опубликован как датированный документ`, async ({ page }) => {
     await page.goto(path);
     await expect(page.locator('[data-draft-notice]')).toHaveCount(0);
-    await expect(page.locator('main')).toContainText('24 августа 2026 года');
+    await expect(page.locator('main')).toContainText('25 августа 2026 года');
   });
 
   test(`${path} — заголовок раздела ближе к своему тексту, чем к чужому`,

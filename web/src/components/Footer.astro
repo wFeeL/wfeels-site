@@ -33,8 +33,8 @@ const year = 2026;
 const SECTIONS = sections(lang);
 const here = Astro.url.pathname;
 
-/* Юридическую группу сняли 2026-08-21 ровно до заполнения документов. В
-   `wt/legal` все три страницы стали действующими, поэтому ссылки возвращены.
+/* Юридическую группу сняли 2026-08-21 ровно до заполнения документов. Теперь
+   все три страницы действуют, поэтому ссылки возвращены.
    Сами документы русские; если снова появится английская страница, `hreflang`
    предупредит о языке цели до перехода. */
 const foreign = lang === 'en';
@@ -44,10 +44,10 @@ const LEGAL = [
   { href: '/consent', text: t.legalConsent },
 ];
 
-/* Три обязательства, снимающие главный страх аудитории: «пропадёт и не
-   ответит». Сами формулировки — в словаре, вместе с объяснением, почему они
-   такие. */
-const FACTS = [t.footerReply, t.footerCity, t.footerHours];
+/* К трем практическим обязательствам добавлено оформление сделки: договор и
+   чек НПД теперь не спрятаны только в юридических страницах. */
+const FACTS = [t.footerReply, t.footerCity, t.footerHours, t.footerContract];
+const LEGAL_EMAIL = 'i@dsaburov.ru';
 
 const tail = line ? footerLineData() : null;
 const tailPath = line ? LINE_PATHS.footer : undefined;
@@ -117,6 +117,15 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
         <ul class="facts">
           {FACTS.map((fact) => <li>{fact}</li>)}
         </ul>
+
+        <div class="requisites">
+          <p>{t.footerLegalName}</p>
+          <p>{t.footerLegalStatus}</p>
+          <p>
+            {t.footerLegalContact}:{' '}
+            <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>
+          </p>
+        </div>
       </div>
 
       {SECTIONS.length > 0 && (
@@ -309,6 +318,23 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
     height: 2px;
     background: var(--accent);
   }
+
+  /* Реквизиты стоят отдельным спокойным блоком: это факты об исполнителе, а
+     не еще один список преимуществ. Ссылка остается постоянно подчеркнутой,
+     потому что находится внутри прозы, а не в навигационном меню. */
+  .requisites { margin-top: 24px; max-width: 38ch; }
+  .requisites p { margin: 0; }
+  .requisites p + p { margin-top: 4px; }
+  .requisites a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--text-muted);
+    text-decoration-line: underline;
+    text-underline-offset: 2px;
+  }
+  .requisites a:hover,
+  .requisites a:focus-visible { color: var(--text); }
 
   /* Заголовок группы — моно-метка «Чертежа», но основным цветом, а не акцентом:
      акцент в подвале уже занят ссылками, и одинаковый цвет у заголовка и у

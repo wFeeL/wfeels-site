@@ -12,6 +12,22 @@ const fill = async (page: Page) => {
   await page.check('input[name="consent"]');
 };
 
+test('бюджет больше не запрашивается, а согласие и Политика остаются разделены', async ({ page }) => {
+  await page.goto('/contact');
+  const form = page.locator('#lead-form');
+  await expect(form.locator('[name="budget"]')).toHaveCount(0);
+  await expect(form).not.toContainText('Бюджет (необязательно)');
+
+  const consentLabel = form.locator('label[for="f-consent"]');
+  await expect(consentLabel).toContainText(
+    'Даю согласие на обработку моих данных (имя, способ связи, выбранная услуга, текст обращения)',
+  );
+  await expect(consentLabel.locator('a[href="/consent"]')).toHaveCount(1);
+  await expect(consentLabel.locator('a[href="/privacy"]')).toHaveCount(0);
+  await expect(form.locator('.privacy-note a[href="/privacy"]')).toHaveCount(1);
+  await expect(form.locator('input[name="consent_locale"]')).toHaveValue('ru');
+});
+
 test('форма отправляется при выключенном JavaScript', async ({ browser }) => {
   const ctx = await browser.newContext({ javaScriptEnabled: false });
   const page = await ctx.newPage();

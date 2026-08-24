@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 # Каталог услуг — код и человекочитаемое название, дословно из заголовков
@@ -31,12 +33,14 @@ class LeadIn(BaseModel):
     # переехал в новое поле «О задаче». Границы длины (10…4000), когда текст
     # присутствует, оставлены прежними: смягчена только обязательность.
     message: str = Field(default="", max_length=4000)
-    budget: str | None = Field(default=None, max_length=60)
     page: str = Field(default="", max_length=200)
     website: str = Field(default="", max_length=200)  # приманка, обязана быть пустой
     consent: str = Field(default="", max_length=20)
     consent_version: str = Field(default="", max_length=40)
     privacy_version: str = Field(default="", max_length=40)
+    # Сервер выбирает точную заранее заданную формулировку согласия по языку,
+    # а не доверяет присланному клиентом свободному тексту.
+    consent_locale: Literal["ru", "en"] = "ru"
     elapsed_seconds: float = 0.0
 
     @field_validator("service")

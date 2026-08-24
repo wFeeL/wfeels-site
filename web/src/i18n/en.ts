@@ -47,6 +47,10 @@ export default {
   footerReply: 'I reply within a day',
   footerCity: 'Saint Petersburg, working remotely',
   footerHours: 'Available 9:00–24:00 Moscow time',
+  footerContract: 'I work under a contract as a self-employed taxpayer and issue a receipt through the My Tax app.',
+  footerLegalName: 'Сабуров Даниил Денисович · Tax ID 183700967882',
+  footerLegalStatus: 'Professional income tax payer, not registered as an individual entrepreneur',
+  footerLegalContact: 'Contracts and personal data',
   footerAi: 'I write the code and part of the design together with AI. Architecture, security, design decisions and the palette are mine, and I review everything that comes out.',
 
   /* ── Заголовок страницы ───────────────────────────────────────────────── */
@@ -71,7 +75,7 @@ export default {
   painHeading: 'How it usually goes',
   painAnswerLabel: 'THE ANSWER',
   painAnswerHeading: 'With me it goes differently',
-  painAnswerText: 'What we agree on is fixed before the work starts, not along the way. Everything that gets built stays with you — nothing is kept “on my side”.',
+  painAnswerText: 'Before work starts, we sign a contract and specification that set out the deliverable, price, timeline and acceptance process. Any new scope, price or timeline is agreed in writing before the extra work begins.',
   painAnswerLink: 'Guarantees',
 
   /* ── Секция 3, что я делаю ────────────────────────────────────────────── */
@@ -82,8 +86,8 @@ export default {
   /* ── Секция 4, цены ───────────────────────────────────────────────────── */
   pricingLabel: 'WHAT IT COSTS',
   pricingHeading: 'Development pricing',
-  pricingIntro: '“From” because the price depends on scope. After we talk it through I give you a range, and the proposal fixes the exact number. Payment is half at the start and half on delivery; work from {price} is split into milestones.',
-  pricingFootnote: 'Revisions are part of the price: one round for a landing page, two for websites and Mini Apps, three for work from {price}. Not included: your content and photos, the domain and hosting, and what the AI model itself costs to run.',
+  pricingIntro: 'Prices are starting points. After a short discussion, I’ll send you an estimate with a timeline and put it into the contract. Payment is usually 50% once the estimate is agreed and 50% before launch.',
+  pricingFootnote: 'I work under a contract as a self-employed taxpayer and issue a receipt through the My Tax app. The prices shown are indicative and do not constitute a public offer under Article 437 of the Civil Code of the Russian Federation.',
 
   /* ── Секция 5, кейс ───────────────────────────────────────────────────── */
   casesLabel: 'ALREADY BUILT',
@@ -121,13 +125,11 @@ export default {
   formMessage: 'About the project (optional)',
   formMessageHint: 'The more specific the task, the more accurate the estimate.',
   formMessagePlaceholder: 'For example: I need a landing page, deadline in a month',
-  formBudget: 'Budget (optional)',
-  formBudgetPlaceholder: 'A ballpark figure, if you have one',
   formConsentBefore: 'I give ',
-  formConsentLink: 'consent to the processing of my personal data',
-  formConsentAfter: ' so you can reply to my enquiry, including delivery of a copy through Telegram',
-  formPrivacyBefore: 'How the data is handled — see the ',
-  formPrivacyLink: 'Privacy Policy',
+  formConsentLink: 'consent to the processing of my data',
+  formConsentAfter: ' (name, contact details, selected service and enquiry text) so you can reply to my enquiry, including delivery of a copy through Telegram.',
+  formPrivacyBefore: 'For details, see the ',
+  formPrivacyLink: 'privacy policy',
   formSubmit: 'Send',
   formSending: 'Sending…',
   formOkTitle: 'Sent',

@@ -174,7 +174,7 @@ class LeadStore:
                         lead.contact,
                         lead.service,
                         lead.message,
-                        lead.budget,
+                        None,
                         lead.page,
                     ),
                 )
@@ -211,7 +211,7 @@ class LeadStore:
             contact=lead.contact,
             service=lead.service,
             message=lead.message,
-            budget=lead.budget,
+            budget=None,
             page=lead.page,
         )
 

@@ -20,11 +20,17 @@ class Settings(BaseSettings):
     backup_directory: str = "/backups"
     backup_interval_hours: int = 24
     backup_retention_days: int = 7
-    consent_version: str = "1.2-2026-08-24"
-    privacy_version: str = "1.2-2026-08-24"
-    consent_action_text: str = (
-        "Даю согласие на обработку персональных данных для ответа на заявку, "
-        "включая доставку копии заявки через Telegram."
+    consent_version: str = "1.3-2026-08-25"
+    privacy_version: str = "1.3-2026-08-25"
+    consent_action_text_ru: str = (
+        "Даю согласие на обработку моих данных (имя, способ связи, выбранная "
+        "услуга, текст обращения) для ответа на заявку, включая доставку "
+        "копии заявки через Telegram."
+    )
+    consent_action_text_en: str = (
+        "I give consent to the processing of my data (name, contact details, "
+        "selected service and enquiry text) so you can reply to my enquiry, "
+        "including delivery of a copy through Telegram."
     )
 
     model_config = SettingsConfigDict(

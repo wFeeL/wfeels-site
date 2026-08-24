@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { PROCESS_STEPS, GUARANTEES, MILESTONE_THRESHOLD } from '../data/process';
+import { PROCESS_STEPS, GUARANTEES } from '../data/process';
 import { HERO_TERMS } from '../data/terms';
 
 /* Тот же паттерн, что `dist-home-cases.test.ts`: читает `dist/index.html`
@@ -40,7 +40,6 @@ describe('dist/index.html — секции 7 и 8', () => {
       expect(html, g.title).toContain(g.title);
       expect(html, g.text).toContain(g.text);
     }
-    expect(html).toContain(MILESTONE_THRESHOLD);
   });
 
   it('гарантии «Сколько это занимает» на странице нет, а срок работ назван по-прежнему', () => {
@@ -61,15 +60,15 @@ describe('dist/index.html — секции 7 и 8', () => {
     expect(html, 'срок работ из data/terms.ts').toContain(HERO_TERMS[0].term);
   });
 
-  it('формулировка оплаты в разметке несёт оговорку про 70 000 ₽', () => {
-    const start = html.indexOf('id="guarantees"');
+  it('договорный порядок присутствует в разметке', () => {
+    const start = html.indexOf('id="process"');
     const end = html.indexOf('id="about"');
-    expect(start, 'секция id="guarantees" не найдена в dist/index.html').toBeGreaterThan(-1);
+    expect(start, 'секция id="process" не найдена в dist/index.html').toBeGreaterThan(-1);
     expect(end, 'секция id="about" не найдена в dist/index.html').toBeGreaterThan(start);
     const section = html.slice(start, end);
-    expect(section).toContain('50%');
-    expect(section).toContain('70 000 ₽');
-    expect(section).toContain('по вехам');
+    expect(section).toContain('Смета, договор и ТЗ');
+    expect(section).toContain('Цена, сроки и объем — в договоре');
+    expect(section).toContain('письменного согласования');
   });
 
   it('в секции 7 срока цифрой нет — итоговая полоса «30 дней» снята правкой владельца 2026-08-20', () => {
@@ -84,11 +83,11 @@ describe('dist/index.html — секции 7 и 8', () => {
     expect(section).toContain('Тридцать дней');
   });
 
-  it('в секциях 7 и 8 нет упоминания договора и гарантии срока деньгами', () => {
+  it('в секциях 7 и 8 есть договор, но нет гарантии срока деньгами', () => {
     const start = html.indexOf('id="process"');
     const end = html.indexOf('id="about"');
     const section = html.slice(start, end);
-    expect(/договор/i.test(section)).toBe(false);
+    expect(/договор/i.test(section)).toBe(true);
     expect(/вернём деньги|возврат средств|неустойк/i.test(section)).toBe(false);
   });
 });

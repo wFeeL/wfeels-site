@@ -20,7 +20,6 @@
 import Label from '../Label.astro';
 import Card from '../Card.astro';
 import Button from '../Button.astro';
-import { priceEntry } from '../../data/pricingLocalized';
 import { topCards, shelfCards } from '../../data/pricingShowcase';
 import { dict, localeFromPath } from '../../i18n/locales';
 
@@ -28,40 +27,6 @@ const locale = localeFromPath(Astro.url.pathname);
 const t = dict(locale);
 const TOP_CARDS = topCards(locale);
 const SHELF_CARDS = shelfCards(locale);
-
-/** Цена конкретной ступени по имени группы и записи — нужна только для
- *  сноски про раунды правок ниже: порог «работы от N ₽» обязан читаться из
- *  данных, а не быть вписан литералом. Падает явно, если ступень
- *  переименована или пропала в генераторе. */
-// Ступень ищется по РУССКОМУ имени на любом языке страницы (разбор — в
-// `data/pricingLocalized.ts`), а возвращается цена нужного языка.
-function priceFor(groupName: string, entryName: string): string {
-  return priceEntry(locale, groupName, entryName).price;
-}
-
-// Порог «три раунда правок — для работ от…» и порог «оплата по вехам —
-// от…» (PRICING.md, строки 102–103) численно совпадают: оба указывают на
-// верхнюю ступень «Сайты» (70 000 ₽). Ступень сама на главную не выходит
-// отдельной карточкой, но её цена остаётся законным порогом внутри текста
-// подводки и сноски ниже.
-const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 страниц');
-
-function aroundPrice(template: string, field: string): readonly [string, string] {
-  const parts = template.split('{price}');
-  if (parts.length !== 2) {
-    throw new Error(`Pricing.astro: ${field} должен содержать ровно один {price}`);
-  }
-  return [parts[0], parts[1]];
-}
-
-const [PRICING_INTRO_BEFORE, PRICING_INTRO_AFTER] = aroundPrice(
-  t.pricingIntro,
-  'pricingIntro',
-);
-const [PRICING_FOOTNOTE_BEFORE, PRICING_FOOTNOTE_AFTER] = aroundPrice(
-  t.pricingFootnote,
-  'pricingFootnote',
-);
 ---
 <Label>{t.pricingLabel}</Label>
 {/* Задача 22 (правка 2026-08-18): заголовок секции точнее — «Цены на
@@ -69,9 +34,7 @@ const [PRICING_FOOTNOTE_BEFORE, PRICING_FOOTNOTE_AFTER] = aroundPrice(
     2026-08-14, [[03-redesign-2026-08-14]], пункт 22). */}
 <h2 class="t-h2">{t.pricingHeading}</h2>
 
-<p class="intro">
-  {PRICING_INTRO_BEFORE}<span class="nowrap">{EDITS_THRESHOLD_PRICE}</span>{PRICING_INTRO_AFTER}
-</p>
+<p class="intro">{t.pricingIntro}</p>
 
 <div class="top-grid">
   {TOP_CARDS.map((card) => (
@@ -138,24 +101,9 @@ const [PRICING_FOOTNOTE_BEFORE, PRICING_FOOTNOTE_AFTER] = aroundPrice(
   ))}
 </div>
 
-{/* `t-small` — сноска обязана читаться сноской, а не абзацем (правка
-    владельца 2026-08-13, часть 5): кегль на ступень мельче основного текста
-    карточек (16 px против 18 px `body`), из объявленной шкалы — сторож
-    `dist-typography-scale.test.ts` валит сборку на размере вне неё.
-    Приглушённый цвет уже был (`.footnote`, `color: var(--text-muted)`).
-
-    Находка дизайн-ревью 2026-08-22 (находка 1): цена стоит здесь ПРОЗОЙ, не в
-    `.price`/`.shelf-price` — те уже несли `white-space: nowrap` на своём
-    `code`/контейнере, а этот текст ничем не защищён, и на 900–1920px число
-    рвалось между строк ровно на пробеле внутри самой цены («…от 70» / «000
-    ₽. Не входят…»). Число само не тронуто — `.nowrap` только оборачивает
-    вывод `{EDITS_THRESHOLD_PRICE}`, сама строка по-прежнему приходит из
-    `data/pricing.ts` (см. `priceFor` выше). Та же обёртка — во вводном
-    абзаце `.intro` выше, единственном другом месте страницы, где та же
-    переменная стоит в прозе. */}
-<p class="footnote t-small">
-  {PRICING_FOOTNOTE_BEFORE}<span class="nowrap">{EDITS_THRESHOLD_PRICE}</span>{PRICING_FOOTNOTE_AFTER}
-</p>
+{/* `t-small` сохраняет юридическую оговорку сноской, а не еще одним
+    продающим абзацем: она относится ко всем карточкам секции сразу. */}
+<p class="footnote t-small">{t.pricingFootnote}</p>
 
 <style>
   /* Отбивка заголовка до первого содержимого — 32 px, одна величина на все

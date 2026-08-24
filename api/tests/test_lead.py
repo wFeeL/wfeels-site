@@ -15,8 +15,9 @@ VALID = {
     "page": "/services/sajt",
     "website": "",
     "consent": "on",
-    "consent_version": "1.2-2026-08-24",
-    "privacy_version": "1.2-2026-08-24",
+    "consent_version": "1.3-2026-08-25",
+    "privacy_version": "1.3-2026-08-25",
+    "consent_locale": "ru",
     "elapsed_seconds": 0.0,
 }
 
@@ -35,8 +36,8 @@ def make_settings(**overrides) -> Settings:
         trust_proxy=True,
         leads_db_path=":memory:",
         backup_directory="",
-        consent_version="1.2-2026-08-24",
-        privacy_version="1.2-2026-08-24",
+        consent_version="1.3-2026-08-25",
+        privacy_version="1.3-2026-08-25",
     )
     return Settings(_env_file=None, **{**base, **overrides})
 
@@ -78,8 +79,34 @@ def test_valid_json_lead_is_accepted_and_sent(client, sent):
     assert r.status_code == 202
     assert len(sent) == 1
     assert "Мария" in sent[0]
+    assert "Бюджет:" not in sent[0]
     assert client.app.state.lead_store.count("leads") == 1
     assert client.app.state.lead_store.count("consent_receipts") == 1
+
+
+def test_legacy_budget_value_is_ignored_by_new_form_contract(client, sent):
+    r = client.post(
+        "/api/lead",
+        json={**VALID, "budget": "100 000 ₽", "elapsed_seconds": 90.0},
+    )
+    assert r.status_code == 202
+    assert "Бюджет:" not in sent[0]
+    row = client.app.state.lead_store._connect().execute(
+        "SELECT budget FROM leads LIMIT 1"
+    ).fetchone()
+    assert row["budget"] is None
+
+
+def test_english_consent_stores_the_exact_english_action(client):
+    r = client.post(
+        "/api/lead",
+        json={**VALID, "consent_locale": "en", "elapsed_seconds": 90.0},
+    )
+    assert r.status_code == 202
+    row = client.app.state.lead_store._connect().execute(
+        "SELECT action_text FROM consent_receipts LIMIT 1"
+    ).fetchone()
+    assert row["action_text"] == make_settings().consent_action_text_en
 
 
 def test_form_encoded_lead_redirects_to_thanks(client, sent):

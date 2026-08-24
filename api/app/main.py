@@ -70,10 +70,14 @@ def format_lead(lead: LeadIn | StoredLead) -> str:
         f"Связь: {lead.contact}",
         f"Услуга: {service_label}",
         f"Страница: {lead.page or '—'}",
-        f"Бюджет: {lead.budget or '—'}",
-        "",
-        lead.message or "—",
     ]
+    # Колонка остается в SQLite ради старых записей и ожидающих повторной
+    # доставки. Новая форма поле не собирает, но реальное старое значение при
+    # повторе не теряется и не превращается в бессмысленное «Бюджет: —».
+    budget = getattr(lead, "budget", None)
+    if budget:
+        parts.append(f"Бюджет: {budget}")
+    parts.extend(["", lead.message or "—"])
     return "\n".join(parts)
 
 
@@ -282,7 +286,11 @@ def create_app(
                 lead_retention_days=cfg.lead_retention_days,
                 consent_receipt_retention_days=cfg.consent_receipt_retention_days,
                 telegram_retry_minutes=cfg.telegram_retry_minutes,
-                action_text=cfg.consent_action_text,
+                action_text=(
+                    cfg.consent_action_text_en
+                    if payload.consent_locale == "en"
+                    else cfg.consent_action_text_ru
+                ),
             )
         except Exception as exc:
             log.error("Не удалось записать заявку: %s", type(exc).__name__)

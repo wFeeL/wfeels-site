@@ -1,20 +1,18 @@
 // РУЧНОЙ ФАЙЛ — по образцу data/terms.ts, не генерируется.
 //
 // Источник чисел — PRICING.md (условия оплаты) и SERVICES.md (гарантийный
-// срок). Разметка секций 7 и 8 (`components/home/Process.astro`,
-// `Guarantees.astro`) не хранит числа сама (план `02-home-plan.md`, задача
-// 11): «50%» и «70 000 ₽» не вписаны в компонент буквально — они читаются
-// отсюда, и правка PRICING.md остаётся правкой одного места.
+// срок). Договорная последовательность сверена с публичными условиями и
+// шаблонами сделки в `docs/legal/`.
 //
-// Текст обеих секций — дословно из `70-workshop/specs/site-v3/02-texts.md`,
-// секции 7 и 8, вместе с блоками «что нельзя менять при правке»:
+// Основа секций пришла из `70-workshop/specs/site-v3/02-texts.md`,
+// а договорные формулировки обновлены по `docs/legal/` 2026-08-25:
 //   - шаг 5 секции 7 намеренно короткий — полная формулировка гарантии
 //     живёт в секции 8, чтобы один факт не стоял дважды на расстоянии
 //     экрана;
-//   - формулировка оплаты обязана нести оговорку про 70 000 ₽ — «по вехам»
-//     без неё шире условия PRICING.md и на сайте становится неправдой;
-//   - гарантии срока деньгами нет и договор не упоминается — его не
-//     существует (D-019).
+//   - гарантии срока деньгами нет: договор фиксирует срок и условия его
+//     изменения, но не обещает автоматическую неустойку или возврат;
+//   - состав передачи и момент перехода прав задают договор и ТЗ, поэтому
+//     обещание «всё целиком сразу» без этой границы было бы шире документов.
 //
 // Пятой гарантией «Сколько это занимает» здесь до 2026-08-20 стоял перенос
 // из снятой секции 6 «Что можно проверить» (D-030). Владелец снял её правкой
@@ -29,8 +27,7 @@
 // экрана из `data/terms.ts` («от 2–4 дней»); формулировки «2–3 недели» на
 // сайте после снятия не остаётся нигде.
 
-/** Доля первого платежа в процентах — единственное место, где она названа
- *  числом; разметка читает отсюда, а не хранит «50%» буквально. */
+/** Доля первого платежа в процентах — машинная привязка к каноническому прайсу. */
 import { assertParallel, type Locale } from '../i18n/locales';
 
 export const DOWN_PAYMENT_PERCENT = 50;
@@ -43,8 +40,8 @@ export const MILESTONE_THRESHOLD = '70 000 ₽';
 /** Источник условий оплаты — для сверки и для теста внутренней целостности
  *  этого файла. */
 export const PAYMENT_SOURCE =
-  'PRICING.md:103 — раздел «Отдельные позиции», строка «Оплата: 50% старт / ' +
-  '50% сдача; от 70 000 ₽ — по вехам.»';
+  'PRICING.md:123–124 — раздел «Отдельные позиции», строка «Оплата: 50% после согласования сметы ' +
+  'и подписания договора / 50% перед запуском; от 70 000 ₽ — по вехам.»';
 
 /** Гарантийный срок в днях. Число уже записано в SERVICES.md — эта задача
  *  его не вводит, только читает (D-021, закрыто 2026-08-11).
@@ -66,7 +63,7 @@ export const WARRANTY_SOURCE =
 
 /** Дата, когда эти числа в последний раз сверены с PRICING.md и SERVICES.md
  *  руками (тот же формат, что `terms.ts`). */
-export const CHECKED_AT = '2026-08-12';
+export const CHECKED_AT = '2026-08-25';
 
 export interface ProcessStep {
   /** Заголовок шага — дословно из 02-texts.md, без порядкового номера внутри
@@ -95,10 +92,11 @@ export const PROCESS_STEPS: readonly ProcessStep[] = [
       'я так и говорю.',
   },
   {
-    title: 'Смета и план',
+    title: 'Смета, договор и ТЗ',
     text:
-      'Называю вилку срока и цены. Потом — предложение с зафиксированным ' +
-      'объемом: что делаю, чего не делаю, сколько раундов правок включено.',
+      'После короткого обсуждения готовлю смету и ТЗ: фиксируем результат, ' +
+      'этапы, сроки, цену и критерии приемки. Работу начинаю после подписания ' +
+      'договора, первого платежа и передачи нужных материалов.',
   },
   {
     title: 'Работа с показом по ходу',
@@ -107,16 +105,17 @@ export const PROCESS_STEPS: readonly ProcessStep[] = [
       'выяснилось на второй день, а не на сдаче.',
   },
   {
-    title: 'Сдача и передача',
+    title: 'Сдача и приемка',
     text:
-      'Показываю, как пользоваться, и передаю проект целиком. Что именно ' +
-      'получаете — в гарантиях ниже.',
+      'Передаю результат в согласованном формате, показываю, как им ' +
+      'пользоваться, и оформляем приемку так, как записано в договоре. ' +
+      'Состав передачи заранее указан в ТЗ.',
   },
   {
-    title: 'Тридцать дней после сдачи',
+    title: 'Тридцать дней после приемки',
     text:
-      'Тридцать дней остаюсь на связи по недочетам — что покрыто, ' +
-      'написано ниже.',
+      'Тридцать дней исправляю расхождения с согласованным ТЗ бесплатно. ' +
+      'Границы гарантии — ниже.',
   },
 ];
 
@@ -130,17 +129,18 @@ export interface Guarantee {
  *  выше — литералов внутри строки нет. */
 export const GUARANTEES: readonly Guarantee[] = [
   {
-    title: 'Оплата половинами',
+    title: 'Цена, сроки и объем — в договоре',
     text:
-      `${DOWN_PAYMENT_PERCENT}% на старте, ${DOWN_PAYMENT_PERCENT}% при ` +
-      `сдаче. На работах от ${MILESTONE_THRESHOLD} — по вехам: платите за ` +
-      'сделанный кусок, а не вперед за все целиком.',
+      'До начала работы фиксируем в договоре и ТЗ результат, этапы, сроки, ' +
+      'цену и критерии приемки. Дополнительная работа начинается только ' +
+      'после письменного согласования новой цены и срока.',
   },
   {
-    title: 'Исходники и инструкция — ваши',
+    title: 'Состав передачи — в ТЗ',
     text:
-      'После сдачи вы получаете код, инструкцию по развертыванию и все ' +
-      'доступы. Ничего не остается «на стороне разработчика».',
+      'В ТЗ заранее перечисляем, что вы получите: результат, исходники, ' +
+      'инструкции и доступы. Права на оплаченный результат переходят в ' +
+      'объеме и в момент, указанных в договоре.',
   },
   {
     title: 'Обычный стек, без привязки ко мне',
@@ -150,25 +150,19 @@ export const GUARANTEES: readonly Guarantee[] = [
       'оценку, он разберется.',
   },
   {
-    title: 'Тридцать дней на недочеты',
+    title: 'Тридцать дней на исправления',
     text:
-      'Все, что расходится с согласованным ТЗ, исправляю бесплатно ' +
-      'тридцать дней после сдачи. Новые пожелания сверх ТЗ считаются ' +
-      'отдельно, по ставке, и обсуждаем мы их заранее.',
+      'В течение тридцати дней с даты приемки бесплатно исправляю ' +
+      'воспроизводимые расхождения с согласованным ТЗ. Новые функции и ' +
+      'изменения требований оцениваются отдельно.',
   },
 ];
 
 /* ─────────────────────────── Английская версия ────────────────────────────
  *
  * Те же пять шагов и те же четыре гарантии — обещания, а не текст, поэтому
- * переведены так, чтобы их можно было держать слово в слово. Проценты и
- * порог вехи подставляются из тех же констант, что и в русской версии
- * (`DOWN_PAYMENT_PERCENT`, `MILESTONE_THRESHOLD`): второго числа в тексте
- * нет ни на одном языке, и правка PRICING.md меняет обе версии разом.
- *
- * Валюта остаётся рублём: `MILESTONE_THRESHOLD` — цитата из
- * `10-offer/PRICING.md`, и пересчёт её в другую валюту дал бы число, которого
- * в прайсе нет. Меняется только слово вокруг числа: «от» → «from». */
+ * переведены так, чтобы их можно было держать слово в слово. Текст оплаты живет в секции цен;
+ * здесь фиксируются договорный порядок, приемка и гарантия. */
 const PROCESS_STEPS_EN: readonly ProcessStep[] = [
   {
     title: 'Working out the task',
@@ -178,11 +172,12 @@ const PROCESS_STEPS_EN: readonly ProcessStep[] = [
       'Then that’s what I tell you.',
   },
   {
-    title: 'Estimate and plan',
+    title: 'Estimate, contract and specification',
     text:
-      'I give you a range for the timeline and the price. Then a proposal ' +
-      'with the scope fixed: what I do, what I don’t do, how many rounds ' +
-      'of revisions are included.',
+      'After a short discussion, I prepare the estimate and specification, ' +
+      'setting out the deliverable, stages, timeline, price and acceptance ' +
+      'criteria. Work starts once the contract is signed, the first payment ' +
+      'arrives and I have the required materials.',
   },
   {
     title: 'Work you can see as it goes',
@@ -191,32 +186,34 @@ const PROCESS_STEPS_EN: readonly ProcessStep[] = [
       'isn’t it” comes up on day two rather than at handover.',
   },
   {
-    title: 'Handover',
+    title: 'Handover and acceptance',
     text:
-      'I show you how to use it and hand over the whole project. Exactly ' +
-      'what you get is in the guarantees below.',
+      'I deliver the result in the agreed format, show you how to use it ' +
+      'and record acceptance as set out in the contract. The handover ' +
+      'package is listed in the specification in advance.',
   },
   {
-    title: 'Thirty days after handover',
+    title: 'Thirty days after acceptance',
     text:
-      'For thirty days I stay available for any defects — what’s covered ' +
-      'is written below.',
+      'For thirty days, I fix reproducible discrepancies from the agreed ' +
+      'specification at no charge. The limits of the warranty are set out below.',
   },
 ];
 
 const GUARANTEES_EN: readonly Guarantee[] = [
   {
-    title: 'Paid in halves',
+    title: 'Price, timeline and scope are in the contract',
     text:
-      `${DOWN_PAYMENT_PERCENT}% at the start, ${DOWN_PAYMENT_PERCENT}% on ` +
-      `delivery. On work from ${MILESTONE_THRESHOLD} — by milestones: you ` +
-      'pay for the part that’s done, not up front for the whole thing.',
+      'Before work starts, the contract and specification set out the ' +
+      'deliverable, stages, timeline, price and acceptance criteria. Extra ' +
+      'work starts only after its new price and timeline are agreed in writing.',
   },
   {
-    title: 'The source code and the setup guide are yours',
+    title: 'The handover package is set out in the specification',
     text:
-      'After handover you get the code, the deployment instructions and ' +
-      'every credential. Nothing is left “on the developer’s side”.',
+      'The specification lists in advance what you receive: the deliverable, ' +
+      'source files, instructions and credentials. Rights to the paid-for ' +
+      'result transfer to the extent and at the time stated in the contract.',
   },
   {
     title: 'An ordinary stack, no lock-in to me',
@@ -226,12 +223,11 @@ const GUARANTEES_EN: readonly Guarantee[] = [
       'find their way around it.',
   },
   {
-    title: 'Thirty days to fix defects',
+    title: 'Thirty days for defect fixes',
     text:
-      'Anything that departs from the agreed specification I fix free of ' +
-      'charge for thirty days after handover. Anything new beyond the ' +
-      'specification is quoted separately, at my hourly rate, and we agree ' +
-      'on it in advance.',
+      'For thirty days from acceptance, I fix reproducible discrepancies ' +
+      'from the agreed specification at no charge. New features and changes ' +
+      'to the requirements are quoted separately.',
   },
 ];
 

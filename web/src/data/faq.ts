@@ -4,7 +4,8 @@
 // (`lib/schema.ts` → `faqPageSchema`) — второго перечня вопросов для
 // структурированных данных не заводится.
 //
-// Текст — дословно из `70-workshop/specs/site-v3/02-texts.md`, секция 10.
+// Основа — из `70-workshop/specs/site-v3/02-texts.md`, секция 10;
+// вопрос о договоре обновлен по юридическим документам 2026-08-25.
 // `**вообще**` внутри первого ответа — разметка полужирного из спеки;
 // компонент разбирает её сам (`Faq.astro`), а не хранит здесь HTML.
 //
@@ -34,7 +35,7 @@ const SUPPORT_PACKAGE_PRICE_EN = priceEntry('en', 'Поддержка', 'Пак�
 
 export interface FaqItem {
   question: string;
-  /** Ответ — дословно из 02-texts.md; `**слово**` внутри значит полужирное,
+  /** `**слово**` внутри ответа значит полужирное,
    *  разбирает `Faq.astro`. */
   answer: string;
 }
@@ -74,11 +75,11 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
       'работа по запросу по ставке.',
   },
   {
-    question: 'Вы в другом городе — как мы будем работать?',
+    question: 'Как подпишем договор, если работаем удаленно?',
     answer:
-      'Удаленно, из Санкт-Петербурга. Связь в Telegram или почтой, ' +
-      'отвечаю в течение дня. Промежуточный результат показываю ссылкой, ' +
-      'которую вы открываете у себя. Географии в этой работе нет.',
+      'Обменяемся подписанными PDF с согласованных адресов или используем ' +
+      'другой способ электронной подписи, который укажем в договоре. Личная ' +
+      'встреча не нужна: я работаю удаленно из Санкт-Петербурга.',
   },
 ];
 
@@ -129,11 +130,11 @@ const FAQ_ITEMS_EN: readonly FaqItem[] = [
       'or work on request at my hourly rate.',
   },
   {
-    question: 'You’re in another city — how will we work?',
+    question: 'How do we sign the contract if we work remotely?',
     answer:
-      'Remotely, from Saint Petersburg. We talk on Telegram or by email, ' +
-      'and I reply within a day. I show work in progress as a link you open ' +
-      'on your own machine. Geography doesn’t come into this work.',
+      'We exchange signed PDFs from the email addresses named in the ' +
+      'contract, or use another electronic signing method stated there. ' +
+      'No in-person meeting is needed; I work remotely from Saint Petersburg.',
   },
 ];
 

@@ -33,7 +33,7 @@ if (service !== undefined && !KNOWN_CODES.includes(service)) {
 
 const API_BASE = import.meta.env.PUBLIC_API_BASE ?? '';
 const SENDING = t.formSending;
-const LEGAL_VERSION = '1.2-2026-08-24';
+const LEGAL_VERSION = '1.3-2026-08-25';
 ---
 <form id="lead-form" method="post" action={`${API_BASE}/api/lead`}
       data-sending-label={SENDING}>
@@ -73,8 +73,6 @@ const LEGAL_VERSION = '1.2-2026-08-24';
   <Field name="message" label={t.formMessage} textarea={true}
          hint={t.formMessageHint} autocomplete="off"
          placeholder={t.formMessagePlaceholder} />
-  <Field name="budget" label={t.formBudget} autocomplete="off"
-         placeholder={t.formBudgetPlaceholder} />
 
   <p class="consent">
     {/* Задача 19 (правка 2026-08-18): плавная анимация галочки согласия.
@@ -113,22 +111,29 @@ const LEGAL_VERSION = '1.2-2026-08-24';
         комментарий у `legalPolicy`). Поэтому подпись переведена, а ссылка
         помечена языком цели: `hreflang="ru"` объявляет, что за ней русский
         текст, вместо того чтобы умолчать об этом. */}
-    <label for="f-consent">
-      {t.formConsentBefore}<a
-        href="/consent"
-        hreflang={locale === 'ru' ? undefined : 'ru'}
-      >{t.formConsentLink}</a>{t.formConsentAfter}<span class="req" aria-hidden="true"> *</span>
-    </label>
-  </p>
-  <p class="privacy-note">
-    {t.formPrivacyBefore}<a
-      href="/privacy"
-      hreflang={locale === 'ru' ? undefined : 'ru'}
-    >{t.formPrivacyLink}</a>.
+    {/* Визуально это один компактный блок, как в референсе Дениса. Юридически
+        действия разделены: `label` подтверждает только отдельное согласие,
+        а Политика рядом остаётся информационной ссылкой и не становится
+        вторым волеизъявлением того же чекбокса. */}
+    <span class="consent-copy">
+      <label for="f-consent">
+        {t.formConsentBefore}<a
+          href="/consent"
+          hreflang={locale === 'ru' ? undefined : 'ru'}
+        >{t.formConsentLink}</a>{t.formConsentAfter}<span class="req" aria-hidden="true"> *</span>
+      </label>{' '}
+      <span class="privacy-note">
+        {t.formPrivacyBefore}<a
+          href="/privacy"
+          hreflang={locale === 'ru' ? undefined : 'ru'}
+        >{t.formPrivacyLink}</a>.
+      </span>
+    </span>
   </p>
 
   <input type="hidden" name="consent_version" value={LEGAL_VERSION} />
   <input type="hidden" name="privacy_version" value={LEGAL_VERSION} />
+  <input type="hidden" name="consent_locale" value={locale} />
   <input type="hidden" name="page" value="" data-page />
   {/* Ноль означает «JavaScript выключен»: сервер тогда пропускает проверку на
        скорость заполнения. Скрипт подставляет сюда прошедшее время в момент
@@ -165,7 +170,7 @@ const LEGAL_VERSION = '1.2-2026-08-24';
      сообщении об ошибке и «обработку персональных данных» в согласии выглядели
      обычным текстом. Ссылка на Telegram — единственный запасной путь заявки,
      когда бэкенд недоступен: она обязана читаться как ссылка. */
-  .consent a, .privacy-note a, .status a {
+  .consent a, .status a {
     color: var(--accent);
     text-decoration-line: underline;
   }
@@ -184,17 +189,17 @@ const LEGAL_VERSION = '1.2-2026-08-24';
      цель нажатия набирает сама строка. */
   .consent {
     display: flex;
-    gap: 8px;
+    gap: 12px;
     align-items: flex-start;
     min-height: 44px;
     font-size: 1rem;
-    margin-bottom: 8px;
+    margin-bottom: 24px;
   }
+  .consent-copy { display: block; padding-block: 12px; }
   .privacy-note {
-    margin: 0 0 24px 32px;
-    font-size: 1rem;
+    display: inline;
   }
-  .consent label { padding-block: 12px; }
+  .consent label { display: inline; }
   /* Квадрат опускается на середину ПЕРВОЙ строки подписи, а не прижимается к
      её верхнему краю: подпись на узком экране переносится на две строки, и при
      `align-items: center` чекбокс уехал бы в середину блока. */
