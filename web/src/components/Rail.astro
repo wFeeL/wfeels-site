@@ -19,6 +19,9 @@ const points = railPoints(locale);
     рельс. Рельс не перехватывает фокус раньше содержимого страницы, хотя
     визуально висит поверх него. */}
 <nav class="rail" aria-label={t.railNav} data-rail>
+  {/* Из Ф-10 берём только статичную ось: без заполнения, засечек и
+      перекрестия активной точки. */}
+  <span class="rail-axis" aria-hidden="true"></span>
   <ol>
     {points.map((p) => (
       <li>
@@ -128,6 +131,16 @@ const points = railPoints(locale);
   }
   @media (min-width: 1324px) {
     .rail { display: block; }
+  }
+
+  .rail-axis {
+    position: absolute;
+    top: 22px;
+    bottom: 22px;
+    right: 11.5px;
+    width: 1px;
+    background: var(--border);
+    pointer-events: none;
   }
 
   ol {

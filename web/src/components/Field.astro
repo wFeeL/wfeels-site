@@ -75,6 +75,7 @@ const id = `f-${name}`;
   input:focus, textarea:focus, select:focus { border-color: var(--accent); }
   textarea {
     resize: vertical;
+    field-sizing: content;
     /* `rows="5"` резервирует контент высотой 5 строк (line-height 1,5 × кегль
        поля 18 px = 27 px, ×5 = 135 px), но сам атрибут не задаёт CSS
        `height` — расчёт браузера не учитывал `padding`/`border` этого поля
@@ -83,6 +84,7 @@ const id = `f-${name}`;
        не появляется, текст выглядит обрубленным). `min-height` считает то же
        самое явно, при действующем `box-sizing: border-box` (`base.css`). */
     min-height: calc(5 * 1.5em + 2 * 10px + 2 * 1px);
+    max-height: 60vh;
   }
   /* Плейсхолдер обязан читаться, а не растворяться: браузерный дефолт (обычно
      около 2,5:1 на белом) ниже AA. `--text-muted` — тот же токен, что уже

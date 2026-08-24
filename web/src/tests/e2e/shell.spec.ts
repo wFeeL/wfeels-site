@@ -443,6 +443,11 @@ test('первая секция страницы отбита от шапки м
   });
 
 test('заголовок первой страницы начинается близко к шапке', async ({ page }) => {
+  /* Это замер постоянной раскладки, не промежуточного кадра Ф-7. При
+     no-preference первая метка первые 320 мс приходит снизу на 16 px и
+     закономерно увеличивает измеряемый зазор; reduced motion оставляет
+     элементы сразу в их итоговых координатах. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1280, height: 900 });
   for (const path of ['/', '/contact']) {
     await page.goto(path);

@@ -42,6 +42,56 @@ const Tag = href ? 'a' : 'div';
     padding: 24px;
     color: inherit;
     text-decoration: none;
+    position: relative;
+    isolation: isolate;
+  }
+  /* Ф-9.1: четыре короткие угловые засечки без дополнительных узлов. */
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background-repeat: no-repeat;
+    background-image:
+      linear-gradient(var(--grid) 0 0),
+      linear-gradient(var(--grid) 0 0),
+      linear-gradient(var(--grid) 0 0),
+      linear-gradient(var(--grid) 0 0);
+    background-size: 8px 1px;
+    background-position:
+      left 12px top 12px,
+      right 12px top 12px,
+      left 12px bottom 12px,
+      right 12px bottom 12px;
+    transition: background-image var(--dur-micro) var(--ease);
+  }
+  .card:hover::before {
+    background-image:
+      linear-gradient(var(--border) 0 0),
+      linear-gradient(var(--border) 0 0),
+      linear-gradient(var(--border) 0 0),
+      linear-gradient(var(--border) 0 0);
+  }
+  /* Ф-9.2: неподвижная лампа меняет только opacity и существует лишь там,
+     где устройство действительно умеет наводить курсор. */
+  @media (hover: hover) {
+    .card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      border-radius: inherit;
+      opacity: 0;
+      background-image: radial-gradient(
+        120% 64% at 50% 0%,
+        var(--accent-soft),
+        transparent 70%
+      );
+      transition: opacity var(--dur-micro) var(--ease);
+    }
+    .card:hover::after { opacity: 1; }
   }
   .card--stack {
     display: flex;

@@ -4,6 +4,7 @@ import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 import { isIndexable } from './src/lib/sitemap.ts';
 import { devPagesEnabled } from './src/lib/dev-pages.ts';
+import { compactReadableHtmlIntegration } from './src/lib/compactReadableHtml.ts';
 
 const SITE = process.env.SITE_URL ?? 'http://localhost:4321';
 
@@ -63,6 +64,7 @@ export default defineConfig({
   integrations: [
     mdx(),
     devPages,
+    compactReadableHtmlIntegration(),
     sitemap({
       filter: (page) => isIndexable(new URL(page).pathname),
     }),

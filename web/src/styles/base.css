@@ -292,9 +292,9 @@ p, li, dd, dt, figcaption {
   margin-top: 48px;
   color: var(--accent);
   font-weight: 600;
-  text-decoration: none;
+  text-decoration-line: none;
 }
-.back-to-form:hover { text-decoration: underline; }
+.back-to-form:hover { text-decoration-line: underline; }
 
 .t-label {
   font-family: var(--font-mono);
@@ -305,9 +305,18 @@ p, li, dd, dt, figcaption {
   color: var(--accent);
 }
 
+a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, var(--bg));
+  transition: text-decoration-color var(--dur-micro) var(--ease);
+}
+a:hover, a:focus-visible { text-decoration-color: currentColor; }
+
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 1px var(--bg);
 }
 
 .grid-paper {
@@ -450,3 +459,71 @@ p, li, dd, dt, figcaption {
 @media (min-width: 700px) {
   .grid > :nth-child(2n) { --reveal-i: 1; }
 }
+
+/* Ф-4: пословный набор закрывающей фразы «Обо мне». Без поддержки
+   view-timeline/sibling-index и при reduced motion текст остаётся обычным. */
+.ink i { font-style: normal; }
+@supports (animation-timeline: view()) and (top: calc(sibling-index() * 1px)) {
+  @media (prefers-reduced-motion: no-preference) {
+    .ink { view-timeline-name: --ink; }
+    .ink i {
+      display: inline-block;
+      opacity: .62;
+      animation-name: ink-in;
+      animation-duration: 1ms;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: --ink;
+      animation-range-start: entry calc(8vh + sibling-index() * 0.6vh);
+      animation-range-end: entry calc(20vh + sibling-index() * 0.6vh);
+    }
+    @media (max-width: 899px) {
+      .ink i {
+        animation-range-start: entry calc(8vh + sibling-index() * 0.3vh);
+        animation-range-end: entry calc(20vh + sibling-index() * 0.3vh);
+      }
+    }
+  }
+}
+@keyframes ink-in { to { opacity: 1; } }
+
+/* Ф-7: первый экран последовательно вычерчивается при загрузке. */
+@media (prefers-reduced-motion: no-preference) {
+  #hero > .t-label,
+  #hero h1,
+  #hero .t-body-lg,
+  #hero .offer,
+  #hero .offer > li,
+  #hero .cta,
+  #hero .regalia {
+    animation-name: hero-draw;
+    animation-duration: var(--dur-reveal);
+    animation-timing-function: var(--ease);
+    animation-fill-mode: both;
+    animation-delay: calc(var(--hero-d, 0ms) * var(--hero-scale, 1));
+  }
+  #hero h1 { --hero-d: 60ms; }
+  #hero .t-body-lg { --hero-d: 140ms; }
+  #hero .offer { animation-name: hero-frame; --hero-d: 220ms; }
+  #hero .offer > li { --hero-d: 220ms; }
+  #hero .offer > li:nth-child(2) { --hero-d: 280ms; }
+  #hero .offer > li:nth-child(3) { --hero-d: 340ms; }
+  #hero .cta { --hero-d: 420ms; }
+  #hero .regalia { --hero-d: 500ms; }
+  @media (max-width: 899px) {
+    #hero { --hero-scale: 0.5; }
+  }
+}
+@keyframes hero-draw {
+  from { opacity: 0; translate: 0 16px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes hero-frame { from { opacity: 0; } }
+
+/* Ф-8: нативный междокументный переход; при reduced motion навигация
+   остаётся обычной. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+header { view-transition-name: --site-header; }
+header .brand { view-transition-name: --site-brand; }

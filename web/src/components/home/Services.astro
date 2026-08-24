@@ -64,4 +64,10 @@ const t = dict(locale);
   .all-services {
     margin: 24px 0 0;
   }
+  .all-services :global(a span) {
+    display: inline-block;
+    transition: translate var(--dur-micro) var(--ease);
+  }
+  .all-services :global(a:hover span),
+  .all-services :global(a:focus-visible span) { translate: 4px 0; }
 </style>

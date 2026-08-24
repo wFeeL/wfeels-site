@@ -167,8 +167,7 @@ const LEGAL_VERSION = '1.2-2026-08-24';
      когда бэкенд недоступен: она обязана читаться как ссылка. */
   .consent a, .privacy-note a, .status a {
     color: var(--accent);
-    text-decoration: underline;
-    text-underline-offset: 2px;
+    text-decoration-line: underline;
   }
   /* Звёздочка обязательного поля — тот же приём и тот же служебный цвет, что
      у `.req` в `Field.astro` (`--danger`, `aria-hidden`, читалке уже говорит

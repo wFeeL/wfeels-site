@@ -35,8 +35,17 @@ const en = readFileSync(resolve(DIST, 'en/index.html'), 'utf8');
  *  не то. `id` и `class` оставлены потому, что именно они держат раскладку и
  *  якоря — то, что владелец называет «на местах». */
 function skeleton(html: string): string[] {
+  /* Ф-4 размечает слова закрывающей фразы через <i>. Число слов в переводе
+     закономерно отличается, поэтому для проверки общей структуры эти
+     служебные обёртки снимаются в обеих версиях. Саму их корректность
+     проверяет отдельный dist-ink-words.test.ts. */
+  const structuralHtml = html.replace(
+    /(<p\b[^>]*class="[^"]*\bink\b[^"]*"[^>]*>)([\s\S]*?)(<\/p>)/g,
+    (_match, start: string, inner: string, end: string) =>
+      start + inner.replace(/<\/?i>/g, '') + end,
+  );
   const out: string[] = [];
-  for (const m of html.matchAll(/<([a-zA-Z][\w-]*)\b([^>]*)>/g)) {
+  for (const m of structuralHtml.matchAll(/<([a-zA-Z][\w-]*)\b([^>]*)>/g)) {
     const tag = m[1].toLowerCase();
     if (tag === 'br' || tag === 'wbr') continue;
     const attrs = m[2];

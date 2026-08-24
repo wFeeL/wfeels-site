@@ -51,7 +51,9 @@ describe('dist/index.html — секции 9, 10 и 11', () => {
     for (const marker of BRAND_MARKERS) {
       expect(html, `маркер {${marker}} остался в разметке`).not.toContain(`{${marker}}`);
     }
-    expect(html).toContain(ABOUT_CLOSING);
+    const closing = /<p class="closing ink"[^>]*>([\s\S]*?)<\/p>/.exec(html);
+    expect(closing, 'закрывающая фраза «Обо мне» не найдена').not.toBeNull();
+    expect(closing![1].replace(/<[^>]+>/g, '')).toBe(ABOUT_CLOSING);
   });
 
   it('секция 9: формулировка «зоосервис в Москве» присутствует — единственное место с «клиент»', () => {

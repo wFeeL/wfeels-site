@@ -105,7 +105,7 @@ const { group } = Astro.props;
        остался на середине. */
     min-height: 44px;
   }
-  .links a span { color: var(--accent); transition: transform var(--dur-micro) var(--ease); }
+  .links a span { color: var(--accent); transition: translate var(--dur-micro) var(--ease); }
   /* Находка дизайн-ревью 2026-08-22 (находка 4, D-055): ссылка стоит в
      СПИСКЕ (`.links`, под чертой карточки-группы) — по решению подчёркивание
      у такой ссылки появляется только при наведении и фокусе, в покое его
@@ -127,7 +127,7 @@ const { group } = Astro.props;
     color: var(--accent);
   }
   .links a:hover span,
-  .links a:focus-visible span { transform: translateX(2px); }
+  .links a:focus-visible span { translate: 4px 0; }
 
   .stack {
     margin: auto 0 0;

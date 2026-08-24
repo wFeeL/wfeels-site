@@ -139,6 +139,18 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
   .item { border-bottom: 1px solid var(--border); }
   .item:last-child { border-bottom: none; }
 
+  /* Ф-9.7: открытый пункт отмечен внутренней акцентной линейкой. */
+  .item {
+    box-shadow: inset 2px 0 0 0 transparent;
+    transition: box-shadow var(--dur-micro) var(--ease),
+                padding-left var(--dur-micro) var(--ease);
+  }
+  .item[open] {
+    box-shadow: inset 2px 0 0 0 var(--accent);
+    padding-left: 16px;
+  }
+  .item[open] .question { font-weight: 600; }
+
   summary {
     display: flex;
     align-items: center;

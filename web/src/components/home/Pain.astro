@@ -237,9 +237,16 @@ for (const [name, points] of Object.entries(PAIN_POINTS_BY_LOCALE)) {
     margin-top: 16px;
     color: var(--accent);
     font-weight: 600;
-    text-decoration: none;
+    text-decoration-line: none;
   }
-  .answer-link:hover, .answer-link:focus-visible { text-decoration: underline; }
+  .answer-link:hover,
+  .answer-link:focus-visible { text-decoration-line: underline; }
+  .answer-link span {
+    display: inline-block;
+    transition: translate var(--dur-micro) var(--ease);
+  }
+  .answer-link:hover span,
+  .answer-link:focus-visible span { translate: 0 4px; }
 
   /* Каскад — та же утилита, что у карточек услуг и гарантий (`styles/
      base.css`, `.reveal`): секции сами задают только `--reveal-i` через

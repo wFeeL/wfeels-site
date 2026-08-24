@@ -1,0 +1,12 @@
+---
+/* Серверные обёртки слов для Ф-4. Компонент намеренно не имеет
+ * скоупленных стилей: иначе Astro добавит служебный атрибут каждому слову. */
+import { inkWords } from '../lib/inkWords';
+
+interface Props { text: string }
+const { text } = Astro.props;
+const words = inkWords(text);
+---
+{words.map((word, i) => (
+  <>{i > 0 && ' '}<i>{word}</i></>
+))}

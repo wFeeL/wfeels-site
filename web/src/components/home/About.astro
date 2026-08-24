@@ -37,6 +37,7 @@
 import Label from '../Label.astro';
 import Prose from '../Prose.astro';
 import BrandMark from '../BrandMark.astro';
+import InkText from '../InkText.astro';
 import { splitBrandText } from '../../lib/brandMarkers';
 import { ABOUT_PHOTO, aboutText } from '../../data/about';
 import { dict, localeFromPath } from '../../i18n/locales';
@@ -95,7 +96,7 @@ if (about.blocks.length !== 2) {
           part.kind === 'text' ? part.value : <BrandMark name={part.name} word={part.word} />
         ))}</p>
       ))}
-      <p class="closing"><strong>{about.closing}</strong></p>
+      <p class="closing ink"><strong><InkText text={about.closing} /></strong></p>
     </Prose>
   </div>
 </div>
