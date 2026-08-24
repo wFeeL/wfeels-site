@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { homeCases } from '../data/cases';
+import {
+  CASE_GALLERIES_URL,
+  STOREFRONT_SLIDES,
+  WEBSITE_SLIDES,
+} from '../data/case-galleries';
 import { PAGE_WEIGHT_KB } from '../data/pageWeight';
 
 /* Тот же паттерн, что `dist-home-sections.test.ts`: читает `dist/index.html`
@@ -19,11 +24,13 @@ import { PAGE_WEIGHT_KB } from '../data/pageWeight';
  * с предметом, а не оставлены пустыми. Сторож отсутствия живёт ниже — по
  * срезу секции, и в `data/cases.test.ts`.
  *
- * Правка владельца 2026-08-20 оставила на главной ОДИН блок — «Этот сайт».
+ * Правка владельца 2026-08-20 оставила на главной один блок — «Этот сайт».
  * «ИИ-консультант» и «Заявка-Хаб» с неё ушли, но из данных и из кода не
  * удалены: их проверки не выброшены, а переведены на новое состояние —
- * сторож ниже требует, чтобы их разметки в секции не было. */
+ * сторож ниже требует, чтобы их разметки в секции не было. С 2026-08-24
+ * вторым блоком добавлен Telegram Mini App, третьим — сайты. */
 const DIST_INDEX = fileURLToPath(new URL('../../dist/index.html', import.meta.url));
+const DIST_GALLERIES = fileURLToPath(new URL('../../dist/case-galleries.json', import.meta.url));
 
 describe('dist/index.html — секция 5', () => {
   it('сборка существует (npm run build перед этим набором)', () => {
@@ -38,10 +45,13 @@ describe('dist/index.html — секция 5', () => {
 
   if (!existsSync(DIST_INDEX)) return;
   const html = readFileSync(DIST_INDEX, 'utf8');
+  const galleryManifest = existsSync(DIST_GALLERIES)
+    ? JSON.parse(readFileSync(DIST_GALLERIES, 'utf8'))
+    : null;
 
-  it('секция 5: метка, заголовок в единственном числе, единственный блок дословно', () => {
+  it('секция 5: метка, заголовок во множественном числе, оба блока дословно', () => {
     expect(html).toContain('ЧТО УЖЕ СДЕЛАНО');
-    expect(html).toContain('>Кейс<');
+    expect(html).toContain('>Кейсы<');
     for (const c of homeCases()) {
       expect(html, c.title).toContain(c.title);
       expect(html, c.description!).toContain(c.description);
@@ -60,7 +70,9 @@ describe('dist/index.html — секция 5', () => {
     const end = html.indexOf('id="process"');
     const section = html.slice(start, end);
     for (const c of homeCases()) {
-      expect(section, `ссылка на /cases/${c.slug}`).not.toContain(`/cases/${c.slug}`);
+      expect(section, `ссылка на /cases/${c.slug}`).not.toMatch(
+        new RegExp(`href=["']\\/cases\\/${c.slug}(?:[\\/"'#?])`),
+      );
     }
     expect(section, 'метка «Разобрать кейс →»').not.toContain('Разобрать кейс');
     // Ни одного `<a>` в секции вовсе: заголовок был единственной ссылкой
@@ -95,6 +107,32 @@ describe('dist/index.html — секция 5', () => {
     expect(section).not.toContain('data-case-dialogue');
   });
 
+  it('Telegram Mini App: три приложения, девять экранов и один ресурс первой загрузки', () => {
+    const start = html.indexOf('id="cases"');
+    const end = html.indexOf('id="process"');
+    const section = html.slice(start, end);
+    expect(section).toContain('data-storefront-gallery');
+    expect(section).toContain('data-gallery-key="storefront"');
+    expect(section).toContain(`data-slides-src="${CASE_GALLERIES_URL}"`);
+    expect(section).toContain('/cases/storefront/yasmina-home.avif');
+    expect(galleryManifest?.storefront).toEqual(STOREFRONT_SLIDES);
+    expect((section.match(/<img\b[^>]*\bdata-storefront-screen\b/g) || []).length).toBe(1);
+  });
+
+  it('Сайты: три направления, девять экранов и отложенный первый ресурс', () => {
+    const start = html.indexOf('id="cases"');
+    const end = html.indexOf('id="process"');
+    const section = html.slice(start, end);
+    expect(section).toContain('data-website-gallery');
+    expect(section).toContain('data-defer="true"');
+    expect(section).toContain('data-gallery-key="websites"');
+    expect(section).toContain(`data-slides-src="${CASE_GALLERIES_URL}"`);
+    expect(galleryManifest?.websites).toEqual(WEBSITE_SLIDES);
+    const websiteImage = section.match(/<img\b[^>]*\bdata-website-screen\b[^>]*>/)?.[0];
+    expect(websiteImage).toBeTruthy();
+    expect(websiteImage).not.toMatch(/\bsrc=/);
+  });
+
   it('блок «Этот сайт»: иллюстрация «Замер» несёт машинный якорь гейта веса', () => {
     // С 2026-08-14 (пункт 7 списка правок владельца) прозаической подписи
     // под полем больше нет — коэффициент печатается внутри самой
@@ -111,10 +149,9 @@ describe('dist/index.html — секция 5', () => {
     const end = html.indexOf('id="process"');
     const section = html.slice(start, end);
     // Поле — по одному на блок, и число обязано совпадать с длиной
-    // `homeCases()`. С 2026-08-20 блок один, поле одно — «Замер»; поля
-    // «Одной трубы» и «Примера диалога» ушли с главной вместе со своими
-    // кейсами (их рисунки остались в коде и ждут страницу каталога).
-    expect((section.match(/class="field"/g) || []).length,
+    // `homeCases()`. «Одной трубы» и «Примера диалога» на главной нет;
+    // второе поле теперь занимает галерея Telegram Mini App.
+    expect((section.match(/class="[^"]*\bfield\b[^"]*"/g) || []).length,
       'в секции кейсов ровно по одному наполненному полю иллюстрации на блок')
       .toBe(homeCases().length);
     expect(section, 'вес страницы не найден внутри поля «Замер»')

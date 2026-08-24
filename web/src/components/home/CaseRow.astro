@@ -5,10 +5,8 @@
  * `homeOrder` — обычная раскладка, чётный — зеркальная (`mirrored`,
  * вычисляется в `Cases.astro` формулой `homeOrder % 2 === 0`, раздел 2.1
  * брифа). Порядок в DOM у всех блоков одинаковый — текст, потом рисунок;
- * зеркалятся только колонки грида (раздел 2.3 брифа), не разметка. Блоков
- * три: «Фабрика ботов» снята с главной правкой владельца 2026-08-19, и
- * вместе с ней ушёл проп `frame` («что переезжает») — единственным его
- * потребителем была четвёртая строка.
+ * зеркалятся только колонки грида (раздел 2.3 брифа), не разметка. Состав
+ * блоков меняется данными; сама строка не знает их число.
  *
  * ПЕРЕХОДА ИЗ БЛОКА БОЛЬШЕ НЕТ — правка владельца 2026-08-20: «пока убираем
  * ссылку с кейса „Этот сайт“, иначе она ведет на несуществующую страницу».
@@ -40,19 +38,28 @@ interface Props {
   illustrationHeight: number;
   /** Высота поля ниже 899 px, если отличается — см. `CaseIllustrationField`. */
   illustrationMobileHeight?: number;
+  /** Поле без паспарту — для реального скриншота, уже имеющего свою рамку. */
+  illustrationBare?: boolean;
+  /** Центрировать короткий текст по вертикали относительно высокой галереи. */
+  centerCopy?: boolean;
 }
 const {
   item, mirrored = false, illustrationHeight, illustrationMobileHeight,
+  illustrationBare = false, centerCopy = false,
 } = Astro.props;
 ---
-<div class:list={['row', { mirror: mirrored }]}>
+<div class:list={['row', { mirror: mirrored, 'center-copy': centerCopy }]}>
   <div class="text">
     <h3 class="t-h3">{item.title}</h3>
     {item.description && <p class="description">{item.description}</p>}
     {item.stack && <p class="stack"><code>{item.stack}</code></p>}
   </div>
   <div class="illustration">
-    <CaseIllustrationField height={illustrationHeight} mobileHeight={illustrationMobileHeight}>
+    <CaseIllustrationField
+      height={illustrationHeight}
+      mobileHeight={illustrationMobileHeight}
+      bare={illustrationBare}
+    >
       <slot />
     </CaseIllustrationField>
     <slot name="caption" />
@@ -76,8 +83,17 @@ const {
      перестановка элементов в разметке запрещены — оба ломают порядок
      чтения или выравнивание знаков препинания. */
   .row.mirror { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
-  .row.mirror .text { grid-column: 2; }
-  .row.mirror .illustration { grid-column: 1; }
+  /* Оба элемента закреплены не только в колонках, но и в первой строке.
+     Без `grid-row: 1` автоплейсмент читает DOM-порядок «текст → рисунок»:
+     после занятой второй колонки переносит рисунок на следующую строку и
+     превращает зеркальный desktop-блок в две строки высотой 810 px. */
+  .row.mirror .text { grid-column: 2; grid-row: 1; }
+  .row.mirror .illustration { grid-column: 1; grid-row: 1; }
+
+  /* У высокого Telegram-скрина текст не прилипает к верхней кромке поля:
+     его собственная высота центрируется по общей оси с галереей. Это
+     частное правило строки, а не новое выравнивание всех кейсов. */
+  .row.center-copy .text { align-self: center; }
 
   @media (max-width: 899px) {
     /* Ниже 900 px зеркала не существует: одна колонка, сначала текст, потом
@@ -85,7 +101,12 @@ const {
        обязан сброситься явно: в одноколоночном гриде «2» создал бы лишнюю
        неявную колонку и сдвинул текст вбок. */
     .row, .row.mirror { grid-template-columns: 1fr; }
-    .row.mirror .text, .row.mirror .illustration { grid-column: auto; }
+    .row.mirror .text, .row.mirror .illustration {
+      grid-column: auto;
+      grid-row: auto;
+    }
+    /* На телефоне текст снова идёт обычным потоком над иллюстрацией. */
+    .row.center-copy .text { align-self: stretch; }
   }
 
   .text { display: flex; flex-direction: column; gap: 8px; min-width: 0; }

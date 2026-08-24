@@ -82,13 +82,9 @@ test('на 390 px ссылки услуг и контакта пригодны �
     }
   });
 
-/* Было: «каждая строка кейса — цель нажатия на весь блок» (вариант В,
-   D-047). Правка владельца 2026-08-20 сняла переход целиком — страницы
-   `/cases/<slug>` не существует, — и требование вывернуто: на телефоне
-   палец не должен находить в блоке НИЧЕГО нажимаемого. Ложная цель на
-   мобильном хуже, чем на десктопе: там нет наведения, чтобы заметить, что
-   элемент не отзывается. */
-test('на 390 px в блоке кейса нет цели нажатия — переходить некуда', async ({ page }) => {
+/* Переходов на страницы кейсов нет и на телефоне. Стрелки обеих галерей
+   меняют реальное состояние и держат полную площадь касания. */
+test('на 390 px нажимаются только органы управления галереи, ссылок на кейсы нет', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
 
@@ -96,10 +92,26 @@ test('на 390 px в блоке кейса нет цели нажатия — п
   const count = await rows.count();
   expect(count, 'строки кейсов не найдены').toBeGreaterThan(0);
 
-  for (let i = 0; i < count; i++) {
-    const links = rows.nth(i).locator('a, button');
-    await expect(links, `строка ${i}: ссылок и кнопок в блоке быть не должно`)
-      .toHaveCount(0);
+  await expect(rows.locator('a'), 'ссылок на страницы кейсов быть не должно').toHaveCount(0);
+  await expect(rows.nth(0).locator('button'), 'у «Этого сайта» нет органов управления')
+    .toHaveCount(0);
+
+  const buttons = rows.nth(1).locator('[data-storefront-gallery] button');
+  await expect(buttons).toHaveCount(2);
+  for (const button of await buttons.all()) {
+    const box = await button.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThanOrEqual(TAP);
+    expect(box!.height).toBeGreaterThanOrEqual(TAP);
+  }
+
+  const websiteButtons = rows.nth(2).locator('[data-website-gallery] button');
+  await expect(websiteButtons).toHaveCount(2);
+  for (const button of await websiteButtons.all()) {
+    const box = await button.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThanOrEqual(TAP);
+    expect(box!.height).toBeGreaterThanOrEqual(TAP);
   }
 });
 

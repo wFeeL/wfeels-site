@@ -2,17 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { CASES, homeCases } from './cases';
 
 describe('cases.ts — внутренняя целостность', () => {
-  it('пять кейсов всего — «Фабрика ботов» снята правкой владельца 2026-08-19', () => {
-    expect(CASES.length).toBe(5);
+  it('шесть кейсов всего — «Фабрика ботов» снята правкой владельца 2026-08-19', () => {
+    expect(CASES.length).toBe(6);
   });
 
-  it('ровно один кейс на главной — правка владельца 2026-08-20', () => {
-    expect(homeCases().length).toBe(1);
+  it('три кейса на главной — «Этот сайт», Telegram Mini App и сайты', () => {
+    expect(homeCases().length).toBe(3);
   });
 
   it('на главной остался «Этот сайт», а «ИИ-консультант» и «Заявка-Хаб» ушли с неё, ' +
     'оставшись записями с описанием для будущей страницы каталога', () => {
-    expect(homeCases().map((c) => c.title)).toEqual(['Этот сайт']);
+    expect(homeCases().map((c) => c.title)).toEqual([
+      'Этот сайт', 'Telegram Mini App', 'Сайты',
+    ]);
     for (const slug of ['ai-consultant', 'zayavka-hub']) {
       const c = CASES.find((x) => x.slug === slug);
       expect(c, slug).toBeDefined();
@@ -23,16 +25,9 @@ describe('cases.ts — внутренняя целостность', () => {
     }
   });
 
-  /* Зеркальности при одном блоке НЕ СУЩЕСТВУЕТ, и сторож обязан это
-     утверждать, а не молчать: формула `homeOrder % 2 === 0` осталась в
-     `Cases.astro` и продолжает работать — единственный кейс идёт первым,
-     то есть нечётным, то есть обычной раскладкой. Молчание здесь стоило бы
-     дорого: вернись второй кейс без переизмерения секции, зеркало появилось
-     бы, а сторож бы этого не заметил. */
-  it('зеркальной раскладки на главной нет: единственный блок нечётный', () => {
+  it('только второй кейс зеркальный; у сайтов текст слева, скриншоты справа', () => {
     const mirrored = homeCases().map((c) => (c.homeOrder ?? 0) % 2 === 0);
-    expect(mirrored).toEqual([false]);
-    expect(mirrored.some(Boolean), 'зеркалить при одном блоке нечего').toBe(false);
+    expect(mirrored).toEqual([false, true, false]);
   });
 
   it('у каждого кейса главной есть описание и строка стека', () => {
