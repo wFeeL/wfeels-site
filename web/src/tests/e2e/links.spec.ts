@@ -69,12 +69,8 @@ test('каждая внутренняя ссылка ведёт на сущес�
   // до которых он ОБЯЗАН добраться: контакт — со страницы 404 (кнопка
   // «Написать»), согласие — из подписи под чекбоксом формы.
   //
-  // `/privacy` и `/terms` здесь БОЛЬШЕ НЕТ. Правка владельца 2026-08-21 сняла
-  // группу «Юридические документы» из подвала — сегодня на эти два адреса не
-  // ведёт ни одна ссылка сайта, и обход до них честно не доходит. Сами
-  // страницы при этом строятся (`dist/privacy/index.html`,
-  // `dist/terms/index.html`) — вернутся в перечень, когда владелец «заполнит
-  // раздел», то есть когда ссылка на них снова появится в разметке.
+  // `/privacy` и `/terms` снова доступны из подвала после заполнения
+  // юридических документов в `wt/legal`, поэтому обход обязан их находить.
   // `/en` здесь БОЛЬШЕ НЕТ. Правка владельца 2026-08-21 сняла маршрут вместе
   // с единственной ссылкой на него (`LangSwitch`) — на сайте больше нет ни
   // одной ссылки, ведущей туда, и честный обход до него не доходит.
@@ -85,7 +81,7 @@ test('каждая внутренняя ссылка ведёт на сущес�
   // сам обход.
   expect(visited).toEqual(expect.arrayContaining(
     [
-      '/contact', '/consent',
+      '/contact', '/privacy', '/terms', '/consent',
       '/services',
       '/services/website', '/services/website-support', '/services/website-audit',
       '/services/ai-consultant', '/services/integrations', '/services/admin-panel',
@@ -103,9 +99,20 @@ test('каждая внутренняя ссылка ведёт на сущес�
 test('ссылка под чекбоксом формы открывает согласие на обработку данных',
   async ({ page }) => {
     await page.goto('/contact');
-    await page.locator('form .consent a').click();
+    await page.locator('form .consent a[href="/consent"]').click();
 
     await expect(page).toHaveURL(/\/consent$/);
     await expect(page.locator('h1'))
       .toHaveText('Согласие на обработку персональных данных');
   });
+
+test('Политика показана отдельной ссылкой вне текста согласия', async ({ page }) => {
+  await page.goto('/contact');
+
+  await expect(page.locator('label[for="f-consent"] a[href="/privacy"]'))
+    .toHaveCount(0);
+  const policy = page.locator('form .privacy-note a[href="/privacy"]');
+  await expect(policy).toBeVisible();
+  await policy.click();
+  await expect(page).toHaveURL(/\/privacy$/);
+});

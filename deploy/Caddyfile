@@ -1,5 +1,5 @@
 {
-	# Публичный Caddy на VPS удаляет поддельный X-Forwarded-For и добавляет реальный
+	# Публичный reverse proxy на VPS удаляет поддельный X-Forwarded-For и добавляет реальный
 	# адрес посетителя. Этот внутренний Caddy доступен только через loopback-порт
 	# Docker, поэтому доверяет приватному адресу хоста и сохраняет цепочку до API.
 	servers {
@@ -11,7 +11,7 @@
 http://{$SITE_DOMAIN}, http://www.{$SITE_DOMAIN} {
 	encode zstd gzip
 
-	# Обе DNS-записи ведут на Nasik. `www` не становится вторым адресом сайта:
+	# Обе DNS-записи ведут на VPS. `www` не становится вторым адресом сайта:
 	# он всегда возвращает посетителя на канонический домен без `www`.
 	@www host www.{$SITE_DOMAIN}
 	redir @www https://{$SITE_DOMAIN}{uri} permanent

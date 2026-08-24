@@ -25,6 +25,7 @@ if (service !== undefined && !KNOWN_CODES.includes(service)) {
 
 const API_BASE = import.meta.env.PUBLIC_API_BASE ?? '';
 const SENDING = 'Отправляю…';
+const LEGAL_VERSION = '1.2-2026-08-24';
 ---
 <form id="lead-form" method="post" action={`${API_BASE}/api/lead`}
       data-sending-label={SENDING}>
@@ -100,10 +101,16 @@ const SENDING = 'Отправляю…';
       </svg>
     </span>
     <label for="f-consent">
-      Согласен на <a href="/consent">обработку персональных данных</a><span class="req" aria-hidden="true"> *</span>
+      Даю <a href="/consent">согласие на обработку персональных данных</a>
+      для ответа на заявку, включая доставку копии заявки через Telegram<span class="req" aria-hidden="true"> *</span>
     </label>
   </p>
+  <p class="privacy-note">
+    Как обрабатываются данные — в <a href="/privacy">Политике</a>.
+  </p>
 
+  <input type="hidden" name="consent_version" value={LEGAL_VERSION} />
+  <input type="hidden" name="privacy_version" value={LEGAL_VERSION} />
   <input type="hidden" name="page" value="" data-page />
   <!-- Ноль означает «JavaScript выключен»: сервер тогда пропускает проверку на
        скорость заполнения. Скрипт подставляет сюда прошедшее время в момент
@@ -140,7 +147,7 @@ const SENDING = 'Отправляю…';
      сообщении об ошибке и «обработку персональных данных» в согласии выглядели
      обычным текстом. Ссылка на Telegram — единственный запасной путь заявки,
      когда бэкенд недоступен: она обязана читаться как ссылка. */
-  .consent a, .status a {
+  .consent a, .privacy-note a, .status a {
     color: var(--accent);
     text-decoration: underline;
     text-underline-offset: 2px;
@@ -164,7 +171,11 @@ const SENDING = 'Отправляю…';
     align-items: flex-start;
     min-height: 44px;
     font-size: 1rem;
-    margin-bottom: 24px;
+    margin-bottom: 8px;
+  }
+  .privacy-note {
+    margin: 0 0 24px 32px;
+    font-size: 1rem;
   }
   .consent label { padding-block: 12px; }
   /* Квадрат опускается на середину ПЕРВОЙ строки подписи, а не прижимается к

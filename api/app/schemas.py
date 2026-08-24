@@ -35,6 +35,8 @@ class LeadIn(BaseModel):
     page: str = Field(default="", max_length=200)
     website: str = Field(default="", max_length=200)  # приманка, обязана быть пустой
     consent: str = Field(default="", max_length=20)
+    consent_version: str = Field(default="", max_length=40)
+    privacy_version: str = Field(default="", max_length=40)
     elapsed_seconds: float = 0.0
 
     @field_validator("service")
