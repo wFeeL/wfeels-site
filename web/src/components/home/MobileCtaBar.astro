@@ -71,9 +71,13 @@
  * раз оно там не подбирается заново.
  */
 import Button from '../Button.astro';
-import { dict } from '../../i18n/locales';
+import { dict, localeFromPath } from '../../i18n/locales';
 
-const t = dict('ru');
+/* Язык — из адреса страницы. До правки 2026-08-22 здесь стоял литерал
+   `dict('ru')`: на сайте существовала одна главная, и панель ниоткуда язык
+   взять не могла. Теперь главных две, и зашитый язык означал бы русскую
+   кнопку поверх английской страницы. */
+const t = dict(localeFromPath(Astro.url.pathname));
 ---
 <div class="mobile-cta-clip">
   <div class="mobile-cta-anchor">

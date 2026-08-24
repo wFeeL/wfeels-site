@@ -26,6 +26,8 @@
  *  1086×724 / 137 667 байт → 760×506 / 46 012 байт. Дальше в `public/` этого
  *  репозитория — Astro отдаёт статику из `public/` как есть, без второго
  *  прохода оптимизации. */
+import { assertParallel, type Locale } from '../i18n/locales';
+
 export const ABOUT_PHOTO = {
   src: '/wfeels-photo.jpg',
   width: 760,
@@ -98,6 +100,96 @@ export const ABOUT_BLOCKS: readonly string[] = [
 export const ABOUT_CLOSING =
   'Каждое число на этом сайте — из кода или из замера. Ни одного придуманного.';
 
-if (ABOUT_BLOCKS.length !== 2) {
-  throw new Error('data/about.ts: секция 9 несёт ровно два блока сверх лида и закрытия.');
+/* ─────────────────────────── Английская версия ────────────────────────────
+ *
+ * Тот же рассказ и те же факты. Ни одно утверждение здесь не усилено и не
+ * ослаблено переводом: «3 года на Python» — та же цифра из `10-offer/
+ * SKILLS.md`, «два года вёл зоосервис в Москве» — тот же срок и тот же
+ * безымянный клиент (D-011: имя не называется), «3 Telegram-бота» — то же
+ * число.
+ *
+ * ГЛАГОЛ «ВЁЛ» — самое опасное место этого перевода, и первый вариант его
+ * провалил. Стояло `I ran a pet-care service in Moscow`, и для носителя языка
+ * это значит «я управлял зоосервисом», то есть был этим бизнесом, а не его
+ * подрядчиком. Русское «вёл» в разделе «Обо мне» читается как «сопровождал
+ * как разработчик»; английское `ran` такой двусмысленности не имеет и выбирает
+ * ровно то прочтение, которого в базе нет: `10-offer/SKILLS.md` называет
+ * зоосервис КЛИЕНТОМ, а не делом владельца. Нашло это ревью выноса наружу
+ * 2026-08-22. Правка — `looked after`: по-английски так говорят про чужие
+ * системы, за которые отвечаешь («I look after their website»), и роль
+ * подрядчика остаётся на месте.
+ *
+ * ПАССИВ «БЫЛИ РАЗРАБОТАНЫ» сохранён намеренно. Активное `I built 3 Telegram
+ * bots` читается сильнее русского оригинала — а перевод не вправе усиливать
+ * утверждение о себе, даже когда `SKILLS.md` его подтверждает. Добавлено
+ * только `for it`: без него английский пассив висит без адресата.
+ *
+ * Маркеры `{claude}`, `{figma}`, `{chatgpt}`, `{postgres}`, `{github}` стоят
+ * и в переводе: их разбирает `lib/brandMarkers.ts`, и каждый обязан стоять
+ * ПЕРЕД словом марки через ровно один пробел — иначе сборка падает. Порядок
+ * марок в предложении сохранён, чтобы обе версии называли один и тот же
+ * инструмент в одном и том же месте рассказа.
+ *
+ * Закрывающая строка — самое сильное утверждение секции, и по-английски она
+ * такая же короткая: длинный перевод сделал бы из неё оговорку. */
+export const ABOUT_PHOTO_ALT_EN = 'Daniil working at his laptop';
+
+export const ABOUT_LEAD_EN =
+  'Daniil. 3 years with Python, websites and automation for small businesses.';
+
+export const ABOUT_CLIENT_LABEL_EN = 'a pet-care service in Moscow';
+
+export const ABOUT_BLOCKS_EN: readonly string[] = [
+  'I write the code with {claude} Claude Code, put the design together in ' +
+    '{figma} Figma and bring it onto the site through {chatgpt} ChatGPT. ' +
+    'Architecture, security and code review stay with me. Tools like these ' +
+    'are exactly how I get products built as fast as I do.',
+  `For two years I looked after ${ABOUT_CLIENT_LABEL_EN}: 3 Telegram bots ` +
+    'were built for it, a full Telegram Mini App with online booking, and a {postgres} Postgres ' +
+    'database. All of the work was tracked and documented in {github} GitHub — ' +
+    'any developer can read the history of the changes and get up to speed on it.',
+];
+
+export const ABOUT_CLOSING_EN =
+  'Every number on this site comes from code or from a measurement. Not one of them is made up.';
+
+export interface AboutText {
+  photoAlt: string;
+  lead: string;
+  blocks: readonly string[];
+  closing: string;
+}
+
+const ABOUT_BY_LOCALE: Record<Locale, AboutText> = {
+  ru: {
+    photoAlt: ABOUT_PHOTO.alt,
+    lead: ABOUT_LEAD,
+    blocks: ABOUT_BLOCKS,
+    closing: ABOUT_CLOSING,
+  },
+  en: {
+    photoAlt: ABOUT_PHOTO_ALT_EN,
+    lead: ABOUT_LEAD_EN,
+    blocks: ABOUT_BLOCKS_EN,
+    closing: ABOUT_CLOSING_EN,
+  },
+};
+
+assertParallel('data/about.ts', {
+  ru: ABOUT_BY_LOCALE.ru.blocks,
+  en: ABOUT_BY_LOCALE.en.blocks,
+});
+
+export function aboutText(locale: Locale): AboutText {
+  return ABOUT_BY_LOCALE[locale];
+}
+
+/* Два блока — решение брифа `04-sections-brief.md`, раздел 4, а не «сколько
+   получилось». Сторож проверяет оба языка. */
+for (const [locale, text] of Object.entries(ABOUT_BY_LOCALE)) {
+  if (text.blocks.length !== 2) {
+    throw new Error(
+      `data/about.ts: секция 9 несёт ровно два блока сверх лида и закрытия (${locale}: ${text.blocks.length}).`,
+    );
+  }
 }

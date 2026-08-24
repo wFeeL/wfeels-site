@@ -38,11 +38,16 @@ import Label from '../Label.astro';
 import Prose from '../Prose.astro';
 import BrandMark from '../BrandMark.astro';
 import { splitBrandText } from '../../lib/brandMarkers';
-import {
-  ABOUT_PHOTO, ABOUT_LEAD, ABOUT_BLOCKS, ABOUT_CLOSING,
-} from '../../data/about';
+import { ABOUT_PHOTO, aboutText } from '../../data/about';
+import { dict, localeFromPath } from '../../i18n/locales';
 
-if (ABOUT_BLOCKS.length !== 2) {
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
+/* Фотография одна на обе версии — переводится только её `alt`. Размеры и
+   адрес приходят из `ABOUT_PHOTO`, текст — из `aboutText(locale)`. */
+const about = aboutText(locale);
+
+if (about.blocks.length !== 2) {
   throw new Error('home/About.astro: секция 9 несёт ровно два блока сверх лида и закрытия.');
 }
 ---
@@ -59,7 +64,7 @@ if (ABOUT_BLOCKS.length !== 2) {
         src={ABOUT_PHOTO.src}
         width={ABOUT_PHOTO.width}
         height={ABOUT_PHOTO.height}
-        alt={ABOUT_PHOTO.alt}
+        alt={about.photoAlt}
         loading="lazy"
         decoding="async"
       />
@@ -70,12 +75,12 @@ if (ABOUT_BLOCKS.length !== 2) {
     </div>
     {/* Подпись — моно, приглушённая, тире + неразрывный пробел перед
         текстом, как у образца (D-044: устройство, не формулировка). */}
-    <p class="caption">— {ABOUT_LEAD}</p>
+    <p class="caption">— {about.lead}</p>
   </div>
 
   <div class="text-col">
-    <Label>КТО ЭТО ДЕЛАЕТ</Label>
-    <h2 class="t-h2">Обо мне</h2>
+    <Label>{t.aboutLabel}</Label>
+    <h2 class="t-h2">{t.aboutHeading}</h2>
     <Prose>
       {/* Текст абзаца несёт места под фирменные значки марок (`{claude}` и
           прочие) прямо внутри предложения — разбор в `lib/brandMarkers.ts`,
@@ -85,12 +90,12 @@ if (ABOUT_BLOCKS.length !== 2) {
           которому он относится, и `BrandMark` печатает пару неразрывной
           обёрткой. Иначе знак встаёт последним символом строки, а его слово
           уезжает вниз — снимок владельца 2026-08-20, 1440 px, «Postgres». */}
-      {ABOUT_BLOCKS.map((text) => (
+      {about.blocks.map((text) => (
         <p class="body-text">{splitBrandText(text).map((part) => (
           part.kind === 'text' ? part.value : <BrandMark name={part.name} word={part.word} />
         ))}</p>
       ))}
-      <p class="closing"><strong>{ABOUT_CLOSING}</strong></p>
+      <p class="closing"><strong>{about.closing}</strong></p>
     </Prose>
   </div>
 </div>

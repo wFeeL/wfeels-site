@@ -474,3 +474,55 @@ test('в подвале есть юридические ссылки и стро
   await expect(page.locator('footer a[href="/consent"]')).toBeVisible();
   await expect(page.locator('footer')).toContainText('вместе с ИИ');
 });
+
+
+/* Шапка не переносится ни на одной ширине ни на одном языке.
+ *
+ * Заведён 2026-08-22 по дизайн-ревью английской версии. До него полоса
+ * поломки существовала у ОБЕИХ версий и её не ловило ничто: широкое меню
+ * оставалось показанным до 896 px, а строка переставала помещаться раньше —
+ * у русской с 924 px, у английской с 984. Проявление: пункт меню встаёт в две
+ * строки, а кнопка «Обсудить задачу» рвётся ВНУТРИ своей пилюли и разгоняет
+ * её с 44 до 58 px.
+ *
+ * Сторож меряет не порог, а СЛЕДСТВИЕ: высоту пилюли кнопки и высоту пунктов
+ * меню. Порог (`Header.astro`, 1000 px) — сегодняшнее решение, и он сдвинется
+ * при следующей правке слов; требование «ничто не переносится» не сдвинется
+ * никогда. Меряются оба языка: английские подписи длиннее русских, и версия,
+ * ломающаяся первой, обязана валить прогон.
+ *
+ * Шаг 8 px, а не 4: полоса поломки была шириной 88 px, восьмёрка её не
+ * перескочит, а прогон вдвое короче. */
+test('шапка не переносит ни пункты, ни кнопку — ни на одном языке', async ({ page }) => {
+  const CONTROL_HEIGHT = 44;
+  const problems: string[] = [];
+
+  for (const path of ['/', '/en']) {
+    await page.goto(path);
+    for (let width = 1440; width >= 900; width -= 8) {
+      await page.setViewportSize({ width, height: 800 });
+      const seen = await page.evaluate((h) => {
+        const cta = document.querySelector<HTMLElement>('header .cta-slot .btn');
+        const links = [...document.querySelectorAll<HTMLElement>('header nav.nav-wide a')];
+        const visible = (el: HTMLElement) => el.offsetParent !== null || getComputedStyle(el).display !== 'none';
+        return {
+          ctaHeight: cta && visible(cta) ? Math.round(cta.getBoundingClientRect().height) : h,
+          linkHeight: links.length
+            ? Math.max(...links.map((a) => Math.round(a.getBoundingClientRect().height)))
+            : h,
+        };
+      }, CONTROL_HEIGHT);
+
+      // Допуск 2 px — на дробный пиксель браузера, не на вторую строку:
+      // перенос добавляет высоту строки (≈14 px), а не пиксель.
+      if (seen.ctaHeight > CONTROL_HEIGHT + 2) {
+        problems.push(`${path} ${width}px: кнопка шапки ${seen.ctaHeight} px — текст перенёсся внутри пилюли`);
+      }
+      if (seen.linkHeight > CONTROL_HEIGHT + 2) {
+        problems.push(`${path} ${width}px: пункт меню ${seen.linkHeight} px — подпись встала в две строки`);
+      }
+    }
+  }
+
+  expect(problems, `шапка ломается:\n${problems.join('\n')}`).toEqual([]);
+});

@@ -10,24 +10,33 @@
  * девять кадров подготовлены в одном размере 1586×992 и занимают сцену 16:10
  * одинаково; `object-fit: contain` страхует геометрию без растяжения. */
 import phosphor from '@iconify-json/ph/icons.json';
-import { CASE_GALLERIES_URL, WEBSITE_SLIDES } from '../../data/case-galleries';
+import {
+  CASE_GALLERIES_URL,
+  GALLERY_UI,
+  galleryStatus,
+  websiteSlides,
+} from '../../data/case-galleries';
+import { localeFromPath } from '../../i18n/locales';
 
 const CARET_LEFT = phosphor.icons['caret-left'].body;
 const CARET_RIGHT = phosphor.icons['caret-right'].body;
 
-const firstSlide = WEBSITE_SLIDES[0];
+const locale = localeFromPath(Astro.url.pathname);
+const slides = websiteSlides(locale);
+const firstSlide = slides[0];
+const ui = GALLERY_UI[locale];
 ---
 
 <div
   class="gallery"
   role="group"
-  aria-label="Экраны сайтов"
+  aria-label={ui.websitesLabel}
   aria-busy="true"
   data-case-gallery
   data-website-gallery
   data-defer="true"
   data-loaded="false"
-  data-gallery-key="websites"
+  data-gallery-key={`websites-${locale}`}
   data-slides-src={CASE_GALLERIES_URL}
 >
   <div class="stage">
@@ -47,7 +56,7 @@ const firstSlide = WEBSITE_SLIDES[0];
       class="nav previous"
       type="button"
       data-step="-1"
-      aria-label="Предыдущий экран сайта"
+      aria-label={ui.previousWebsite}
       disabled
     >
       <svg viewBox="0 0 256 256" aria-hidden="true">
@@ -59,7 +68,7 @@ const firstSlide = WEBSITE_SLIDES[0];
       class="nav next"
       type="button"
       data-step="1"
-      aria-label="Следующий экран сайта"
+      aria-label={ui.nextWebsite}
       disabled
     >
       <svg viewBox="0 0 256 256" aria-hidden="true">
@@ -74,7 +83,7 @@ const firstSlide = WEBSITE_SLIDES[0];
   </div>
 
   <p class="sr-only" aria-live="polite" data-gallery-status data-website-status>
-    Показан экран {firstSlide.label} сайта {firstSlide.project}, 1 из {WEBSITE_SLIDES.length}
+    {galleryStatus(firstSlide, 0, slides.length, locale)}
   </p>
 </div>
 

@@ -5,7 +5,9 @@ import { homeCases } from '../data/cases';
 import {
   CASE_GALLERIES_URL,
   STOREFRONT_SLIDES,
+  STOREFRONT_SLIDES_EN,
   WEBSITE_SLIDES,
+  WEBSITE_SLIDES_EN,
 } from '../data/case-galleries';
 import { PAGE_WEIGHT_KB } from '../data/pageWeight';
 
@@ -112,10 +114,11 @@ describe('dist/index.html — секция 5', () => {
     const end = html.indexOf('id="process"');
     const section = html.slice(start, end);
     expect(section).toContain('data-storefront-gallery');
-    expect(section).toContain('data-gallery-key="storefront"');
+    expect(section).toContain('data-gallery-key="storefront-ru"');
     expect(section).toContain(`data-slides-src="${CASE_GALLERIES_URL}"`);
     expect(section).toContain('/cases/storefront/yasmina-home.avif');
-    expect(galleryManifest?.storefront).toEqual(STOREFRONT_SLIDES);
+    expect(galleryManifest?.['storefront-ru']).toEqual(STOREFRONT_SLIDES);
+    expect(galleryManifest?.['storefront-en']).toEqual(STOREFRONT_SLIDES_EN);
     expect((section.match(/<img\b[^>]*\bdata-storefront-screen\b/g) || []).length).toBe(1);
   });
 
@@ -125,9 +128,10 @@ describe('dist/index.html — секция 5', () => {
     const section = html.slice(start, end);
     expect(section).toContain('data-website-gallery');
     expect(section).toContain('data-defer="true"');
-    expect(section).toContain('data-gallery-key="websites"');
+    expect(section).toContain('data-gallery-key="websites-ru"');
     expect(section).toContain(`data-slides-src="${CASE_GALLERIES_URL}"`);
-    expect(galleryManifest?.websites).toEqual(WEBSITE_SLIDES);
+    expect(galleryManifest?.['websites-ru']).toEqual(WEBSITE_SLIDES);
+    expect(galleryManifest?.['websites-en']).toEqual(WEBSITE_SLIDES_EN);
     const websiteImage = section.match(/<img\b[^>]*\bdata-website-screen\b[^>]*>/)?.[0];
     expect(websiteImage).toBeTruthy();
     expect(websiteImage).not.toMatch(/\bsrc=/);

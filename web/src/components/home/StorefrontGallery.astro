@@ -13,25 +13,34 @@
  * контроллер двух галерей стоит после всех строк в `Cases.astro`: так он видит
  * и Telegram Mini App, и следующую за ним галерею сайтов, не дублируя JS. */
 import phosphor from '@iconify-json/ph/icons.json';
-import { CASE_GALLERIES_URL, STOREFRONT_SLIDES } from '../../data/case-galleries';
+import {
+  CASE_GALLERIES_URL,
+  GALLERY_UI,
+  galleryStatus,
+  storefrontSlides,
+} from '../../data/case-galleries';
+import { localeFromPath } from '../../i18n/locales';
 
 const CARET_LEFT = phosphor.icons['caret-left'].body;
 const CARET_RIGHT = phosphor.icons['caret-right'].body;
 
-const firstSlide = STOREFRONT_SLIDES[0];
+const locale = localeFromPath(Astro.url.pathname);
+const slides = storefrontSlides(locale);
+const firstSlide = slides[0];
+const ui = GALLERY_UI[locale];
 ---
 
 <div
   class="gallery"
   role="group"
-  aria-label="Экраны Telegram Mini App"
+  aria-label={ui.storefrontLabel}
   data-case-gallery
   data-storefront-gallery
-  data-gallery-key="storefront"
+  data-gallery-key={`storefront-${locale}`}
   data-slides-src={CASE_GALLERIES_URL}
 >
   <div class="stage">
-    <button class="nav previous" type="button" data-step="-1" aria-label="Предыдущий экран">
+    <button class="nav previous" type="button" data-step="-1" aria-label={ui.previous}>
       <svg viewBox="0 0 256 256" aria-hidden="true">
         <g set:html={CARET_LEFT}></g>
       </svg>
@@ -50,7 +59,7 @@ const firstSlide = STOREFRONT_SLIDES[0];
       />
     </figure>
 
-    <button class="nav next" type="button" data-step="1" aria-label="Следующий экран">
+    <button class="nav next" type="button" data-step="1" aria-label={ui.next}>
       <svg viewBox="0 0 256 256" aria-hidden="true">
         <g set:html={CARET_RIGHT}></g>
       </svg>
@@ -63,7 +72,7 @@ const firstSlide = STOREFRONT_SLIDES[0];
   </div>
 
   <p class="sr-only" aria-live="polite" data-gallery-status data-storefront-status>
-    Показан экран {firstSlide.label} магазина {firstSlide.project}, 1 из {STOREFRONT_SLIDES.length}
+    {galleryStatus(firstSlide, 0, slides.length, locale)}
   </p>
 </div>
 

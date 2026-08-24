@@ -31,7 +31,12 @@
  * абзац был только у неё, а разметка без данных — мёртвый код.
  */
 import Label from '../Label.astro';
-import { GUARANTEES } from '../../data/process';
+import { guarantees } from '../../data/process';
+import { dict, localeFromPath } from '../../i18n/locales';
+
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
+const GUARANTEES = guarantees(locale);
 
 if (GUARANTEES.length !== 4) {
   throw new Error('home/Guarantees.astro: секция 8 несёт ровно четыре гарантии.');
@@ -39,8 +44,8 @@ if (GUARANTEES.length !== 4) {
 ---
 <div class="layout">
   <div class="heading">
-    <Label>ГАРАНТИИ</Label>
-    <h2 class="t-h2">Что я гарантирую</h2>
+    <Label>{t.guaranteesLabel}</Label>
+    <h2 class="t-h2">{t.guaranteesHeading}</h2>
   </div>
 
   <ul class="list">

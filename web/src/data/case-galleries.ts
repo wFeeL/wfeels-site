@@ -1,14 +1,16 @@
+import type { Locale } from '../i18n/locales';
+
 export interface CaseGallerySlide {
   label: string;
   src: string;
   alt: string;
   project: string;
-  subject: 'магазина' | 'сайта';
+  subject: 'магазина' | 'сайта' | 'shop' | 'website';
 }
 
 /* Манифест кэшируется браузером отдельно от HTML. Версия в URL обязательна:
    иначе новая сборка могла получить старые пути слайдов ещё на пять минут. */
-export const CASE_GALLERIES_URL = '/case-galleries.json?v=2';
+export const CASE_GALLERIES_URL = '/case-galleries.json?v=3';
 
 export const STOREFRONT_SLIDES: readonly CaseGallerySlide[] = [
   {
@@ -141,3 +143,154 @@ export const WEBSITE_SLIDES: readonly CaseGallerySlide[] = [
     subject: 'сайта',
   },
 ];
+
+type GallerySlideText = Pick<CaseGallerySlide, 'label' | 'alt' | 'subject'>;
+
+function localizeSlides(
+  name: string,
+  source: readonly CaseGallerySlide[],
+  translations: readonly GallerySlideText[],
+): readonly CaseGallerySlide[] {
+  if (source.length !== translations.length) {
+    throw new Error(
+      `data/case-galleries.ts: в галерее ${name} ${source.length} русских ` +
+      `кадров и ${translations.length} английских переводов.`,
+    );
+  }
+  return source.map((slide, index) => ({ ...slide, ...translations[index] }));
+}
+
+export const STOREFRONT_SLIDES_EN = localizeSlides('storefront', STOREFRONT_SLIDES, [
+  {
+    label: 'Home',
+    alt: 'Yasmina home screen with categories and a beaded handbag',
+    subject: 'shop',
+  },
+  {
+    label: 'Product',
+    alt: 'Fuchsia Marshmallow handbag product page in Yasmina',
+    subject: 'shop',
+  },
+  {
+    label: 'Basket',
+    alt: 'Yasmina basket with the selected handbag and order form',
+    subject: 'shop',
+  },
+  {
+    label: 'Home',
+    alt: 'Mariosa Jewelry home screen with jewellery categories and earrings',
+    subject: 'shop',
+  },
+  {
+    label: 'Product',
+    alt: 'Mariosa Jewelry amethyst sautoir product page with photo and description',
+    subject: 'shop',
+  },
+  {
+    label: 'Basket',
+    alt: 'Mariosa Jewelry basket with enquiry details and contact form',
+    subject: 'shop',
+  },
+  {
+    label: 'Home',
+    alt: 'Zayac home screen with a handmade toy and ordering options',
+    subject: 'shop',
+  },
+  {
+    label: 'Catalogue',
+    alt: 'Zayac catalogue with standard and custom toy models',
+    subject: 'shop',
+  },
+  {
+    label: 'Product',
+    alt: 'White standard Zayac model product page with options and price',
+    subject: 'shop',
+  },
+]);
+
+export const WEBSITE_SLIDES_EN = localizeSlides('websites', WEBSITE_SLIDES, [
+  {
+    label: 'Home',
+    alt: 'RelayOS home page with product overview and automation table',
+    subject: 'website',
+  },
+  {
+    label: 'Builder',
+    alt: 'RelayOS automation builder with an enquiry-processing workflow',
+    subject: 'website',
+  },
+  {
+    label: 'Connections',
+    alt: 'RelayOS connections page with Salesforce synchronisation settings',
+    subject: 'website',
+  },
+  {
+    label: 'Home',
+    alt: 'Still House boutique hotel home page on the northern coast',
+    subject: 'website',
+  },
+  {
+    label: 'Rooms',
+    alt: 'Still House room catalogue with photos and prices',
+    subject: 'website',
+  },
+  {
+    label: 'Booking',
+    alt: 'Still House room page with stay details and booking',
+    subject: 'website',
+  },
+  {
+    label: 'Home',
+    alt: 'Forma Editions collectible furniture gallery home page',
+    subject: 'website',
+  },
+  {
+    label: 'Collection',
+    alt: 'Forma Editions catalogue with an armchair, lamp and table',
+    subject: 'website',
+  },
+  {
+    label: 'Object',
+    alt: 'Arc Chair 02 product page in the Forma Editions gallery',
+    subject: 'website',
+  },
+]);
+
+export function storefrontSlides(locale: Locale): readonly CaseGallerySlide[] {
+  return locale === 'ru' ? STOREFRONT_SLIDES : STOREFRONT_SLIDES_EN;
+}
+
+export function websiteSlides(locale: Locale): readonly CaseGallerySlide[] {
+  return locale === 'ru' ? WEBSITE_SLIDES : WEBSITE_SLIDES_EN;
+}
+
+export function galleryStatus(
+  slide: CaseGallerySlide,
+  index: number,
+  total: number,
+  locale: Locale,
+): string {
+  if (locale === 'en') {
+    return `Showing ${slide.project} ${slide.subject} ${slide.label.toLowerCase()} screen, ${index + 1} of ${total}`;
+  }
+  return `Показан экран ${slide.label} ${slide.subject} ${slide.project}, ${index + 1} из ${total}`;
+}
+
+export const GALLERY_UI = {
+  ru: {
+    storefrontLabel: 'Экраны Telegram Mini App',
+    websitesLabel: 'Экраны сайтов',
+    previous: 'Предыдущий экран',
+    next: 'Следующий экран',
+    previousWebsite: 'Предыдущий экран сайта',
+    nextWebsite: 'Следующий экран сайта',
+  },
+  en: {
+    storefrontLabel: 'Telegram Mini App screens',
+    websitesLabel: 'Website screens',
+    previous: 'Previous screen',
+    next: 'Next screen',
+    previousWebsite: 'Previous website screen',
+    nextWebsite: 'Next website screen',
+  },
+} as const satisfies Record<Locale, Record<string, string>>;

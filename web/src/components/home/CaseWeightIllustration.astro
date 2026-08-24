@@ -27,9 +27,12 @@
  * классы: класс принадлежит оформлению и переживёт не всякую перевёрстку.
  * Без этих атрибутов на главной гейт обязан упасть, а не пройти молча.
  */
-import { WEIGHT_ILLUSTRATION } from '../../data/case-illustrations';
+import { weightIllustration } from '../../data/case-illustrations';
+import { localeFromPath } from '../../i18n/locales';
 
-const { cells, multiplier, multiplierPhrase } = WEIGHT_ILLUSTRATION;
+const locale = localeFromPath(Astro.url.pathname);
+
+const { cells, multiplier, multiplierPhrase } = weightIllustration(locale);
 const [timeOurs, timeTypical, weightOurs, weightTypical] = cells;
 
 /* Клетки идут в раскладку парами со стрелкой между ними — порядок клеток
@@ -139,16 +142,23 @@ const ROWS = [
     var els = root.querySelectorAll('[data-count]');
     for (var i = 0; i < els.length; i++) {
       var text = els[i].textContent;
-      var m = /^[\d,]+/.exec(text);
+      /* Разделитель дробной части свой у каждого языка: «0,4 с» и «0.4 s».
+         Шаблон берёт оба знака, а разбор находит фактический — иначе на
+         английской версии счётчик прочёл бы «0» и досчитал бы до нуля,
+         оставив «.4 s» хвостом. Знак запоминается, чтобы промежуточные
+         значения печатались тем же, каким записано конечное. */
+      var m = /^[\d.,]+/.exec(text);
       if (!m) continue;
       var digits = m[0];
-      var comma = digits.indexOf(',');
+      var sepAt = digits.search(/[.,]/);
+      var sep = sepAt === -1 ? '' : digits.charAt(sepAt);
       nums.push({
         el: els[i],
         text: text,
         suffix: text.slice(digits.length),
-        value: parseFloat(digits.replace(',', '.')),
-        dec: comma === -1 ? 0 : digits.length - comma - 1,
+        sep: sep,
+        value: parseFloat(sep === ',' ? digits.replace(',', '.') : digits),
+        dec: sepAt === -1 ? 0 : digits.length - sepAt - 1,
       });
     }
     if (!nums.length) return;
@@ -169,7 +179,9 @@ const ROWS = [
         var n = nums[j];
         // На единице возвращается ИСХОДНАЯ строка, а не пересобранная:
         // округление счётчика не имеет права переписать напечатанное число.
-        var next = p >= 1 ? n.text : (n.value * p).toFixed(n.dec).replace('.', ',') + n.suffix;
+        var partial = (n.value * p).toFixed(n.dec);
+        if (n.sep === ',') partial = partial.replace('.', ',');
+        var next = p >= 1 ? n.text : partial + n.suffix;
         if (n.el.textContent !== next) n.el.textContent = next;
       }
     }

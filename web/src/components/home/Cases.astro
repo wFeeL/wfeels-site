@@ -22,8 +22,12 @@ import CaseWeightIllustration from './CaseWeightIllustration.astro';
 import StorefrontGallery from './StorefrontGallery.astro';
 import WebsiteGallery from './WebsiteGallery.astro';
 import { homeCases } from '../../data/cases';
+import { dict, localeFromPath } from '../../i18n/locales';
 
-const cases = homeCases();
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
+
+const cases = homeCases(locale);
 
 /* Высота поля иллюстрации — своя у каждого блока, кратная 32, в коридоре
  * 288…448 (бриф `70-workshop/specs/site-v3/02-case-illustrations.md`, раздел
@@ -83,8 +87,8 @@ const ILLUSTRATIONS: Record<string, any> = {
 };
 
 ---
-<Label>ЧТО УЖЕ СДЕЛАНО</Label>
-<h2 class="t-h2">Кейсы</h2>
+<Label>{t.casesLabel}</Label>
+<h2 class="t-h2">{t.casesHeading}</h2>
 
 <div class="rows">
   {cases.map((item) => {
@@ -104,10 +108,10 @@ const ILLUSTRATIONS: Record<string, any> = {
   })}
 </div>
 
-<!-- Общий контроллер двух галерей находится в самом `Cases.astro`, а не в
+{/* Общий контроллер двух галерей находится в самом `Cases.astro`, а не в
      компонентах, переданных через слот: их обычный поднятый Astro-скрипт
      теряется при сборке (ловушка 1 в `50-code/CLAUDE.md`). Здесь скрипт
-     безопасно собирается в один сжатый модуль и видит обе готовые строки. -->
+     безопасно собирается в один сжатый модуль и видит обе готовые строки. */}
 <script>
   (function () {
     var manifestPromise;
@@ -122,6 +126,7 @@ const ILLUSTRATIONS: Record<string, any> = {
     };
 
     var init = function () {
+      var isEnglish = document.documentElement.lang === 'en';
       document.querySelectorAll('[data-case-gallery]').forEach(function (root) {
         if (!(root instanceof HTMLElement) || root.dataset.ready === 'true') return;
 
@@ -169,8 +174,11 @@ const ILLUSTRATIONS: Record<string, any> = {
           projectName.textContent = slide.project;
           counter.textContent = String(currentIndex + 1).padStart(2, '0') + ' / ' +
             String(slides.length).padStart(2, '0');
-          status.textContent = 'Показан экран ' + slide.label + ' ' + slide.subject + ' ' +
-            slide.project + ', ' + String(currentIndex + 1) + ' из ' + String(slides.length);
+          var detail = isEnglish
+            ? slide.project + ' ' + slide.subject + ' ' + slide.label.toLowerCase() + ' screen'
+            : slide.label + ' ' + slide.subject + ' ' + slide.project;
+          status.textContent = (isEnglish ? 'Showing ' : 'Показан экран ') + detail + ', ' +
+            String(currentIndex + 1) + (isEnglish ? ' of ' : ' из ') + String(slides.length);
         };
 
         var waitForImageLoad = function (candidate) {
@@ -237,7 +245,9 @@ const ILLUSTRATIONS: Record<string, any> = {
           } catch (_error) {
             root.dataset.error = 'true';
             root.setAttribute('aria-busy', 'false');
-            status.textContent = 'Не удалось загрузить экраны галереи';
+            status.textContent = isEnglish
+              ? 'Gallery screens could not be loaded'
+              : 'Не удалось загрузить экраны галереи';
           } finally {
             root.dataset.transitioning = 'idle';
             switching = false;
@@ -300,12 +310,18 @@ const ILLUSTRATIONS: Record<string, any> = {
           } catch (_error) {
             if (shown) {
               show(previousIndex);
-              status.textContent = 'Не удалось загрузить новый экран, показан предыдущий';
+              status.textContent = isEnglish
+                ? 'The new screen could not be loaded; the previous one is still shown'
+                : 'Не удалось загрузить новый экран, показан предыдущий';
             } else if (slide) {
-              status.textContent = 'Не удалось загрузить новый экран, показан предыдущий';
+              status.textContent = isEnglish
+                ? 'The new screen could not be loaded; the previous one is still shown'
+                : 'Не удалось загрузить новый экран, показан предыдущий';
             } else if (!slide) {
               root.dataset.error = 'true';
-              status.textContent = 'Не удалось загрузить экраны галереи';
+              status.textContent = isEnglish
+                ? 'Gallery screens could not be loaded'
+                : 'Не удалось загрузить экраны галереи';
               setButtonsDisabled(true);
             }
           } finally {

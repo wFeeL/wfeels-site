@@ -2,45 +2,53 @@
 import Field from './Field.astro';
 import Button from './Button.astro';
 import { TELEGRAM_URL } from '../lib/contacts';
-import { SERVICE_GROUPS } from '../data/services';
+import { serviceGroups } from '../data/services';
+import { dict, localeFromPath } from '../i18n/locales';
+
+/* Язык формы — язык страницы, на которой она стоит. Проп сюда не приходит:
+   форму зовут и главная (`home/Contact.astro`), и страница `/contact`, и
+   витрина компонентов, и каждому пришлось бы про язык помнить. */
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
+const groups = serviceGroups(locale);
 
 interface Props {
   /** Код услуги S1…S9, который надо предвыбрать в списке «Что нужно
    *  сделать» (спека `70-workshop/specs/site-v3/08-service-pages.md`,
    *  раздел 10.2 — форма посадочной приходит с уже выбранной услугой).
-   *  Значение проверяется по `SERVICE_GROUPS`: неизвестный код — ошибка
+   *  Значение проверяется по `serviceGroups(locale)`: неизвестный код — ошибка
    *  сборки, а не молча непредвыбранный список. Без пропа разметка не
    *  меняется ни на байт — главная и `/contact` остаются как были. */
   service?: string;
 }
 const { service } = Astro.props;
 
-const KNOWN_CODES = SERVICE_GROUPS.flatMap((g) => g.links.map((l) => l.code));
+const KNOWN_CODES = groups.flatMap((g) => g.links.map((l) => l.code));
 if (service !== undefined && !KNOWN_CODES.includes(service)) {
   throw new Error(
-    `LeadForm.astro: код услуги «${service}» не найден среди SERVICE_GROUPS ` +
+    `LeadForm.astro: код услуги «${service}» не найден среди serviceGroups ` +
     '(data/services.ts) — второй список кодов здесь не заводится.',
   );
 }
 
 const API_BASE = import.meta.env.PUBLIC_API_BASE ?? '';
-const SENDING = 'Отправляю…';
+const SENDING = t.formSending;
 const LEGAL_VERSION = '1.2-2026-08-24';
 ---
 <form id="lead-form" method="post" action={`${API_BASE}/api/lead`}
       data-sending-label={SENDING}>
-  <Field name="name" label="Как вас зовут" required={true} autocomplete="name"
-         placeholder="Например, Мария" />
-  <!-- `autocomplete` здесь намеренно НЕ задан. Атрибут объявляет браузеру, чем
+  <Field name="name" label={t.formName} required={true} autocomplete="name"
+         placeholder={t.formNamePlaceholder} />
+  {/* `autocomplete` здесь намеренно НЕ задан. Атрибут объявляет браузеру, чем
        поле ЯВЛЯЕТСЯ, а это поле принимает два разных вида значения, и половина
        людей вводит `@handle`. Значения «почта или ник» в списке autofill нет:
        `email` объявил бы почту там, где её нет, и браузер подставлял бы адрес
        человеку, который собирался написать ник, — молча и правдоподобно.
        `off` тоже не выход: он выключает и подстановку тем, кто вводит почту.
        Без атрибута поле наследует `on` и получает историю ввода самого браузера
-       — то есть ровно то, что человек писал сюда в прошлый раз, ник или почту. -->
-  <Field name="contact" label="Telegram или почта" required={true}
-         placeholder="@wfeels или почта" />
+       — то есть ровно то, что человек писал сюда в прошлый раз, ник или почту. */}
+  <Field name="contact" label={t.formContact} required={true}
+         placeholder={t.formContactPlaceholder} />
 
   {/* Задача 18 (правка 2026-08-19): было текстовым полем «Что нужно
       сделать» — стало выпадающим списком с тем же лейблом, поле обязательное
@@ -51,9 +59,9 @@ const LEGAL_VERSION = '1.2-2026-08-24';
       (`data/services.ts`), откуда их уже берёт секция 3 «Что я делаю» —
       второй ручной список здесь расходился бы молча (закреплено
       `services.test.ts`, «коды услуг — ровно S1…S9»). */}
-  <Field name="service" label="Что нужно сделать" select={true} required={true}>
-    <option value="" disabled selected={!service} hidden>Выберите услугу</option>
-    {SERVICE_GROUPS.map((group) => (
+  <Field name="service" label={t.formService} select={true} required={true}>
+    <option value="" disabled selected={!service} hidden>{t.formServicePlaceholder}</option>
+    {groups.map((group) => (
       <optgroup label={group.title}>
         {group.links.map((link) => (
           <option value={link.code} selected={link.code === service}>{link.text}</option>
@@ -62,11 +70,11 @@ const LEGAL_VERSION = '1.2-2026-08-24';
     ))}
   </Field>
 
-  <Field name="message" label="О задаче (необязательно)" textarea={true}
-         hint="Чем конкретнее задача, тем точнее смета." autocomplete="off"
-         placeholder="Например: нужен лендинг, дедлайн через месяц" />
-  <Field name="budget" label="Бюджет (необязательно)" autocomplete="off"
-         placeholder="Порядок цифр, если уже прикинули" />
+  <Field name="message" label={t.formMessage} textarea={true}
+         hint={t.formMessageHint} autocomplete="off"
+         placeholder={t.formMessagePlaceholder} />
+  <Field name="budget" label={t.formBudget} autocomplete="off"
+         placeholder={t.formBudgetPlaceholder} />
 
   <p class="consent">
     {/* Задача 19 (правка 2026-08-18): плавная анимация галочки согласия.
@@ -100,40 +108,50 @@ const LEGAL_VERSION = '1.2-2026-08-24';
           stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </span>
+    {/* Документ согласия существует только по-русски — это юридический текст,
+        и его перевод был бы не переводом, а вторым документом (`i18n/en.ts`,
+        комментарий у `legalPolicy`). Поэтому подпись переведена, а ссылка
+        помечена языком цели: `hreflang="ru"` объявляет, что за ней русский
+        текст, вместо того чтобы умолчать об этом. */}
     <label for="f-consent">
-      Даю <a href="/consent">согласие на обработку персональных данных</a>
-      для ответа на заявку, включая доставку копии заявки через Telegram<span class="req" aria-hidden="true"> *</span>
+      {t.formConsentBefore}<a
+        href="/consent"
+        hreflang={locale === 'ru' ? undefined : 'ru'}
+      >{t.formConsentLink}</a>{t.formConsentAfter}<span class="req" aria-hidden="true"> *</span>
     </label>
   </p>
   <p class="privacy-note">
-    Как обрабатываются данные — в <a href="/privacy">Политике</a>.
+    {t.formPrivacyBefore}<a
+      href="/privacy"
+      hreflang={locale === 'ru' ? undefined : 'ru'}
+    >{t.formPrivacyLink}</a>.
   </p>
 
   <input type="hidden" name="consent_version" value={LEGAL_VERSION} />
   <input type="hidden" name="privacy_version" value={LEGAL_VERSION} />
   <input type="hidden" name="page" value="" data-page />
-  <!-- Ноль означает «JavaScript выключен»: сервер тогда пропускает проверку на
+  {/* Ноль означает «JavaScript выключен»: сервер тогда пропускает проверку на
        скорость заполнения. Скрипт подставляет сюда прошедшее время в момент
        отправки. Абсолютной отметки времени здесь нет намеренно — часы посетителя
        и часы сервера ничем не связаны, и на их расхождении заявка терялась бы
-       молча. -->
+       молча. */}
   <input type="hidden" name="elapsed_seconds" value="0" data-elapsed />
   <input class="hp" name="website" type="text" tabindex="-1" aria-hidden="true"
          autocomplete="off" />
 
-  <Button type="submit" variant="primary">Отправить</Button>
+  <Button type="submit" variant="primary">{t.formSubmit}</Button>
 
-  <!-- Роли живой области объявляют результат незрячему, `tabindex="-1"` даёт
+  {/* Роли живой области объявляют результат незрячему, `tabindex="-1"` даёт
        перенести на него фокус. Одного показа блока мало: он появляется ниже
        кнопки, за краем экрана, и до правки не было ни прокрутки, ни объявления —
-       нажатие оставалось без ответа для всех. -->
+       нажатие оставалось без ответа для всех. */}
   <div class="status ok" data-form-status="success" role="status" tabindex="-1" hidden>
-    <p class="t-label">Отправлено</p>
-    <p>Заявка ушла. Отвечу в течение дня.</p>
+    <p class="t-label">{t.formOkTitle}</p>
+    <p>{t.formOkText}</p>
   </div>
   <div class="status fail" data-form-status="error" role="alert" tabindex="-1" hidden>
-    <p class="t-label">Не отправлено</p>
-    <p>Не получилось отправить. Напишите напрямую: <a href={TELEGRAM_URL}>Telegram</a></p>
+    <p class="t-label">{t.formFailTitle}</p>
+    <p>{t.formFailText}<a href={TELEGRAM_URL}>Telegram</a></p>
   </div>
 </form>
 

@@ -1,16 +1,24 @@
 ---
 import { railPoints } from '../lib/rail';
+import { dict, localeFromPath } from '../i18n/locales';
 
-/* Семь точек — из lib/rail.ts, которая строит их из lib/sections.ts. Второго
-   перечня секций/точек здесь нет (план, задача 4, «Никаких вторых списков»). */
-const points = railPoints();
+/* Точки — из lib/rail.ts, которая строит их из lib/sections.ts. Второго
+   перечня секций/точек здесь нет (план, задача 4, «Никаких вторых списков»).
+
+   Язык берётся из адреса страницы, а не пропом: рельс рисует `Base.astro`
+   вне `<main>`, и лишний проп в цепочке — ещё одно место, где язык рельса
+   может разойтись с языком страницы. `localeFromPath` — тот же вывод, которым
+   `Base.astro` определяет `lang` на `<html>`. */
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
+const points = railPoints(locale);
 ---
 {/* Рельс живёт вне <main> в разметке (Base.astro кладёт его после <Footer>),
     чтобы фиксированное позиционирование не выдавало его как визуально первый
     элемент: клавиатурный фокус идёт skip-link → шапка → main → подвал →
     рельс. Рельс не перехватывает фокус раньше содержимого страницы, хотя
     визуально висит поверх него. */}
-<nav class="rail" aria-label="Разделы страницы" data-rail>
+<nav class="rail" aria-label={t.railNav} data-rail>
   <ol>
     {points.map((p) => (
       <li>
@@ -186,8 +194,19 @@ const points = railPoints();
 
      Правка владельца 2026-08-18 (пункт 23) добавила метки `КАК БЫВАЕТ` (10 знаков) и
      `FAQ` (7 знаков) — обе не длиннее уже вписывавшейся `ГАРАНТИИ`
-     (8 знаков), бюджет `96px` не меняется. Проверено `getBoundingClientRect()`
-     на 390 px (отчёт исполнителя). */
+     (8 знаков), бюджет `96px` не менялся. Проверено `getBoundingClientRect()`
+     на 390 px (отчёт исполнителя).
+
+     2026-08-22: `96px` → `112px`. Английские метки рельса
+     (`lib/sections.ts`, `RAIL_LABELS_EN`) пришли вместе с английской главной,
+     и самая длинная из них — `GUARANTEES` — набирается в 100 px против 96
+     прежнего предела: `overflow: hidden` срезал у неё хвост последней буквы.
+     Замер прямой, `scrollWidth` активной подписи на 1440 px: START 42 ·
+     THE USUAL 75 · SERVICES 67 · PRICING 59 · CASE 33 · PROCESS 59 ·
+     GUARANTEES 100 · ABOUT 42 · FAQ 25 · CONTACT 59. Новый предел даёт тот же
+     запас над самой длинной подписью, что 96 давал над русскими. Русские
+     метки от правки не меняются вовсе — все они короче 96 px, а лишний запас
+     справа не виден: подложки без текста не видно. */
   .label {
     flex: none;
     max-width: 0;
@@ -225,7 +244,7 @@ const points = railPoints();
   .point.active .label,
   .point:hover .label,
   .point:focus-visible .label {
-    max-width: 96px;
+    max-width: 112px;
     opacity: 1;
     padding-inline: 8px;
     border-width: 1px;

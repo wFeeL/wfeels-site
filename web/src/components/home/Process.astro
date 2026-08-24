@@ -48,14 +48,20 @@
  * страницы, как ведомость `Pain.astro`. Константы ниже — единственный
  * источник текста, читает их `pages/index.astro`.
  */
-import { PROCESS_STEPS } from '../../data/process';
+import { processSteps } from '../../data/process';
+import { localeFromPath } from '../../i18n/locales';
+
+const locale = localeFromPath(Astro.url.pathname);
+const PROCESS_STEPS = processSteps(locale);
 
 if (PROCESS_STEPS.length !== 5) {
   throw new Error('home/Process.astro: секция 7 несёт ровно пять шагов.');
 }
 
-/** Метка и заголовок секции — передаются в `Section` (пропы
- *  `label`/`heading`), которая рисует их снаружи `.panel`. */
+/** Русские метка и заголовок нужны посадочным услуг, которые существуют
+ *  только по-русски. Двуязычная главная берёт те же строки из словаря через
+ *  `home/HomePage.astro`, а посадочные импортируют эти константы напрямую,
+ *  не заводя вторую копию текста. */
 export const PROCESS_LABEL = 'КАК ЭТО БУДЕТ';
 export const PROCESS_HEADING = 'Как я работаю';
 ---

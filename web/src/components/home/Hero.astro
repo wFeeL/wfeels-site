@@ -10,69 +10,91 @@
 import Prose from '../Prose.astro';
 import Label from '../Label.astro';
 import Button from '../Button.astro';
-import { PRICING } from '../../data/pricing';
-import { HERO_TERMS } from '../../data/terms';
+import { priceEntry } from '../../data/pricingLocalized';
+import { heroTerms } from '../../data/terms';
+import { dict, localeFromPath, type Locale } from '../../i18n/locales';
+
+/* Язык — из адреса страницы. Секция приходит на страницу слотом
+   (`HomeSection` → `Section` → `<Content />` без пропов), и передать сюда
+   проп по цепочке нечем: `Content` рисуется без атрибутов. Вывод из адреса —
+   тот же самый, которым `Base.astro` ставит `lang` на `<html>`, поэтому два
+   источника языка на одной странице не заводятся. */
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
 
 /** Достаёт цену «от» по имени группы и ступени из `pricing.ts`. Падает явно,
  *  а не молчит, если сгенерированный файл когда-нибудь потеряет одну из трёх
  *  ступеней, на которые опирается таблица первого экрана — лучше красная
  *  сборка, чем страница с пустой ячейкой. */
 function priceFor(groupName: string, entryName: string): string {
-  const group = PRICING.find((g) => g.name === groupName);
-  const entry = group?.entries.find((e) => e.name === entryName);
-  if (!entry) {
-    throw new Error(
-      `home/Hero.astro: в data/pricing.ts нет ступени «${entryName}» в группе ` +
-      `«${groupName}» — таблица первого экрана ждёт её (спека 02-texts.md, секция 1).`,
-    );
-  }
+  // Ступень ищется по РУССКОМУ имени на любом языке страницы: имя ступени —
+  // её идентификатор в прайсе, а не текст для читателя (разбор — в
+  // `data/pricingLocalized.ts`). Возвращается ступень нужного языка.
+  const entry = priceEntry(locale, groupName, entryName);
   // Источник хранит голое число без слова «от»: это общее правило прайса
   // (PRICING.md, шапка), а не часть самого числа, и добавляется здесь при
-  // отображении, а не хранится второй раз в данных.
+  // отображении, а не хранится второй раз в данных. Само слово живёт в
+  // словаре (`t.priceFrom`) — на английской странице это «from».
   if (!/^\d/.test(entry.price)) {
     throw new Error(
       `home/Hero.astro: цена «${entry.price}» ступени «${entryName}» не похожа на ` +
       'число — таблица первого экрана не рассчитана на словесную формулировку.',
     );
   }
-  return `от ${entry.price}`;
+  return `${t.priceFrom} ${entry.price}`;
 }
 
-if (HERO_TERMS.length !== 3) {
+const TERMS = heroTerms(locale);
+if (TERMS.length !== 3) {
   throw new Error(
     'home/Hero.astro: таблица первого экрана ждёт ровно три срока в data/terms.ts, ' +
-    `а их ${HERO_TERMS.length}.`,
+    `а их ${TERMS.length}.`,
   );
 }
 
 const OFFER_ROWS = [
-  { term: HERO_TERMS[0], price: priceFor('Сайты', 'Лендинг из шаблона') },
-  { term: HERO_TERMS[1], price: priceFor('Автоматизация и интеграции', 'Одна интеграция') },
-  { term: HERO_TERMS[2], price: priceFor('ИИ', 'Консультант на готовых материалах') },
+  { term: TERMS[0], price: priceFor('Сайты', 'Лендинг из шаблона') },
+  { term: TERMS[1], price: priceFor('Автоматизация и интеграции', 'Одна интеграция') },
+  { term: TERMS[2], price: priceFor('ИИ', 'Консультант на готовых материалах') },
 ];
 
 /** Строка регалий — ровно пять пунктов (спека, «Строка регалий»). Заведена
  *  списком, а не одной строкой текста: разделители-точки и раздельные
  *  `aria-hidden` рисует разметка ниже, а тест ширины меряет каждый пункт по
  *  отдельности. */
-const REGALIA = [
-  'Санкт-Петербург',
-  'работаю удаленно',
-  'отвечаю в течение дня',
-  'пишу код сам, без подрядчиков',
-  '3 года на Python',
-];
-if (REGALIA.length !== 5) {
-  throw new Error('home/Hero.astro: строка регалий обязана нести ровно пять пунктов.');
+const REGALIA_BY_LOCALE: Record<Locale, readonly string[]> = {
+  ru: [
+    'Санкт-Петербург',
+    'работаю удаленно',
+    'отвечаю в течение дня',
+    'пишу код сам, без подрядчиков',
+    '3 года на Python',
+  ],
+  /* Те же пять фактов и ни одним больше. Строка стоит в одну линию при
+     контейнере 1180 px (сторож `e2e/hero.spec.ts`), и запас у английской
+     версии меньше русской — при правке слов пересчитывать её длину, а не
+     дописывать шестой пункт. */
+  en: [
+    'Saint Petersburg',
+    'working remotely',
+    'I reply within a day',
+    'I write the code myself, no subcontractors',
+    '3 years with Python',
+  ],
+};
+const REGALIA = REGALIA_BY_LOCALE[locale];
+for (const [name, items] of Object.entries(REGALIA_BY_LOCALE)) {
+  if (items.length !== 5) {
+    throw new Error(
+      `home/Hero.astro: строка регалий обязана нести ровно пять пунктов (${name}: ${items.length}).`,
+    );
+  }
 }
 ---
-<Label>КОГДА КОНСТРУКТОРА УЖЕ НЕ ХВАТАЕТ</Label>
-<h1 class="t-display">Сайты и автоматизация — дни вместо недель</h1>
+<Label>{t.heroLabel}</Label>
+<h1 class="t-display">{t.heroHeading}</h1>
 <Prose>
-  <p class="t-body-lg">
-    Один разработчик вместо цепочки подрядчиков. Проектирую и проверяю сам, а
-    ИИ ускоряет написание кода.
-  </p>
+  <p class="t-body-lg">{t.heroLead}</p>
 </Prose>
 
 <ul class="offer" role="list">
@@ -88,8 +110,8 @@ if (REGALIA.length !== 5) {
 </ul>
 
 <div class="cta">
-  <Button href="#contact" variant="primary">Обсудить задачу</Button>
-  <Button href="#pricing" variant="secondary">Смотреть цены</Button>
+  <Button href="#contact" variant="primary">{t.write}</Button>
+  <Button href="#pricing" variant="secondary">{t.heroSecondary}</Button>
 </div>
 
 <p class="regalia" data-regalia>

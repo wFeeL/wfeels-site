@@ -27,7 +27,11 @@
  * Метка и заголовок секции — константы ниже, единственный источник текста;
  * читает их `pages/index.astro`.
  */
-import { FAQ_ITEMS } from '../../data/faq';
+import { faqItems } from '../../data/faq';
+import { localeFromPath } from '../../i18n/locales';
+
+const locale = localeFromPath(Astro.url.pathname);
+const FAQ_ITEMS = faqItems(locale);
 import { faqPageSchema, serializeSchema } from '../../lib/schema';
 
 if (FAQ_ITEMS.length !== 5) {
@@ -36,8 +40,10 @@ if (FAQ_ITEMS.length !== 5) {
 
 /** Метка и заголовок секции — передаются в `Section` (пропы
  *  `label`/`heading`), которая рисует их снаружи `.panel`. */
-export const FAQ_LABEL = 'ЧАСТЫЕ ВОПРОСЫ';
-export const FAQ_HEADING = 'Что обычно спрашивают';
+/* Метка и заголовок секции — в словаре (`i18n/ru.ts`, `i18n/en.ts`); рисует
+   их снаружи `Section.astro` по пропам из `home/HomePage.astro`. Прежние
+   константы `FAQ_LABEL` / `FAQ_HEADING` отсюда сняты вместе с переводом
+   секции. */
 
 /** Разбирает `**слово**` на текстовые и полужирные куски — единственное
  *  место, где спека кладёт разметку внутрь текста данных (`data/faq.ts`).

@@ -13,6 +13,8 @@
 // отвечают две секции двумя экранами выше (02-texts.md, «Что здесь нельзя
 // менять при правке»).
 import { PRICING } from './pricing';
+import { priceEntry } from './pricingLocalized';
+import { assertParallel, type Locale } from '../i18n/locales';
 
 /** Цена пакета поддержки, ответ на вопрос «сколько будет стоить содержание
  *  потом» — читается из `pricing.ts`, а не переписана вторым числом здесь:
@@ -28,6 +30,7 @@ if (!supportEntry) {
   );
 }
 const SUPPORT_PACKAGE_PRICE = supportEntry.price;
+const SUPPORT_PACKAGE_PRICE_EN = priceEntry('en', 'Поддержка', 'Пакет поддержки').price;
 
 export interface FaqItem {
   question: string;
@@ -79,6 +82,73 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
   },
 ];
 
-if (FAQ_ITEMS.length !== 5) {
-  throw new Error('data/faq.ts: секция 10 несёт ровно пять вопросов.');
+/* ─────────────────────────── Английская версия ────────────────────────────
+ *
+ * Те же пять вопросов, в том же порядке и о том же. Цена пакета поддержки в
+ * четвёртом ответе так же читается из прайса — только английской подписью
+ * (`data/pricing.en.ts`): второго числа в тексте нет ни на одном языке.
+ *
+ * Полужирное `**…**` живёт и в английском ответе: разбирает его тот же
+ * `Faq.astro`, и выделено в переводе то же самое слово — «вообще» → «cannot».
+ * Ударение фразы держится на нём, и потерять его значило бы перевести
+ * предложение, но не мысль. */
+const FAQ_ITEMS_EN: readonly FaqItem[] = [
+  {
+    question: 'Would a builder like Tilda be enough for me?',
+    answer:
+      'It might be — and then I’ll say so. A builder covers a business ' +
+      'card site or a landing page perfectly well: cheap, and it works. ' +
+      'Custom development is worth it when the builder **cannot** do what ' +
+      'you need at all: tie services together, calculate by your own rules, ' +
+      'put AI on top of your materials. Not “let’s make it prettier”, but ' +
+      '“let’s build what isn’t there”.',
+  },
+  {
+    question: 'You write code with AI — will the quality suffer?',
+    answer:
+      'AI speeds up writing the code. It doesn’t decide how the project is ' +
+      'built, doesn’t choose the architecture and doesn’t check the ' +
+      'result — I do that, and I answer for it. It’s easy to verify: you ' +
+      'get the source, and any other developer can read it.',
+  },
+  {
+    question: 'What do you need from me to start?',
+    answer:
+      'Answers to a few questions and your materials: text, photos, a logo ' +
+      'if you have one. I can write the text from your brief; photos I ' +
+      'can’t. The domain and hosting are registered in your name: I set ' +
+      'them up, you pay the provider directly, and the credentials stay ' +
+      'with you.',
+  },
+  {
+    question: 'What will it cost to keep running afterwards?',
+    answer:
+      'You pay for hosting and the domain directly — I’m not involved and ' +
+      'I take no markup. My support is optional, the site runs on its own. ' +
+      `If you want it — a ${SUPPORT_PACKAGE_PRICE_EN} package for five hours, ` +
+      'or work on request at my hourly rate.',
+  },
+  {
+    question: 'You’re in another city — how will we work?',
+    answer:
+      'Remotely, from Saint Petersburg. We talk on Telegram or by email, ' +
+      'and I reply within a day. I show work in progress as a link you open ' +
+      'on your own machine. Geography doesn’t come into this work.',
+  },
+];
+
+const FAQ_BY_LOCALE: Record<Locale, readonly FaqItem[]> = { ru: FAQ_ITEMS, en: FAQ_ITEMS_EN };
+assertParallel('data/faq.ts', FAQ_BY_LOCALE);
+
+export function faqItems(locale: Locale): readonly FaqItem[] {
+  return FAQ_BY_LOCALE[locale];
+}
+
+/* Пять — не «сколько получилось», а решение (02-texts.md): шестой вопрос
+   повторял бы секции 7 и 8. Сторож стоит на ОБОИХ языках: список, у которого
+   в переводе потерялся вопрос, — та же поломка, что список из шести. */
+for (const [locale, items] of Object.entries(FAQ_BY_LOCALE)) {
+  if (items.length !== 5) {
+    throw new Error(`data/faq.ts: секция 10 несёт ровно пять вопросов (${locale}: ${items.length}).`);
+  }
 }

@@ -20,22 +20,23 @@
 import Label from '../Label.astro';
 import Card from '../Card.astro';
 import Button from '../Button.astro';
-import { PRICING } from '../../data/pricing';
-import { TOP_CARDS, SHELF_CARDS } from '../../data/pricingShowcase';
+import { priceEntry } from '../../data/pricingLocalized';
+import { topCards, shelfCards } from '../../data/pricingShowcase';
+import { dict, localeFromPath } from '../../i18n/locales';
+
+const locale = localeFromPath(Astro.url.pathname);
+const t = dict(locale);
+const TOP_CARDS = topCards(locale);
+const SHELF_CARDS = shelfCards(locale);
 
 /** Цена конкретной ступени по имени группы и записи — нужна только для
  *  сноски про раунды правок ниже: порог «работы от N ₽» обязан читаться из
  *  данных, а не быть вписан литералом. Падает явно, если ступень
  *  переименована или пропала в генераторе. */
+// Ступень ищется по РУССКОМУ имени на любом языке страницы (разбор — в
+// `data/pricingLocalized.ts`), а возвращается цена нужного языка.
 function priceFor(groupName: string, entryName: string): string {
-  const entry = PRICING.find((g) => g.name === groupName)?.entries.find((e) => e.name === entryName);
-  if (!entry) {
-    throw new Error(
-      `home/Pricing.astro: в data/pricing.ts нет ступени «${entryName}» в группе ` +
-      `«${groupName}» — сноска про раунды правок (02-texts.md, секция 4) ссылается на неё.`,
-    );
-  }
-  return entry.price;
+  return priceEntry(locale, groupName, entryName).price;
 }
 
 // Порог «три раунда правок — для работ от…» и порог «оплата по вехам —
@@ -44,17 +45,32 @@ function priceFor(groupName: string, entryName: string): string {
 // отдельной карточкой, но её цена остаётся законным порогом внутри текста
 // подводки и сноски ниже.
 const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 страниц');
+
+function aroundPrice(template: string, field: string): readonly [string, string] {
+  const parts = template.split('{price}');
+  if (parts.length !== 2) {
+    throw new Error(`Pricing.astro: ${field} должен содержать ровно один {price}`);
+  }
+  return [parts[0], parts[1]];
+}
+
+const [PRICING_INTRO_BEFORE, PRICING_INTRO_AFTER] = aroundPrice(
+  t.pricingIntro,
+  'pricingIntro',
+);
+const [PRICING_FOOTNOTE_BEFORE, PRICING_FOOTNOTE_AFTER] = aroundPrice(
+  t.pricingFootnote,
+  'pricingFootnote',
+);
 ---
-<Label>СКОЛЬКО ЭТО СТОИТ</Label>
+<Label>{t.pricingLabel}</Label>
 {/* Задача 22 (правка 2026-08-18): заголовок секции точнее — «Цены на
     разработку», не голое «Цены» (владелец, дословно из мастер-спеки правок
     2026-08-14, [[03-redesign-2026-08-14]], пункт 22). */}
-<h2 class="t-h2">Цены на разработку</h2>
+<h2 class="t-h2">{t.pricingHeading}</h2>
 
 <p class="intro">
-  «От» — потому что цена зависит от объема. После разбора называю вилку, а в
-  предложении фиксирую точную. Оплата — половина на старте и половина на
-  сдаче; для работ от <span class="nowrap">{EDITS_THRESHOLD_PRICE}</span> разбиваю на вехи.
+  {PRICING_INTRO_BEFORE}<span class="nowrap">{EDITS_THRESHOLD_PRICE}</span>{PRICING_INTRO_AFTER}
 </p>
 
 <div class="top-grid">
@@ -66,7 +82,7 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
         )}
         <h3 class="t-h3"><span>{card.showcaseName}</span></h3>
         <p class="price">
-          <span class="from">от</span> <code>{card.price}</code>
+          <span class="from">{t.priceFrom}</span> <code>{card.price}</code>
           <span class="timeframe">{card.timeframe}</span>
         </p>
         <ul class="composition" role="list">
@@ -114,7 +130,7 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
         <a class="shelf-label" href="#contact" data-service-href={item.href}>{item.label}</a>
         <p class="shelf-desc t-small">{item.description}</p>
         <span class="shelf-foot">
-          <span class="shelf-price"><span class="from">от</span> <code>{item.price}</code></span>
+          <span class="shelf-price"><span class="from">{t.priceFrom}</span> <code>{item.price}</code></span>
           {item.timeframe && <span class="shelf-timeframe">{item.timeframe}</span>}
         </span>
       </div>
@@ -138,9 +154,7 @@ const EDITS_THRESHOLD_PRICE = priceFor('Сайты', 'Сайт до 10 стра�
     абзаце `.intro` выше, единственном другом месте страницы, где та же
     переменная стоит в прозе. */}
 <p class="footnote t-small">
-  Правки входят в цену: один раунд для лендинга, два для сайтов и Mini Apps,
-  три для работ от <span class="nowrap">{EDITS_THRESHOLD_PRICE}</span>. Не входят: ваш контент и
-  фотографии, домен и хостинг, расход на ИИ-модель.
+  {PRICING_FOOTNOTE_BEFORE}<span class="nowrap">{EDITS_THRESHOLD_PRICE}</span>{PRICING_FOOTNOTE_AFTER}
 </p>
 
 <style>

@@ -7,8 +7,8 @@
 // добавлен отдельной командой владельца 2026-08-24; его актуальная копия
 // зарегистрирована здесь вместе с остальными данными секции.
 //
-// Пять кейсов существуют, главная показывает два: «Этот сайт» и
-// «Telegram Mini App».
+// Шесть кейсов существуют, главная показывает три: «Этот сайт»,
+// «Telegram Mini App» и «Сайты».
 //
 // Правка владельца 2026-08-20 оставила на главной один кейс, остальные
 // ушли на страницу каталога (спека 04, её ещё нет). До неё
@@ -35,6 +35,8 @@
 // «заказчик», «для компании» в описаниях запрещены. Классификация источников
 // остаётся внутренним фактом портфолио и не превращается в публичный тезис
 // блока (40-portfolio/CLAUDE.md).
+
+import { assertParallel, type Locale } from '../i18n/locales';
 
 export interface CaseCard {
   /** Устойчивое имя кейса. Ссылкой на `/cases/<slug>` оно БОЛЬШЕ НЕ
@@ -127,8 +129,92 @@ export const CASES: readonly CaseCard[] = [
 /** Кейсы главной, в порядке `homeOrder`. С правки владельца 2026-08-20 он
  *  был один; 2026-08-24 добавлены Telegram Mini App и три направления
  *  сайтов. */
-export function homeCases(): CaseCard[] {
-  return CASES.filter((c) => c.onHome)
+/* ─────────────────────────── Английская версия ────────────────────────────
+ *
+ * Собирается из русской, как и карточки услуг: `slug`, `onHome`, `homeOrder`
+ * и `stack` берутся у русской записи и здесь не повторяются — переводится
+ * только то, что читает человек. Строка стека уже латиницей и одинакова на
+ * обоих языках по устройству (спека 02-home.md, раздел 6).
+ *
+ * Английский текст обязателен для КАЖДОГО кейса, включая снятые с главной:
+ * иначе перевод забудут ровно в тот день, когда кейс на главную вернут. */
+
+interface CaseText {
+  title: string;
+  description?: string;
+}
+
+const CASE_TEXT_EN: Record<string, CaseText> = {
+  'site-v3': {
+    title: 'This website',
+    description:
+      'A site that is itself the proof of the service: a static build, two ' +
+      'themes, two languages, an enquiry form that notifies me in Telegram. ' +
+      /* «Much», а не «Most»: русское «Многое» — осознанно осторожная
+         формулировка, а «Most» утверждает большинство, и проверить его нечем
+         — состав «обычного заказа» нигде не замерен. Найдено ревью выноса
+         наружу 2026-08-22. */
+      'Much of what works here is part of an ordinary order.',
+  },
+  storefront: {
+    title: 'Telegram Mini App',
+    description:
+      'Three shops built on one product template: jewellery, beaded bags ' +
+      'and handmade toys. The catalogue, product page, basket and checkout ' +
+      'are adapted to each niche and to the Telegram Mini App format.',
+  },
+  websites: {
+    title: 'Websites',
+    description:
+      'Three websites for different jobs: a B2B service, a boutique hotel ' +
+      'and a collectible furniture gallery. Each shows the home page, a key ' +
+      'section and the target action.',
+  },
+  'ai-consultant': {
+    title: 'AI consultant',
+    description:
+      'Answers questions from the material it was given and shows where it ' +
+      'took the answer from. If the answer is not in the material, it says ' +
+      'so instead of inventing one.',
+  },
+  'zayavka-hub': {
+    title: 'Enquiry Hub',
+    description:
+      'Enquiries arrive from a form, from a bot, from a landing page — and ' +
+      'go out to wherever you work: inbox, CRM, spreadsheets, Telegram. ' +
+      'Four delivery channels, a retry on failure, a dashboard with statuses.',
+  },
+  slotbook: { title: 'SlotBook' },
+};
+
+const CASES_EN: readonly CaseCard[] = CASES.map((item) => {
+  const text = CASE_TEXT_EN[item.slug];
+  if (!text) {
+    throw new Error(
+      `data/cases.ts: у кейса «${item.slug}» нет английского текста. Перевод ` +
+      'обязателен для каждого кейса, а не только для тех, что стоят на ' +
+      'главной сегодня, — иначе его забудут в день возврата кейса.',
+    );
+  }
+  if (Boolean(text.description) !== Boolean(item.description)) {
+    throw new Error(
+      `data/cases.ts: у кейса «${item.slug}» описание есть только на одном ` +
+      'языке — блок перестал быть одним и тем же на двух версиях страницы.',
+    );
+  }
+  return { ...item, title: text.title, description: text.description };
+});
+
+const CASES_BY_LOCALE: Record<Locale, readonly CaseCard[]> = { ru: CASES, en: CASES_EN };
+assertParallel('data/cases.ts', CASES_BY_LOCALE);
+
+export function cases(locale: Locale): readonly CaseCard[] {
+  return CASES_BY_LOCALE[locale];
+}
+
+export function homeCases(locale: Locale = 'ru'): CaseCard[] {
+  return cases(locale)
+    .filter((c) => c.onHome)
     .sort((a, b) => (a.homeOrder ?? 0) - (b.homeOrder ?? 0));
 }
 
