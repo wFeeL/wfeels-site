@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { pageSchema, serializeSchema, faqPageSchema, breadcrumbSchema } from './schema';
+import {
+  pageSchema,
+  serializeSchema,
+  faqPageSchema,
+  breadcrumbSchema,
+  providerSchema,
+  serviceSchema,
+  collectionPageSchema,
+  caseStudySchema,
+} from './schema';
 
 const INPUT = {
   site: 'https://example.com',
@@ -16,6 +25,8 @@ describe('pageSchema', () => {
     expect(data['@type']).toBe('WebSite');
     expect(data.url).toBe('https://example.com');
     expect(data.inLanguage).toBe('ru');
+    expect(data.creator['@type']).toBe('Person');
+    expect(data.creator.name).toBe('Сабуров Даниил Денисович');
   });
 
   it('язык берётся у страницы, а не у сайта', () => {
@@ -30,9 +41,66 @@ describe('pageSchema', () => {
     expect(data.name).toBe(INPUT.title);
     expect(data.isPartOf).toEqual({
       '@type': 'WebSite',
+      '@id': 'https://example.com/#website',
       name: 'wfeels',
       url: 'https://example.com',
+      author: { '@id': 'https://example.com/#person' },
     });
+    expect(data.mainEntity['@id']).toBe('https://example.com/#person');
+  });
+});
+
+describe('providerSchema', () => {
+  it('несёт только подтверждённую личность и публичные контакты', () => {
+    const data = providerSchema('https://example.com/');
+    expect(data['@type']).toBe('Person');
+    expect(data['@id']).toBe('https://example.com/#person');
+    expect(data.email).toBe('mailto:i@dsaburov.ru');
+    expect(data.sameAs).toEqual(['https://t.me/wfeels']);
+    expect(data).not.toHaveProperty('telephone');
+    expect(data).not.toHaveProperty('aggregateRating');
+  });
+});
+
+describe('serviceSchema', () => {
+  it('описывает услугу и исполнителя, но не выдумывает фиксированный Offer', () => {
+    const data = serviceSchema({
+      ...INPUT,
+      canonical: 'https://example.com/services/website',
+      name: 'Сайт под ключ',
+      serviceType: 'Разработка сайтов',
+    });
+    expect(data['@type']).toBe('Service');
+    expect(data.provider['@type']).toBe('Person');
+    expect(data.termsOfService).toBe('https://example.com/terms');
+    expect(data).not.toHaveProperty('offers');
+  });
+});
+
+describe('collectionPageSchema', () => {
+  it('выводит ItemList из переданных существующих страниц', () => {
+    const data = collectionPageSchema(INPUT, [
+      { name: 'Сайты', url: 'https://example.com/services/website' },
+      { name: 'Боты', url: 'https://example.com/services/telegram-bot' },
+    ]);
+    expect(data['@type']).toBe('CollectionPage');
+    expect(data.mainEntity['@type']).toBe('ItemList');
+    expect(data.mainEntity.itemListElement.map((i) => i.position)).toEqual([1, 2]);
+  });
+});
+
+describe('caseStudySchema', () => {
+  it('описывает доказательство как CreativeWork, а не клиентский отзыв', () => {
+    const data = caseStudySchema({
+      ...INPUT,
+      canonical: 'https://example.com/cases/site-v3',
+      name: 'Этот сайт',
+      about: 'Разработка сайта-портфолио',
+    });
+    expect(data['@type']).toBe('CreativeWork');
+    expect(data.author['@type']).toBe('Person');
+    expect(data).not.toHaveProperty('review');
+    expect(data).not.toHaveProperty('aggregateRating');
   });
 });
 

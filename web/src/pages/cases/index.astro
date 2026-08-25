@@ -1,0 +1,69 @@
+---
+import Base from '../../layouts/Base.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Card from '../../components/Card.astro';
+import Container from '../../components/Container.astro';
+import { publishedCaseHref } from '../../data/casePages';
+import { publishedCases } from '../../data/cases';
+import { collectionPageSchema } from '../../lib/schema';
+
+const catalogCases = publishedCases();
+const TITLE = 'Кейсы разработки сайтов, Mini Apps и интеграций | wfeels';
+const DESCRIPTION = 'Пять демонстрационных кейсов: сайт-портфолио, Telegram Mini App, веб-дизайн, ИИ-консультант и система доставки заявок.';
+const site = Astro.site!.toString().replace(/\/$/, '');
+const structuredData = collectionPageSchema({
+  site,
+  canonical: `${site}/cases`,
+  title: TITLE,
+  description: DESCRIPTION,
+  lang: 'ru',
+}, catalogCases.map((item) => ({
+  name: item.title,
+  url: `${site}${publishedCaseHref(item)}`,
+})));
+---
+<Base
+  title={TITLE}
+  description={DESCRIPTION}
+  structuredData={structuredData}
+  line={false}
+>
+  <Container>
+    <div class="crumbs">
+      <Breadcrumbs items={[{ text: 'Главная', href: '/' }, { text: 'Кейсы' }]} />
+    </div>
+
+    <h1 class="t-h1">Кейсы</h1>
+
+    <section id="case-list" class="case-grid" aria-label="Опубликованные кейсы">
+      {catalogCases.map((item) => (
+        <Card href={publishedCaseHref(item)} stack={true}>
+          <h2 class="t-h3">{item.title}</h2>
+          <p class="case-description t-small">{item.description}</p>
+          <p class="case-stack"><code>{item.stack}</code></p>
+        </Card>
+      ))}
+    </section>
+  </Container>
+</Base>
+
+<style>
+  .crumbs { padding-top: 24px; }
+  h1 { margin: 24px 0 48px; }
+
+  .case-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    padding-bottom: 96px;
+  }
+
+  .case-description { margin: 0; color: var(--text-muted); }
+  .case-stack { margin: auto 0 0; }
+  .case-stack code {
+    padding: 0;
+    background: none;
+    color: var(--text-muted);
+    font: 400 1rem/1.4 var(--font-mono);
+  }
+</style>

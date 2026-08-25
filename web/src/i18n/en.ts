@@ -54,8 +54,10 @@ export default {
   footerAi: 'I write the code and part of the design together with AI. Architecture, security, design decisions and the palette are mine, and I review everything that comes out.',
 
   /* ── Заголовок страницы ───────────────────────────────────────────────── */
-  metaTitle: 'wfeels — websites and automation',
-  metaDescription: 'Websites, integrations and AI for small businesses.',
+  metaTitle: 'Websites, Telegram bots and automation — wfeels',
+  metaDescription:
+    'I build websites, Telegram bots, Mini Apps, integrations and backend systems ' +
+    'for small businesses. Scope, price and timeline are agreed in a contract before work starts.',
 
   /* ── Секция 1, первый экран ───────────────────────────────────────────── */
   /* «Конструктор» — это Tilda и Wix, по-английски website builder. Дословное

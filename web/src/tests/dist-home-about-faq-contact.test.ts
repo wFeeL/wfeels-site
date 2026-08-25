@@ -71,13 +71,12 @@ describe('dist/index.html — секции 9, 10 и 11', () => {
     }
   });
 
-  it('ld+json несёт ровно один блок FAQPage, второго на странице нет', () => {
+  it('частые вопросы остаются видимым контентом, но не дублируются в FAQPage', () => {
     const scripts = [...html.matchAll(
       /<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g,
     )].map((m) => JSON.parse(m[1].replace(/\\u003C/g, '<')));
     const faqBlocks = scripts.filter((s) => s['@type'] === 'FAQPage');
-    expect(faqBlocks, 'ровно один блок FAQPage в разметке').toHaveLength(1);
-    expect(faqBlocks[0].mainEntity).toHaveLength(FAQ_ITEMS.length);
+    expect(faqBlocks, 'FAQPage для коммерческого портфолио не выпускается').toHaveLength(0);
 
     const websiteBlocks = scripts.filter((s) => s['@type'] === 'WebSite');
     expect(websiteBlocks, 'блок WebSite остаётся на месте').toHaveLength(1);

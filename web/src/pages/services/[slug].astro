@@ -26,6 +26,9 @@ import Process, { PROCESS_LABEL, PROCESS_HEADING } from '../../components/home/P
 import Guarantees from '../../components/home/Guarantees.astro';
 import { SERVICE_PAGES, PRICE_NOTE, type ServicePage } from '../../data/servicePages';
 import { SERVICE_GROUPS } from '../../data/services';
+import { caseHref } from '../../data/cases';
+import { casesForService } from '../../data/casePages';
+import { serviceSchema } from '../../lib/schema';
 
 export const getStaticPaths = (() =>
   SERVICE_PAGES.map((page) => ({
@@ -43,10 +46,23 @@ const ownerGroup = SERVICE_GROUPS.find((g) => g.links.some((l) => l.code === pag
 if (!ownerGroup) {
   throw new Error(`pages/services/[slug].astro: у кода «${page.code}» нет группы в SERVICE_GROUPS.`);
 }
+
+const relatedCases = casesForService(page.slug);
+const site = Astro.site!.toString().replace(/\/$/, '');
+const structuredData = serviceSchema({
+  site,
+  canonical: `${site}/services/${page.slug}`,
+  title: page.title,
+  description: page.description,
+  lang: 'ru',
+  name: page.h1,
+  serviceType: ownerGroup.title,
+});
 ---
 <Base
   title={page.title}
   description={page.description}
+  structuredData={structuredData}
   line={false}
 >
   <Container>
@@ -96,6 +112,17 @@ if (!ownerGroup) {
         <h3 class="t-h3">{page.proof.title}</h3>
         <p class="t-body proof-text">{page.proof.text}</p>
         {page.proof.stack && <p class="proof-stack">{page.proof.stack}</p>}
+        {relatedCases.length > 0 && (
+          <p class="proof-cases">
+            <span>Кейсы:</span>{' '}
+            {relatedCases.map((item, index) => (
+              <>
+                {index > 0 && <span aria-hidden="true"> · </span>}
+                <a href={caseHref(item.slug)}>{item.title}</a>
+              </>
+            ))}
+          </p>
+        )}
       </Card>
     </Section>
 
@@ -167,6 +194,12 @@ if (!ownerGroup) {
     margin: 4px 0 0;
     font: 500 1rem/1.5 var(--font-mono);
     color: var(--text-faint);
+  }
+  .proof-cases { margin: 16px 0 0; color: var(--text-muted); }
+  .proof-cases a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
   /* Раскрой одноколоночный, форма до 50 ch (раздел 4.9) — двухколоночный

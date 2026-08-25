@@ -12,12 +12,29 @@ import Card from '../../components/Card.astro';
 import Label from '../../components/Label.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { priceEntry } from '../../lib/priceLookup';
+import { collectionPageSchema } from '../../lib/schema';
 import { SERVICE_GROUPS } from '../../data/services';
 import { servicePage } from '../../data/servicePages';
+
+const TITLE = 'Веб-разработка и автоматизация — услуги и цены | wfeels';
+const DESCRIPTION = 'Сайты под ключ, Telegram-боты и Mini Apps, интеграции, backend и ИИ-консультанты. Ориентиры цены и срока по каждой услуге.';
+const H1 = 'Разработка сайтов';
+const site = Astro.site!.toString().replace(/\/$/, '');
+const catalogSchema = collectionPageSchema({
+  site,
+  canonical: `${site}/services`,
+  title: TITLE,
+  description: DESCRIPTION,
+  lang: 'ru',
+}, SERVICE_GROUPS.flatMap((group) => group.links.map((link) => ({
+  name: link.text,
+  url: `${site}${link.href}`,
+}))));
 ---
 <Base
-  title="Услуги — wfeels"
-  description="Сайты, автоматизация, ИИ-консультант и Telegram: девять услуг с ценами «от»."
+  title={TITLE}
+  description={DESCRIPTION}
+  structuredData={catalogSchema}
   line={false}
 >
   <Container>
@@ -25,7 +42,7 @@ import { servicePage } from '../../data/servicePages';
       <Breadcrumbs items={[{ text: 'Главная', href: '/' }, { text: 'Услуги' }]} />
     </div>
 
-    <h1 class="t-h1">Услуги</h1>
+    <h1 class="t-h1">{H1}</h1>
 
     {SERVICE_GROUPS.map((group) => (
       <div class="group">

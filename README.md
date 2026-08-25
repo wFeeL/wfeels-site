@@ -16,7 +16,7 @@ Astro 7 (статика) + маленький FastAPI для формы заяв
     cd api && .venv/bin/pytest
 
 `check:budget` (`scripts/check-budget.mjs`) читает уже собранный `web/dist` и меряет
-вес трёх текстовых страниц: `/`, `/contact`, `/privacy`. Пределы — 400 КБ на первую
+все HTML-страницы, найденные в production-сборке. Пределы — 500 КБ на первую
 загрузку страницы и 30 КБ сжатого JS. При превышении команда завершается ненулевым
 кодом.
 
@@ -76,7 +76,7 @@ Caddy отдаёт собранную статику `web/dist` сам и про
 заявлять до подтверждения его размещения в России.
 
     cd deploy && cp .env.example .env      # заполнить SITE_DOMAIN, SITE_URL, токен и chat_id бота
-    cd ../web && SITE_URL=https://<домен> npm run build
+    cd ../web && SITE_URL=https://wfeels.site npm run build
     cd ../deploy && docker compose config  # синтаксис
     docker compose up -d
     docker compose down
@@ -84,6 +84,11 @@ Caddy отдаёт собранную статику `web/dist` сам и про
 Статика собирается перед подъёмом: `web/dist` монтируется в Caddy только на
 чтение, сборка внутрь контейнера не входит. Пересобрали сайт — контейнер
 перезапускать не нужно.
+
+`SITE_URL` для web-сборки допускает только `https://wfeels.site`; без переменной
+используется тот же безопасный origin. Любой другой адрес роняет сборку до
+создания canonical, hreflang и sitemap, поэтому localhost не может попасть в
+публикуемый `dist`.
 
 Проверка внутреннего контура на самом VPS:
 

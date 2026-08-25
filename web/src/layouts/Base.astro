@@ -6,7 +6,7 @@ import Footer from '../components/Footer.astro';
 import Rail from '../components/Rail.astro';
 import BackgroundLine from '../components/BackgroundLine.astro';
 import { dict, localeFromPath, type Locale } from '../i18n/locales';
-import { buildMeta } from '../lib/seo';
+import { buildMeta, productionSite } from '../lib/seo';
 import { pageSchema, serializeSchema, type SchemaKind } from '../lib/schema';
 import { THEME_COLOR } from '../lib/theme';
 /* Предзагрузка двух подмножеств, нужных первому экрану русской страницы
@@ -37,6 +37,9 @@ interface Props {
    *  расходятся намеренно, и в сегодняшнем коде им никто не пользуется. */
   lang?: Locale;
   noindex?: boolean;
+  /** Только для служебных конечных экранов. Публичные правовые документы
+   *  остаются `noindex, follow`, чтобы их обычные ссылки можно было пройти. */
+  nofollow?: boolean;
   progress?: boolean;
   /** Страница несёт рельс-скроллспай (`Rail.astro`) — сегодня только главная
    *  (план `02-home-plan.md`, задача 4). Рельс рисуется здесь, а не в
@@ -52,31 +55,41 @@ interface Props {
   line?: boolean;
   /** Структурированная разметка страницы, если она у страницы есть. */
   schema?: SchemaKind;
+  /** Дополнительные подтверждённые сущности страницы: Service,
+   *  CollectionPage или CreativeWork. Принимает объект либо массив; Base
+   *  сериализует их тем же безопасным способом, что основной schema. */
+  structuredData?: unknown | readonly unknown[];
 }
 const {
   title, description, lang = localeFromPath(Astro.url.pathname), noindex = false,
-  progress = true, rail = false, line = false, schema,
+  nofollow = false, progress = true, rail = false, line = false, schema, structuredData,
 } = Astro.props;
 const t = dict(lang);
 
-const site = Astro.site?.toString() ?? 'http://localhost:4321';
+const site = productionSite(Astro.site?.toString());
 const meta = buildMeta({
   title,
   description,
   pathname: Astro.url.pathname,
   site,
   noindex,
+  nofollow,
 });
 
-const structured = schema
-  ? serializeSchema(pageSchema(schema, {
+const structured = [
+  ...(schema
+    ? [pageSchema(schema, {
       site,
       canonical: meta.canonical,
       title,
       description,
       lang,
-    }))
-  : null;
+    })]
+    : []),
+  ...(structuredData === undefined
+    ? []
+    : Array.isArray(structuredData) ? structuredData : [structuredData]),
+].map(serializeSchema);
 ---
 <!doctype html>
 <html lang={lang}>
@@ -119,6 +132,7 @@ const structured = schema
     </script>
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="author" content="Сабуров Даниил Денисович" />
     <link rel="canonical" href={meta.canonical} />
     <meta name="robots" content={meta.robots} />
     {meta.alternates.map((a) => (
@@ -129,12 +143,26 @@ const structured = schema
     <meta property="og:description" content={description} />
     <meta property="og:url" content={meta.canonical} />
     <meta property="og:locale" content={lang === 'ru' ? 'ru_RU' : 'en_US'} />
+    {meta.alternates.length > 0 && (
+      <meta property="og:locale:alternate" content={lang === 'ru' ? 'en_US' : 'ru_RU'} />
+    )}
+    <meta property="og:site_name" content="wfeels" />
+    <meta property="og:image" content={meta.socialImage} />
+    <meta property="og:image:secure_url" content={meta.socialImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={title} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={meta.socialImage} />
+    <meta name="twitter:image:alt" content={title} />
     {/* `is:inline` обязателен: без него Astro приняла бы содержимое за модуль
         и попыталась собрать JSON как код. */}
-    {structured && (
-      <script type="application/ld+json" is:inline set:html={structured} />
-    )}
+    {structured.map((item) => (
+      <script type="application/ld+json" is:inline set:html={item} />
+    ))}
   </head>
   <body>
     {line && <BackgroundLine />}

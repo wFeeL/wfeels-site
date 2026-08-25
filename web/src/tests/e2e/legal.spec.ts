@@ -7,7 +7,7 @@ for (const path of PAGES) {
     const res = await page.goto(path);
     expect(res?.status()).toBe(200);
     await expect(page.locator('meta[name="robots"]'))
-      .toHaveAttribute('content', 'noindex, nofollow');
+      .toHaveAttribute('content', 'noindex, follow');
   });
 
   test(`${path} опубликован как датированный документ`, async ({ page }) => {

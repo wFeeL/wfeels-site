@@ -7,9 +7,9 @@
  * `data/cases.ts` — единственного источника, второй ручной копии здесь нет.
  *
  * С 2026-08-24 блоков три: к «Этому сайту» добавлены Telegram Mini App и
- * сайты с тремя самостоятельными визуальными направлениями. Страницы
- * `/cases` по-прежнему нет, поэтому кнопка «Все кейсы» и переходы из
- * блоков не возвращаются.
+ * сайты с тремя самостоятельными визуальными направлениями. После выпуска
+ * detail-страниц заголовки снова ведут на них; адрес строится тем же модулем
+ * данных, что и каталог, поэтому ссылка не может жить отдельно от маршрута.
  *
  * Рисунки снятых кейсов (`CaseFlowIllustration.astro`,
  * `CaseDialogueIllustration.astro`) остаются в коде и ждут ту же страницу
@@ -21,7 +21,7 @@ import CaseRow from './CaseRow.astro';
 import CaseWeightIllustration from './CaseWeightIllustration.astro';
 import StorefrontGallery from './StorefrontGallery.astro';
 import WebsiteGallery from './WebsiteGallery.astro';
-import { homeCases } from '../../data/cases';
+import { caseHref, homeCases } from '../../data/cases';
 import { dict, localeFromPath } from '../../i18n/locales';
 
 const locale = localeFromPath(Astro.url.pathname);
@@ -101,6 +101,8 @@ const ILLUSTRATIONS: Record<string, any> = {
         illustrationMobileHeight={MOBILE_HEIGHT[item.slug]}
         illustrationBare={item.slug === 'storefront' || item.slug === 'websites'}
         centerCopy={item.slug === 'storefront' || item.slug === 'websites'}
+        href={caseHref(item.slug)}
+        hreflang={locale === 'en' ? 'ru' : undefined}
       >
         {Illustration && <Illustration />}
       </CaseRow>

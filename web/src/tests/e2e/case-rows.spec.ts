@@ -3,14 +3,8 @@ import { test, expect } from '@playwright/test';
 /* Секция 5 (бриф `70-workshop/specs/site-v3/04-cases-brief.md`, разделы 2–3)
  * — полноширинные блоки вместо карточек: текст и поле иллюстрации,
  * зеркалящиеся по формуле `homeOrder % 2 === 0`. Тесты ниже проверяют
- * геометрию, зеркало и отсутствие перехода, не текст (текст и его
- * дословность проверяет `dist-home-cases.test.ts`).
- *
- * Ссылки в блоке БОЛЬШЕ НЕТ — правка владельца 2026-08-20 сняла её вместе с
- * меткой «Разобрать кейс →»: страницы `/cases/<slug>` не существует. Тесты
- * не удалены, а вывернуты: там, где раньше требовался ровно один `<a>` на
- * блок (вариант В «Цель — весь блок», D-047), теперь требуется ни одного, и
- * отдельно проверяется, что на месте снятой ссылки не осталось её вида. */
+ * геометрию, зеркало и честный переход на построенную detail-страницу, не
+ * текст (текст и его дословность проверяет `dist-home-cases.test.ts`). */
 
 /* Появление полос кейсов по прокрутке сдвигает `.text` и `.illustration»
  * по-разному в момент замера — тесты ниже проверяют раскладку, а не
@@ -19,7 +13,7 @@ import { test, expect } from '@playwright/test';
 test.use({ reducedMotion: 'reduce' });
 
 test.describe('секция 5 — полноширинные блоки кейсов, чередование сторон', () => {
-  test('desktop (1280px): чередование сторон, ни одной ссылки в блоке', async ({ page }) => {
+  test('desktop (1280px): чередование сторон и одна ссылка на detail-страницу', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
     await page.goto('/');
 
@@ -35,11 +29,9 @@ test.describe('секция 5 — полноширинные блоки кейс
       const row = rows.nth(i);
       const mirrored = (i + 1) % 2 === 0; // homeOrder — 1-based, чётный — зеркало
 
-      // Ни одного <a> в блоке: заголовок перестал быть ссылкой, метка
-      // «Разобрать кейс →» снята (правка владельца 2026-08-20).
       const links = row.locator('a');
-      await expect(links, `блок ${i}: переход из блока снят — ссылок быть не должно`)
-        .toHaveCount(0);
+      await expect(links, `блок ${i}: ровно один переход в заголовке`).toHaveCount(1);
+      await expect(links).toHaveAttribute('href', /^\/cases\/[a-z0-9-]+$/);
 
       const textBox = await row.locator('.text').boundingBox();
       const fieldBox = await row.locator('.field').boundingBox();
@@ -58,15 +50,14 @@ test.describe('секция 5 — полноширинные блоки кейс
       const childCount = await row.locator('.field').evaluate((el) => el.childElementCount);
       expect(childCount, `блок ${i}: поле иллюстрации не пусто`).toBeGreaterThan(0);
 
-      // Заголовок остался текстом и выглядит текстом. Дизайн-ревью
-      // 2026-08-20 отмечало обратный дефект — ссылку, не похожую на ссылку;
-      // после снятия ссылки опасность зеркальная: вид ссылки без ссылки.
-      const heading = await row.locator('h3').evaluate((el) => {
+      // Возвращенная ссылка не маскируется под обычный текст: подчёркивание
+      // видно до наведения, а курсор сообщает о переходе.
+      const heading = await row.locator('h3 a').evaluate((el) => {
         const s = getComputedStyle(el);
         return { decoration: s.textDecorationLine, cursor: s.cursor };
       });
-      expect(heading.decoration, `блок ${i}: подчёркивание на заголовке`).toBe('none');
-      expect(heading.cursor, `блок ${i}: курсор-указатель на заголовке`).not.toBe('pointer');
+      expect(heading.decoration, `блок ${i}: ссылка должна быть подчёркнута`).toContain('underline');
+      expect(heading.cursor, `блок ${i}: курсор-указатель`).toBe('pointer');
 
       // Грани слева больше нет: она метила блок как ссылку.
       const borderLeftWidth = await row.evaluate((el) => getComputedStyle(el).borderLeftWidth);
@@ -136,14 +127,11 @@ test.describe('секция 5 — полноширинные блоки кейс
     }
   });
 
-  /* Переходов на страницы кейсов по-прежнему нет. Интерактивность ограничена
-     стрелками двух галерей; названия проектов остаются обычным текстом. */
-  test('клавиатура: остановки есть только на элементах управления галереи', async ({ page }) => {
+  test('клавиатура: у каждого кейса есть detail-ссылка, галереи сохраняют свои кнопки', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
     await page.goto('/');
 
-    await expect(page.locator('#cases .rows > .row a'),
-      'ссылок на страницы кейсов нет').toHaveCount(0);
+    await expect(page.locator('#cases .rows > .row a.case-title-link')).toHaveCount(3);
     const buttons = page.locator('#cases [data-case-gallery] button');
     await expect(buttons).toHaveCount(4);
     await expect(page.locator('#cases [data-storefront-gallery] [data-step]')).toHaveCount(2);

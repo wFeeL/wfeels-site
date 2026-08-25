@@ -96,6 +96,51 @@ describe('servicePages.ts — без цифр рубля в отображаем
   }
 });
 
+describe('servicePages.ts — поисковые метаданные', () => {
+  it('у каждой услуги уникальные title, description и h1', () => {
+    for (const field of ['title', 'description', 'h1'] as const) {
+      const values = SERVICE_PAGES.map((page) => page[field]);
+      expect(new Set(values).size, `поле «${field}» повторяется у разных услуг`)
+        .toBe(values.length);
+    }
+  });
+
+  it('каждый title называет бренд', () => {
+    for (const page of SERVICE_PAGES) {
+      expect(page.title, `title услуги «${page.code}» не называет бренд`).toContain('wfeels');
+    }
+  });
+
+  it('title и description не обрезаны до ярлыка и не раздуты ключевыми словами', () => {
+    for (const page of SERVICE_PAGES) {
+      expect(page.title.length, `${page.code}: длина title`).toBeGreaterThanOrEqual(35);
+      expect(page.title.length, `${page.code}: длина title`).toBeLessThanOrEqual(75);
+      expect(page.description.length, `${page.code}: длина description`).toBeGreaterThanOrEqual(100);
+      expect(page.description.length, `${page.code}: длина description`).toBeLessThanOrEqual(180);
+    }
+  });
+});
+
+describe('servicePages.ts — внутренние ссылки', () => {
+  const validHrefs = new Set(SERVICE_PAGES.map((page) => `/services/${page.slug}`));
+
+  for (const page of SERVICE_PAGES) {
+    const linkedItems = [...page.includes, ...page.excludes].filter((item) =>
+      item.text.includes('](/services/'),
+    );
+
+    for (const item of linkedItems) {
+      it(`«${page.code}»: ссылка из «${item.text}» ведет на существующую другую услугу`, () => {
+        const href = item.text.match(/\[[^\]]+\]\((\/services\/[^)]+)\)/)?.[1];
+        expect(href, 'встроенная ссылка записана не в формате [текст](/services/slug)').toBeTruthy();
+        expect(validHrefs.has(href!), `адрес «${href}» отсутствует в SERVICE_PAGES`).toBe(true);
+        expect(href, 'внутренняя ссылка не должна вести на текущую страницу')
+          .not.toBe(`/services/${page.slug}`);
+      });
+    }
+  }
+});
+
 describe('servicePages.ts — PRICE_NOTE', () => {
   // PRICE_NOTE — общая строка раздела 4.5 брифа, не поле отдельной записи
   // (см. `displayText` выше). Она легально несёт `₽` В ЗНАЧЕНИИ ВО ВРЕМЯ

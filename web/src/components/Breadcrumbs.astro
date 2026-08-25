@@ -9,13 +9,14 @@
  * (раздел 6). Адреса абсолютные, от `Astro.site`.
  */
 import { breadcrumbSchema, serializeSchema } from '../lib/schema';
+import { productionSite } from '../lib/seo';
 
 interface Props {
   items: readonly { text: string; href?: string }[];
 }
 const { items } = Astro.props;
 
-const site = Astro.site?.toString() ?? 'http://localhost:4321';
+const site = productionSite(Astro.site?.toString());
 const structured = serializeSchema(breadcrumbSchema(items, site));
 ---
 <nav class="breadcrumbs" aria-label="Хлебные крошки">

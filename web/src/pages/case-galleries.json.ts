@@ -17,5 +17,9 @@ export const GET: APIRoute = () => new Response(JSON.stringify({
   headers: {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'public, max-age=300',
+    // Это транспорт для клиентских галерей, не самостоятельная поисковая
+    // страница. robots.txt не управляет индексацией уже найденного URL,
+    // поэтому запрет едет в самом HTTP-ответе.
+    'X-Robots-Tag': 'noindex, nofollow',
   },
 });

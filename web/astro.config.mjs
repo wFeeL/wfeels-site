@@ -3,10 +3,13 @@ import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 import { isIndexable } from './src/lib/sitemap.ts';
+import { productionSite } from './src/lib/seo.ts';
 import { devPagesEnabled } from './src/lib/dev-pages.ts';
 import { compactReadableHtmlIntegration } from './src/lib/compactReadableHtml.ts';
 
-const SITE = process.env.SITE_URL ?? 'http://localhost:4321';
+// Canonical/sitemap всегда описывают публичный сайт, даже когда HTML собирают
+// для локального preview. Явное неверное значение роняет сборку до записи dist.
+const SITE = productionSite(process.env.SITE_URL);
 
 /** Служебная витрина компонентов существует как маршрут только там, где она
  *  нужна: в разработке и в сборке под тесты.

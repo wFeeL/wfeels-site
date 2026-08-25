@@ -5,10 +5,6 @@
  * единого байта JavaScript, и текст всех ответов присутствует в
  * `dist/index.html` независимо от состояния (план, «Статика прежде всего»).
  *
- * Разметка `FAQPage` в `ld+json` строится из того же массива
- * (`lib/schema.ts` → `faqPageSchema`), ровно один раз на странице: второй
- * `FAQPage` здесь не появится, даже если секцию скопируют — компонент один.
- *
  * Раскрой брифом `70-workshop/specs/site-v3/04-sections-brief.md`, раздел 5
  * (пункт 16, D-044). У образца заголовок стоит в левой колонке, список
  * вопросов — в узкой правой: приём работает именно здесь, вопрос — одна
@@ -32,7 +28,6 @@ import { localeFromPath } from '../../i18n/locales';
 
 const locale = localeFromPath(Astro.url.pathname);
 const FAQ_ITEMS = faqItems(locale);
-import { faqPageSchema, serializeSchema } from '../../lib/schema';
 
 if (FAQ_ITEMS.length !== 5) {
   throw new Error('home/Faq.astro: секция 10 несёт ровно пять вопросов.');
@@ -54,7 +49,6 @@ function parts(text: string): Array<{ bold: boolean; value: string }> {
   return text.split(/\*\*(.+?)\*\*/g).map((value, i) => ({ bold: i % 2 === 1, value }));
 }
 
-const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
 ---
 <div class="list">
   {FAQ_ITEMS.map((item) => (
@@ -71,8 +65,6 @@ const structured = serializeSchema(faqPageSchema(FAQ_ITEMS));
     </details>
   ))}
 </div>
-
-<script type="application/ld+json" is:inline set:html={structured} />
 
 <style>
   /* Раскладка «заголовок слева — панель справа» от 900 px — нацелена на

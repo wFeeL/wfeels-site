@@ -18,9 +18,8 @@ import { test, expect } from '@playwright/test';
  *  отсюда. Ни одна ссылка не выпадает из-под наблюдения: список закрытый, и
  *  любой НОВЫЙ битый адрес по-прежнему валит прогон.
  *
- *  Записей `/niches/*` и `/cases/*` здесь нет и не было с 2026-08-20/21:
- *  правки владельца сняли сами ссылки, и оставить адреса значило бы завести
- *  тот самый запас, который однажды уже спрятал кнопку «Все кейсы». */
+ *  Записей `/niches/*` здесь нет: ссылки сняты. `/cases/*` теперь настоящие
+ *  страницы и проходят общий обход без исключений. */
 const NOT_BUILT_YET: string[] = [];
 
 /** Внутренние ссылки: обход, а не список.
@@ -84,6 +83,8 @@ test('каждая внутренняя ссылка ведёт на сущес�
       '/services/website', '/services/website-support', '/services/website-audit',
       '/services/ai-consultant', '/services/integrations', '/services/admin-panel',
       '/services/backend-api', '/services/telegram-bot', '/services/telegram-miniapp',
+      '/cases', '/cases/site-v3', '/cases/storefront', '/cases/websites',
+      '/cases/ai-consultant', '/cases/zayavka-hub',
     ],
   ));
 });

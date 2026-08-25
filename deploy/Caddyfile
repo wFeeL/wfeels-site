@@ -23,6 +23,25 @@ http://{$SITE_DOMAIN}, http://www.{$SITE_DOMAIN} {
 	root * /srv/site
 
 	@api path /api/*
+	@rawGalleryData path /case-galleries.json
+	@rootIndex path /index.html
+	@nestedIndex path_regexp nestedIndex ^(.+)/index\.html$
+	@trailingSlash {
+		path_regexp trailingSlash ^(.+)/$
+		not path /api /api/*
+	}
+
+	# У каждой HTML-страницы один публичный адрес. Без этих редиректов Caddy
+	# отдавал одинаковый документ по `/services/website`, с завершающим `/` и
+	# через `index.html`; canonical помогал поисковику, но не устранял дубли.
+	redir @rootIndex / permanent
+	redir @nestedIndex {re.nestedIndex.1} permanent
+	redir @trailingSlash {re.trailingSlash.1} permanent
+
+	# Статический JSON — транспорт для галерей, не отдельный документ выдачи.
+	# Заголовок из prerender-ответа Astro не сохраняется в файле, поэтому
+	# повторяем поисковую директиву на уровне сервера, который отдаёт артефакт.
+	header @rawGalleryData X-Robots-Tag "noindex, nofollow"
 
 	# Витрина компонентов служебная: она собрана в статику вместе с сайтом, но
 	# наружу ей не надо. `robots.txt` и `noindex` просят поисковик её не брать,
@@ -83,6 +102,9 @@ http://{$SITE_DOMAIN}, http://www.{$SITE_DOMAIN} {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
 		X-Frame-Options DENY
+		Strict-Transport-Security "max-age=31536000"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'"
 	}
 
 	header /_astro/* Cache-Control "public, max-age=31536000, immutable"

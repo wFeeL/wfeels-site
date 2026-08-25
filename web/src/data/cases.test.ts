@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CASES, homeCases } from './cases';
+import { CASES, CASES_CATALOG_HREF, caseHref, homeCases, publishedCases } from './cases';
 
 describe('cases.ts — внутренняя целостность', () => {
   it('шесть кейсов всего — «Фабрика ботов» снята правкой владельца 2026-08-19', () => {
@@ -82,14 +82,21 @@ describe('cases.ts — внутренняя целостность', () => {
     expect(new Set(slugs).size).toBe(slugs.length);
   });
 
-  /* Сторож снятия кнопки «Все кейсы» (правка владельца 2026-08-20). Прежде
-     здесь стояло `expect(CASES_CATALOG_HREF).toBe('/cases')` — проверка
-     ровно того сорта, из-за которого дефект и жил: она подтверждала, что
-     адрес записан правильно, и ничего не говорила о том, что страницы по
-     нему нет. Константа снята вместе с кнопкой; вернуть её молча, без
-     страницы, нельзя. */
-  it('константы адреса каталога в модуле нет — она вернётся вместе со страницей', async () => {
-    const mod = await import('./cases');
-    expect(Object.keys(mod)).not.toContain('CASES_CATALOG_HREF');
+  it('публичная выборка не выпускает пустую страницу SlotBook', () => {
+    expect(publishedCases().map((item) => item.slug)).toEqual([
+      'site-v3', 'storefront', 'websites', 'ai-consultant', 'zayavka-hub',
+    ]);
+    expect(publishedCases().every((item) => item.description && item.stack)).toBe(true);
+  });
+
+  it('адреса каталога и detail-страниц строятся одним модулем', () => {
+    expect(CASES_CATALOG_HREF).toBe('/cases');
+    expect(publishedCases().map((item) => caseHref(item.slug))).toEqual([
+      '/cases/site-v3',
+      '/cases/storefront',
+      '/cases/websites',
+      '/cases/ai-consultant',
+      '/cases/zayavka-hub',
+    ]);
   });
 });

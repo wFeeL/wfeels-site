@@ -1,0 +1,65 @@
+---
+import type { CaseGallerySlide } from '../../data/case-galleries';
+
+interface Props {
+  slides: readonly CaseGallerySlide[];
+}
+
+const { slides } = Astro.props;
+---
+<div class="case-gallery">
+  {slides.map((slide) => {
+    const portrait = slide.subject === 'магазина' || slide.subject === 'shop';
+    return (
+      <figure class:list={{ portrait }}>
+        <img
+          src={slide.src}
+          alt={slide.alt}
+          width={portrait ? 780 : 1586}
+          height={portrait ? 1688 : 992}
+          loading="lazy"
+          decoding="async"
+        />
+        <figcaption>
+          <strong>{slide.project}</strong>
+          <span>{slide.label}</span>
+        </figcaption>
+      </figure>
+    );
+  })}
+</div>
+
+<style>
+  .case-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 24px;
+  }
+
+  figure {
+    margin: 0;
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: clip;
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-bottom: 1px solid var(--border);
+  }
+
+  figcaption {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    color: var(--text-muted);
+    font: 400 1rem/1.5 var(--font-text);
+  }
+
+  figcaption strong { color: var(--text); font-weight: 600; }
+</style>
