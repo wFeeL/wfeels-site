@@ -8,3 +8,25 @@ __pycache__/
 .DS_Store
 test-results/
 playwright-report/
+
+# Личные и внутренние документы практики — вне публичного репозитория.
+# Правка 2026-08-26, решение владельца: репозиторий сайта остаётся публичным,
+# но договоры, операционные регламенты, реестры персональных данных, черновики
+# уведомлений РКН и внутренние юридические аудиты в него не входят. Публичными
+# остаются только те документы, которые и так напечатаны на сайте, —
+# docs/legal/public/. Постоянный дом внутренних документов — база знаний
+# (приватный репозиторий), см. INDEX.md.
+docs/legal-decision-brief.md
+docs/legal-research-*.md
+docs/legal/README.md
+docs/legal/contracts/
+docs/legal/operations/
+docs/legal/legal-*audit*.md
+docs/legal/legal-remediation-*.md
+docs/legal/ruvds-*.md
+docs/seo-owner-action-plan.md
+
+# Рабочие копии агентов и разовые замерочные скрипты. Без этих строк один
+# `git add -A` затащил бы в ПУБЛИЧНЫЙ репозиторий три полных копии дерева.
+.worktrees/
+headed*.mjs
