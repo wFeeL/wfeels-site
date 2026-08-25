@@ -78,23 +78,33 @@ test.describe('секция «Цены» — три верхние карточ�
     expect(overflow).toBeLessThanOrEqual(0);
   });
 
-  test('полка: карточка ведёт к форме, а адрес будущей посадочной сохранён', async ({ page }) => {
-    // Решение владельца 2026-08-18. До него название карточки вело на
-    // `/services/<услуга>`, но посадочных не существует — все восемь адресов
-    // отдают 404. Пока рядом стояла кнопка «Рассчитать», у карточки был
-    // второй, рабочий выход; пункт 22 кнопку снял, и выхода не осталось.
-    // Тест охраняет ДВЕ вещи разом: что выход к форме есть у каждой карточки
-    // и что адрес будущей посадочной не выброшен, а сохранён атрибутом —
-    // иначе возврат к посадочным после спеки 03 потребовал бы выводить
-    // список заново.
+  test('полка: карточка ведёт на свою посадочную услуги', async ({ page }) => {
+    // Решение владельца 2026-08-18 (карточка временно ведёт к форме, D-052)
+    // действовало «до появления посадочных»; посадочные исполнены (спека 03)
+    // — правка 2026-08-26 возвращает переход на них.
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/#pricing');
     const section = page.locator('#pricing');
 
     for (const card of SHELF_CARDS) {
-      const link = section.locator(`a[data-service-href="${card.href}"]`);
+      const link = section.getByRole('link', { name: card.label, exact: true });
       await expect(link).toHaveCount(1);
-      await expect(link).toHaveAttribute('href', '#contact');
+      await expect(link).toHaveAttribute('href', card.href);
+    }
+  });
+
+  test('верхняя тройка: кнопка карточки ведёт туда же, куда карточка', async ({ page }) => {
+    // Покупатель, нажавший «Корпоративный сайт — 50 000 ₽», хочет узнать
+    // состав, а не форму: форма ждёт его внизу посадочной, с предвыбранной
+    // услугой (`LeadForm service={page.code}`, `pages/services/[slug].astro`).
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/#pricing');
+    const section = page.locator('#pricing');
+
+    for (const card of TOP_CARDS) {
+      const link = section.getByRole('link', { name: card.cta, exact: true });
+      await expect(link).toHaveCount(1);
+      await expect(link).toHaveAttribute('href', card.href);
     }
   });
 

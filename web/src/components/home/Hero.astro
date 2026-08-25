@@ -12,6 +12,7 @@ import Label from '../Label.astro';
 import Button from '../Button.astro';
 import { priceEntry } from '../../data/pricingLocalized';
 import { heroTerms } from '../../data/terms';
+import { serviceHref } from '../../lib/serviceHref';
 import { dict, localeFromPath, type Locale } from '../../i18n/locales';
 
 /* Язык — из адреса страницы. Секция приходит на страницу слотом
@@ -45,17 +46,39 @@ function priceFor(groupName: string, entryName: string): string {
 }
 
 const TERMS = heroTerms(locale);
-if (TERMS.length !== 3) {
+if (TERMS.length !== 4) {
   throw new Error(
-    'home/Hero.astro: таблица первого экрана ждёт ровно три срока в data/terms.ts, ' +
+    'home/Hero.astro: таблица первого экрана ждёт ровно четыре срока в data/terms.ts, ' +
     `а их ${TERMS.length}.`,
   );
 }
 
+/* Четвёртая строка — аудит сайта (указание владельца 2026-08-26): «основной
+ * вход в воронку» по SERVICES.md стоял только шестой карточкой полки цен и
+ * отсутствовал на первом экране. Каждая строка ведёт на СВОЮ посадочную —
+ * было общим `#services` у трёх верхних строк, что почти всегда приводило не
+ * туда, куда обещал текст строки. */
 const OFFER_ROWS = [
-  { term: TERMS[0], price: priceFor('Сайты', 'Лендинг из шаблона') },
-  { term: TERMS[1], price: priceFor('Автоматизация и интеграции', 'Одна интеграция') },
-  { term: TERMS[2], price: priceFor('ИИ', 'Консультант на готовых материалах') },
+  {
+    term: TERMS[0],
+    price: priceFor('Сайты', 'Лендинг из шаблона'),
+    href: serviceHref('sites', 'Сайт под ключ'),
+  },
+  {
+    term: TERMS[1],
+    price: priceFor('Автоматизация и интеграции', 'Одна интеграция'),
+    href: serviceHref('automation', 'Прием заявок и интеграции'),
+  },
+  {
+    term: TERMS[2],
+    price: priceFor('ИИ', 'Консультант на готовых материалах'),
+    href: serviceHref('ai', 'ИИ-консультант по материалам'),
+  },
+  {
+    term: TERMS[3],
+    price: priceFor('Сайты', 'Аудит сайта + план правок'),
+    href: serviceHref('sites', 'Аудит сайта'),
+  },
 ];
 
 /** Строка регалий — ровно пять пунктов (спека, «Строка регалий»). Заведена
@@ -100,7 +123,7 @@ for (const [name, items] of Object.entries(REGALIA_BY_LOCALE)) {
 <ul class="offer" role="list">
   {OFFER_ROWS.map((row) => (
     <li>
-      <a class="offer-row" href="#services">
+      <a class="offer-row" href={row.href}>
         <span class="offer-group">{row.term.label}</span>
         <span class="offer-term">{row.term.term}</span>
         <span class="offer-price">{row.price}</span>

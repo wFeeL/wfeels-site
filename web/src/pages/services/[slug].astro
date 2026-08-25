@@ -190,10 +190,15 @@ const structuredData = serviceSchema({
   .price-note { max-width: 60ch; margin: 0 0 32px; color: var(--text-muted); }
 
   .proof-text { max-width: 50ch; margin: 0; color: var(--text-muted); }
+  /* Было `--text-faint` (2,96:1 на белом) — читаемое содержание (строка
+     стека вида «Astro · Tailwind · FastAPI · Caddy»), не декор: спека
+     `00-overview.md` §4 допускает `--text-faint` только для украшений.
+     `--text-muted` даёт 5,83:1 — та же ступень, что у `.proof-text` выше.
+     Правка 2026-08-26. */
   .proof-stack {
     margin: 4px 0 0;
     font: 500 1rem/1.5 var(--font-mono);
-    color: var(--text-faint);
+    color: var(--text-muted);
   }
   .proof-cases { margin: 16px 0 0; color: var(--text-muted); }
   .proof-cases a {

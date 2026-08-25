@@ -18,7 +18,13 @@ import { servicePage } from '../../data/servicePages';
 
 const TITLE = 'Веб-разработка и автоматизация — услуги и цены | wfeels';
 const DESCRIPTION = 'Сайты под ключ, Telegram-боты и Mini Apps, интеграции, backend и ИИ-консультанты. Ориентиры цены и срока по каждой услуге.';
-const H1 = 'Разработка сайтов';
+// Было «Разработка сайтов» — называло одну из четырёх групп каталога
+// («Автоматизация и интеграции», «ИИ», «Telegram» — остальные три), хотя
+// крошки и меню уже говорят «Услуги». Спека `70-workshop/specs/site-v3/
+// 08-service-pages.md`, §3, требует дословно `<h1>Услуги</h1>`; правка
+// 2026-08-26 возвращает по спеке. `<title>`/`description` не тронуты — они
+// работают на поиск, и там более развёрнутая формулировка уместна.
+const H1 = 'Услуги';
 const site = Astro.site!.toString().replace(/\/$/, '');
 const catalogSchema = collectionPageSchema({
   site,
