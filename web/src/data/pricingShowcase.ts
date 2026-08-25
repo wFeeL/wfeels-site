@@ -18,8 +18,8 @@
 
 import { type PriceEntry, type PriceGroup } from './pricing';
 import { priceEntry, priceGroup, compositionIndex } from './pricingLocalized';
-import { SERVICE_GROUPS, type ServiceIconKind } from './services';
 import { assertParallel, type Locale } from '../i18n/locales';
+import { serviceHref } from '../lib/serviceHref';
 
 /* Витрина существует на двух языках и собирается ОДНИМ кодом. Ни одна
  * карточка не перечислена дважды: английская версия отличается только
@@ -39,26 +39,6 @@ function stage(locale: Locale, groupName: string, stageName: string): PriceEntry
 
 function group(locale: Locale, groupName: string): PriceGroup {
   return priceGroup(locale, groupName);
-}
-
-/** Ссылка на посадочную услуги — по значку группы `data/services.ts` и
- *  дословному РУССКОМУ тексту ссылки. Кидает явную ошибку, если ссылку
- *  переименовали: молчаливо увядшая ссылка в витрине цен хуже красной сборки.
- *
- *  Ищется в русском списке независимо от языка страницы: адрес у ссылки один
- *  на обе версии (`data/services.ts` собирает английскую группу из русской и
- *  адреса не трогает), а искать по переведённой подписи значило бы завести
- *  вторую точку отказа там, где её не было. */
-function serviceHref(icon: ServiceIconKind, linkText: string): string {
-  const serviceGroup = SERVICE_GROUPS.find((g) => g.icon === icon);
-  const link = serviceGroup?.links.find((l) => l.text === linkText);
-  if (!link) {
-    throw new Error(
-      `data/pricingShowcase.ts: у группы услуг «${icon}» нет ссылки «${linkText}» — ` +
-      'витрина секции 4 главной на неё ссылается.',
-    );
-  }
-  return link.href;
 }
 
 /** Состав ступени («что входит») дословно из PRICING.md, разбитый на пункты
@@ -117,6 +97,11 @@ export interface TopCard {
   /** Состав, готовый к выводу списком — ровно пять пунктов на каждой
    *  карточке (правка владельца 2026-08-13, часть 4; проверено ниже). */
   composition: readonly string[];
+  /** Ссылка на посадочную услуги — тем же приёмом, что `ShelfCard.href`
+   *  (`serviceHref()`). Возвращена правкой 2026-08-26: временное решение
+   *  владельца 2026-08-18 (карточки ведут к форме) действовало «до появления
+   *  посадочных» (D-052) — посадочные исполнены (спека 03) и отвечают 200. */
+  href: string;
   recommended?: {
     /** Единственная разрешённая метка спроса — «Самый популярный», дословно
      *  (отмена D-029 владельцем 2026-08-13, часть 2). Любая ДРУГАЯ метка
@@ -315,6 +300,12 @@ export function topCards(locale: Locale): readonly TopCard[] {
      `compositionIndex` роняет сборку, если куска нет и в русском составе. */
   const dropIndex = compositionIndex('Сайт до 5 страниц', 'Сайты', 'дизайн-система');
 
+  // «Лендинг» и «Корпоративный сайт» — два тарифа ОДНОЙ посадочной (S1,
+  // /services/website: страница несёт обе ступени в своей сетке цен, см.
+  // `data/servicePages.ts`, `tiers`). «Telegram-бот» — своя посадочная S8.
+  const websiteHref = serviceHref('sites', 'Сайт под ключ');
+  const botHref = serviceHref('telegram', 'Telegram-бот под задачу');
+
   const cards: TopCard[] = [
     {
       showcaseName: text[0].showcaseName,
@@ -326,6 +317,7 @@ export function topCards(locale: Locale): readonly TopCard[] {
       // («лендинг» по определению одностраничный), поэтому живёт в тексте
       // витрины и переводится вместе с ней.
       composition: [text[0].leadItem!, ...splitComposition(landing.whatIncluded)],
+      href: websiteHref,
     },
     {
       showcaseName: text[1].showcaseName,
@@ -346,6 +338,7 @@ export function topCards(locale: Locale): readonly TopCard[] {
       // снимает запрет вообще, а сужает его до этой ровно одной строки: см.
       // сторож в `Pricing.markup.test.ts`.
       recommended: { label: text[1].recommendedLabel! },
+      href: websiteHref,
     },
     {
       showcaseName: text[2].showcaseName,
@@ -355,6 +348,7 @@ export function topCards(locale: Locale): readonly TopCard[] {
       // Пять пунктов дословно из PRICING.md (строка 62) — состав уже ровно
       // пять, ничего не добавлено и не убрано.
       composition: splitComposition(bot.whatIncluded),
+      href: botHref,
     },
   ];
 

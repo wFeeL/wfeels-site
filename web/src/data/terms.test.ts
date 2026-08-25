@@ -11,23 +11,27 @@ describe('terms.ts — внутренняя целостность', () => {
     expect(CHECKED_AT).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it('ровно три строки, в порядке таблицы первого экрана', () => {
+  it('ровно четыре строки, в порядке таблицы первого экрана', () => {
     expect(HERO_TERMS.map((t) => t.label)).toEqual([
       'Сайты и лендинги',
       'Автоматизация и интеграции',
       'ИИ-консультант',
+      'Аудит сайта',
     ]);
   });
 
-  it('у каждой записи есть source — ссылка на SERVICES.md', () => {
+  it('у каждой записи есть source — ссылка на SERVICES.md или на PRICING.md', () => {
+    // Сроки читаются из SERVICES.md — за одним исключением: срок
+    // «Автоматизации и интеграций» и «Аудита сайта» переставлен на
+    // PRICING.md решением владельца 2026-08-13/26 (см. комментарий у записи).
     for (const entry of HERO_TERMS) {
-      expect(entry.source, `«${entry.label}» без source`).toMatch(/^SERVICES\.md:\d+/);
+      expect(entry.source, `«${entry.label}» без source`).toMatch(/^(SERVICES|PRICING)\.md:\d+/);
     }
   });
 
-  it('срок набран в форме «от N–N дней», а не голым диапазоном', () => {
+  it('срок набран в форме «от N[–N] дня/дней», а не голым диапазоном', () => {
     for (const entry of HERO_TERMS) {
-      expect(entry.term, `«${entry.label}»: «${entry.term}»`).toMatch(/^от \d+–\d+ дней$/);
+      expect(entry.term, `«${entry.label}»: «${entry.term}»`).toMatch(/^от \d+(–\d+)? (дня|дней)$/);
     }
   });
 

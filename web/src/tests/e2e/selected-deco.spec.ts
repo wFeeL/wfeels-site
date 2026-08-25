@@ -31,7 +31,8 @@ test.describe('выбранные deco-фичи', () => {
     const selectors = [
       '#hero > .t-label', '#hero h1', '#hero .t-body-lg',
       '#hero .offer > li:nth-child(1)', '#hero .offer > li:nth-child(2)',
-      '#hero .offer > li:nth-child(3)', '#hero .cta', '#hero .regalia',
+      '#hero .offer > li:nth-child(3)', '#hero .offer > li:nth-child(4)',
+      '#hero .cta', '#hero .regalia',
     ];
     for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       const context = await browser.newContext({
