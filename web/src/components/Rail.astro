@@ -393,10 +393,25 @@ const points = railPoints(locale);
       btn.addEventListener('click', () => {
         const target = document.getElementById(btn.dataset.target ?? '');
         if (!target) return;
-        target.scrollIntoView({
-          behavior: reduceMotion ? 'auto' : 'smooth',
-          block: 'start',
-        });
+        /* Прокрутку по клику ведёт Lenis (`window.__scrollToElement`,
+           `Base.astro`), а не свой `scrollIntoView` — найдено 2026-08-26 при
+           разборе жалобы «клик по шапке иногда не долистывает»: точка рельса
+           несла ТОТ ЖЕ порок, что и якоря шапки до правки — родная
+           smooth-анимация клика рвалась активным раф-циклом Lenis, если клик
+           приходился на инерцию от колеса (замер: 15/15 срывов, промах до
+           1930 px). У рельса нет собственного `<a href>`, и перевод анкоров
+           на `anchors: true` его не касается — понадобился отдельный путь.
+           `scrollIntoView` остаётся ЕДИНСТВЕННЫМ путём, когда Lenis не создан
+           (`prefers-reduced-motion: reduce`) — тем же мгновенным (`'auto'`),
+           что и раньше. */
+        if (window.__scrollToElement) {
+          window.__scrollToElement(target);
+        } else {
+          target.scrollIntoView({
+            behavior: reduceMotion ? 'auto' : 'smooth',
+            block: 'start',
+          });
+        }
       });
     }
   }
