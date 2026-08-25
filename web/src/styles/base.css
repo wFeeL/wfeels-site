@@ -319,13 +319,6 @@ a:hover, a:focus-visible { text-decoration-color: currentColor; }
   box-shadow: 0 0 0 1px var(--bg);
 }
 
-.grid-paper {
-  background-image:
-    linear-gradient(var(--grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: var(--step) var(--step);
-}
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -505,11 +498,15 @@ a:hover, a:focus-visible { text-decoration-color: currentColor; }
   #hero h1 { --hero-d: 60ms; }
   #hero .t-body-lg { --hero-d: 140ms; }
   #hero .offer { animation-name: hero-frame; --hero-d: 220ms; }
+  /* Четвёртая строка (аудит сайта, правка 2026-08-26) продолжает тот же шаг
+     60ms — `.cta`/`.regalia` сдвинуты на 60ms позже вместе с ней, чтобы
+     сохранить свой отступ от последней строки таблицы. */
   #hero .offer > li { --hero-d: 220ms; }
   #hero .offer > li:nth-child(2) { --hero-d: 280ms; }
   #hero .offer > li:nth-child(3) { --hero-d: 340ms; }
-  #hero .cta { --hero-d: 420ms; }
-  #hero .regalia { --hero-d: 500ms; }
+  #hero .offer > li:nth-child(4) { --hero-d: 400ms; }
+  #hero .cta { --hero-d: 480ms; }
+  #hero .regalia { --hero-d: 560ms; }
   @media (max-width: 899px) {
     #hero { --hero-scale: 0.5; }
   }
