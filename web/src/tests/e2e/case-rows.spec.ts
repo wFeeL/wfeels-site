@@ -50,14 +50,32 @@ test.describe('секция 5 — полноширинные блоки кейс
       const childCount = await row.locator('.field').evaluate((el) => el.childElementCount);
       expect(childCount, `блок ${i}: поле иллюстрации не пусто`).toBeGreaterThan(0);
 
-      // Возвращенная ссылка не маскируется под обычный текст: подчёркивание
-      // видно до наведения, а курсор сообщает о переходе.
-      const heading = await row.locator('h3 a').evaluate((el) => {
+      /* ПРАВКА ВЛАДЕЛЬЦА 2026-08-26: в ПОКОЕ подчёркивания у заголовка кейса
+         больше нет — владелец прислал три снимка и попросил убрать линию под
+         словами. Раньше здесь стояло обратное требование («подчёркивание
+         видно до наведения»), и сторож покраснел этой правкой ПРАВИЛЬНО: он
+         охранял прежнее правило.
+
+         Проверка не ослаблена, а перенацелена и расширена. Ослаблением было
+         бы снять её вовсе — тогда заголовок мог бы молча стать неотличимым от
+         обычного текста, и сайт получил бы кейсы, о кликабельности которых
+         читатель не догадывается. Поэтому проверяются ТРИ вещи: в покое
+         подчёркивания нет (правка владельца исполнена), курсор по-прежнему
+         сообщает о переходе, и при наведении отклик появляется — ссылка не
+         осталась совсем без признака. */
+      const link = row.locator('h3 a');
+
+      const atRest = await link.evaluate((el) => {
         const s = getComputedStyle(el);
         return { decoration: s.textDecorationLine, cursor: s.cursor };
       });
-      expect(heading.decoration, `блок ${i}: ссылка должна быть подчёркнута`).toContain('underline');
-      expect(heading.cursor, `блок ${i}: курсор-указатель`).toBe('pointer');
+      expect(atRest.decoration, `блок ${i}: в покое подчёркивания быть не должно`)
+        .not.toContain('underline');
+      expect(atRest.cursor, `блок ${i}: курсор-указатель`).toBe('pointer');
+
+      await link.hover();
+      const hovered = await link.evaluate((el) => getComputedStyle(el).textDecorationLine);
+      expect(hovered, `блок ${i}: при наведении отклик обязан появиться`).toContain('underline');
 
       // Грани слева больше нет: она метила блок как ссылку.
       const borderLeftWidth = await row.evaluate((el) => getComputedStyle(el).borderLeftWidth);
