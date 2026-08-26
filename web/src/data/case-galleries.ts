@@ -10,7 +10,7 @@ export interface CaseGallerySlide {
 
 /* Манифест кэшируется браузером отдельно от HTML. Версия в URL обязательна:
    иначе новая сборка могла получить старые пути слайдов ещё на пять минут. */
-export const CASE_GALLERIES_URL = '/case-galleries.json?v=3';
+export const CASE_GALLERIES_URL = '/case-galleries.json?v=4';
 
 export const STOREFRONT_SLIDES: readonly CaseGallerySlide[] = [
   {
@@ -109,14 +109,14 @@ export const WEBSITE_SLIDES: readonly CaseGallerySlide[] = [
   },
   {
     label: 'Номера',
-    src: '/cases/websites/still-house/02-rooms.webp',
+    src: '/cases/websites/still-house/02-rooms.avif',
     alt: 'Каталог номеров Still House с фотографиями и ценами',
     project: 'Still House',
     subject: 'сайта',
   },
   {
     label: 'Бронирование',
-    src: '/cases/websites/still-house/03-room-booking.webp',
+    src: '/cases/websites/still-house/03-room-booking.avif',
     alt: 'Страница номера Still House с деталями проживания и бронированием',
     project: 'Still House',
     subject: 'сайта',

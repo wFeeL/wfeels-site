@@ -43,15 +43,45 @@ describe('dist/cases — индексируемый каталог и detail-с�
     });
   }
 
-  it('две detail-галереи выводят подтвержденную выборку без JavaScript', () => {
+  /* Сторож числа кадров (2026-08-26): подводка `/cases` обещает читателю
+   * «каталог, карточку товара, корзину и оформление заказа» и «в каждом
+   * показаны главная страница, ключевой раздел и целевое действие» — то есть
+   * все девять кадров каждой галереи, а не выборку. До этой правки здесь жил
+   * жёсткий список из трёх/двух индексов (см. `git log casePages.ts`), и
+   * «Still House» пропадал из «Сайтов» целиком. Проверено, что сторож красный
+   * на старом списке: временный откат `caseGallerySlides` к
+   * `[STOREFRONT_SLIDES[0], STOREFRONT_SLIDES[3], STOREFRONT_SLIDES[6]]` /
+   * `[WEBSITE_SLIDES[0], WEBSITE_SLIDES[6]]` валит именно эту проверку
+   * (`toBe(9)`) на обеих галереях. */
+  it('две detail-галереи выводят все девять кадров, первый — без JavaScript', () => {
     for (const slug of ['storefront', 'websites']) {
       const html = read(`cases/${slug}/index.html`);
       const slides = caseGallerySlides(slug);
-      expect(slides.length).toBeGreaterThan(1);
-      for (const slide of slides) {
-        expect(html, slide.src).toContain(`src="${slide.src}"`);
-        expect(html, slide.alt).toContain(`alt="${slide.alt}"`);
+      expect(slides.length, slug).toBe(9);
+
+      // Первый кадр обязан быть виден без JavaScript — литеральный `src`.
+      expect(html, `${slug}: первый кадр без src`).toContain(`src="${slides[0].src}"`);
+
+      // Остальные восемь не входят в первую загрузку: литерального `src`
+      // с их адресом в разметке быть не должно — их подставляет скрипт.
+      for (const slide of slides.slice(1)) {
+        expect(html, `${slug}: ${slide.src} не должен быть в первой загрузке`)
+          .not.toContain(`src="${slide.src}"`);
       }
+
+      // Подписи и alt каждого из девяти кадров — в статической разметке,
+      // независимо от того, подставлен ли уже `src` скриптом.
+      for (const slide of slides) {
+        expect(html, `${slug}: ${slide.alt}`).toContain(`alt="${slide.alt}"`);
+        expect(html, `${slug}: ${slide.project}/${slide.label}`)
+          .toMatch(new RegExp(`<strong[^>]*>${slide.project}</strong>`));
+      }
+
+      // Ровно девять помеченных кадров, ни одного лишнего или потерянного.
+      // Тег `<img>`, а не голое слово: у скрипта ниже в разметке есть тот
+      // же селектор `[data-gallery-screen]` строкой в JS-модуле.
+      const markers = html.match(/<img\b[^>]*\bdata-gallery-screen\b/g) ?? [];
+      expect(markers.length, `${slug}: число помеченных кадров`).toBe(9);
     }
     expect(read('cases/storefront/index.html')).toContain('width="780" height="1688"');
     expect(read('cases/websites/index.html')).toContain('width="1586" height="992"');

@@ -118,15 +118,24 @@ export function casesForService(serviceSlug: string): PublishedCase[] {
 }
 
 export function caseGallerySlides(caseSlug: string): readonly CaseGallerySlide[] {
-  /* Detail-страница не повторяет интерактивную галерею главной целиком:
-   * каждый `<img>` — ресурс первой страницы для весового гейта. Берём
-   * подтверждённые репрезентативные кадры, а полный набор остаётся в
-   * `/case-galleries.json` для домашней галереи. */
+  /* Все девять кадров каждой галереи — подводка `/cases` обещает читателю
+   * полный набор экранов, а не выборку. До 2026-08-26 здесь жил жёсткий
+   * список из трёх/двух индексов, подобранный под весовой гейт: каждый
+   * `<img>` на detail-странице нёс литеральный `src`, и гейт (`img: ['src',
+   * 'srcset']`, независимо от `loading="lazy"`) считал их все в вес первой
+   * загрузки. Из-за этого «Still House» пропадал из «Сайтов» целиком — его
+   * первый кадр весит 247,5 КБ и не помещался третьим слотом.
+   *
+   * Лечение — то же, что уже работает на главной (`CaseGallery.astro`):
+   * только первый кадр каждой галереи несёт настоящий `src` в разметке,
+   * остальные восемь получают `data-gallery-index` и подставляются
+   * скриптом из `/case-galleries.json` после появления галереи в области
+   * видимости. Гейт видит один `<img src>`, читатель — девять. */
   if (caseSlug === 'storefront') {
-    return [STOREFRONT_SLIDES[0], STOREFRONT_SLIDES[3], STOREFRONT_SLIDES[6]];
+    return STOREFRONT_SLIDES;
   }
   if (caseSlug === 'websites') {
-    return [WEBSITE_SLIDES[0], WEBSITE_SLIDES[6]];
+    return WEBSITE_SLIDES;
   }
   return [];
 }

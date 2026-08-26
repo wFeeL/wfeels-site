@@ -21,7 +21,7 @@ import CaseRow from './CaseRow.astro';
 import CaseWeightIllustration from './CaseWeightIllustration.astro';
 import StorefrontGallery from './StorefrontGallery.astro';
 import WebsiteGallery from './WebsiteGallery.astro';
-import { caseHref, homeCases } from '../../data/cases';
+import { CASES_CATALOG_HREF, caseHref, homeCases } from '../../data/cases';
 import { dict, localeFromPath } from '../../i18n/locales';
 
 const locale = localeFromPath(Astro.url.pathname);
@@ -109,6 +109,21 @@ const ILLUSTRATIONS: Record<string, any> = {
     );
   })}
 </div>
+
+{/* Ссылка на каталог `/cases` (D-068 снята правкой владельца, условие
+    «вела в никуда» отпало: каталог построен, отдаёт 200, на нём пять
+    кейсов, `dist-cases.test.ts` это проверяет). Без неё каталог был
+    достижим только через хлебную крошку detail-страницы — то есть только
+    для того, кто уже стоит на кейсе. Разметка и стили — тот же приём, что
+    у ссылок-переходов в `.links a` (`ServiceCard.astro`): текст плюс
+    стрелка-`span`, стрелка сдвигается и текст меняет цвет при наведении и
+    фокусе. Кнопкой не сделана нарочно — это не второе главное действие
+    секции, а честный минимум, отдельный от «Все услуги»
+    (`Services.astro`), который решает другую задачу — уводит с каталога
+    услуг, а не в каталог кейсов. */}
+<p class="all-cases">
+  <a href={CASES_CATALOG_HREF}>{t.casesAll} <span aria-hidden="true">→</span></a>
+</p>
 
 {/* Общий контроллер двух галерей находится в самом `Cases.astro`, а не в
      компонентах, переданных через слот: их обычный поднятый Astro-скрипт
@@ -378,4 +393,29 @@ const ILLUSTRATIONS: Record<string, any> = {
     border-top: 1px solid var(--border);
   }
   .rows :global(.row:last-child) { border-bottom: none; }
+
+  /* Тот же приём, что `.links a` в `ServiceCard.astro`: текст плюс стрелка,
+     цвет и сдвиг стрелки при наведении/фокусе, цель нажатия не меньше
+     44 px. Второй словарь того же правила здесь не заводится — это разметка
+     другой секции, но решение то же самое, повторено, а не изобретено
+     заново. */
+  .all-cases {
+    margin: 24px 0 0;
+  }
+  .all-cases a {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 44px;
+  }
+  .all-cases a span { color: var(--accent); transition: translate var(--dur-micro) var(--ease); }
+  .all-cases a:hover,
+  .all-cases a:focus-visible {
+    color: var(--accent);
+  }
+  .all-cases a:hover span,
+  .all-cases a:focus-visible span { translate: 4px 0; }
 </style>
