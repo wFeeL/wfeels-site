@@ -3,6 +3,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 import {
+  PAINT_FILL_MAX_RATIO,
   PAINT_FILL_THRESHOLD,
   PHOTO_MIN_IMG_WIDTH_RATIO,
   SCHEMA_MIN_HEIGHT_RATIO,
@@ -259,10 +260,18 @@ for (const url of CASE_PAGES) {
         expect(svgCopies, `${label}: схема обязана нести ровно одну копию разметки`).toBeLessThanOrEqual(1);
 
         const fresh = await frame.evaluate(measurePaintFill);
+        console.log(`[case-spread-fill] ${label} — заполнение ${(fresh.ratio * 100).toFixed(1)}%`);
         expect(fresh.ratio, `${label}: заполнение 0 — в панели нет ни одного видимого листового узла`)
           .toBeGreaterThan(0);
         expect(fresh.ratio, `${label}: заполнение ${(fresh.ratio * 100).toFixed(1)}% ниже порога ${PAINT_FILL_THRESHOLD * 100}%`)
           .toBeGreaterThanOrEqual(PAINT_FILL_THRESHOLD);
+        // Верхняя граница (порог и обоснование — `paintFill.ts`, комментарий
+        // над `PAINT_FILL_MAX_RATIO`): после обрезки боксов по клипующим
+        // предкам заполнение выше 101% значит либо сломанную обрезку, либо
+        // содержимое, которое физически вылезает за раму панели БЕЗ
+        // клипующего предка между собой и панелью.
+        expect(fresh.ratio, `${label}: заполнение ${(fresh.ratio * 100).toFixed(1)}% выше верхней границы ${PAINT_FILL_MAX_RATIO * 100}%`)
+          .toBeLessThanOrEqual(PAINT_FILL_MAX_RATIO);
 
         const panelBox = await frame.evaluate((el) => {
           const r = el.getBoundingClientRect();
