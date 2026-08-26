@@ -4,7 +4,7 @@ import Button from './Button.astro';
 import TelegramMark from './TelegramMark.astro';
 import { dict, type Locale } from '../i18n/locales';
 import { TELEGRAM_URL, emailIconLinkHtml } from '../lib/contacts';
-import { samePath, HEADER_CTA_HREF } from '../lib/nav';
+import { samePath, headerCtaHref } from '../lib/nav';
 import { footerLineData } from '../lib/backgroundLine';
 import { LINE_PATHS } from '../lib/linePaths';
 
@@ -53,6 +53,14 @@ const LEGAL = [
 const CITY_AND_CONTRACT = `${t.footerCity} · ${t.footerContract}`;
 const LEGAL_EMAIL = 'i@dsaburov.ru';
 
+/* Адрес кнопки полосы действия — задача Б-2 (2026-08-26): раньше здесь стояла
+ * константа `HEADER_CTA_HREF` напрямую, без учёта языка страницы, и кнопка
+ * подвала на английских страницах вела на русский `/contact`, пока соседняя
+ * ссылка тела той же страницы (`/en#contact`) вела верно. `headerCtaHref` —
+ * та же функция, что уже читает `Header.astro`: правило «куда ведёт кнопка
+ * связи» одно на шапку и подвал, а не два похожих числа в двух файлах. */
+const ctaHref = headerCtaHref(Astro.url.pathname);
+
 const tail = line ? footerLineData() : null;
 const tailPath = line ? LINE_PATHS.footer : undefined;
 ---
@@ -92,7 +100,7 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
             <p class="cta-sub">{t.footerReplyMode}</p>
           </div>
           <div class="cta-act">
-            <Button href={HEADER_CTA_HREF} variant="primary">{t.write}</Button>
+            <Button href={ctaHref} variant="primary">{t.write}</Button>
             <div class="icon-links">
               <a class="icon-link" href={TELEGRAM_URL} rel="me" aria-label={t.footerTelegram}>
                 <TelegramMark size={20} />

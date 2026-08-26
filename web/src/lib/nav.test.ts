@@ -154,6 +154,19 @@ describe('headerCtaHref', () => {
     expect(headerCtaHref('/en')).toBe('#contact');
     expect(headerCtaHref('/en/')).toBe('#contact');
   });
+
+  // Задача Б-2 (2026-08-26): на любой другой английской странице форма живёт
+  // на английской главной, а не на русском `/contact` — до правки здесь
+  // возвращался `HEADER_CTA_HREF` без учёта языка, и подвал (`Footer.astro`,
+  // который до этой же задачи читал `HEADER_CTA_HREF` напрямую, а не эту
+  // функцию) уводил читателя английской страницы на русскую форму.
+  it('на другой английской странице — английская главная, а не /contact', () => {
+    expect(headerCtaHref('/en/privacy')).toBe('/en#contact');
+    expect(headerCtaHref('/en/terms')).toBe('/en#contact');
+    expect(headerCtaHref('/en/consent')).toBe('/en#contact');
+    expect(headerCtaHref('/en/404')).toBe('/en#contact');
+    expect(headerCtaHref('/en/privacy')).not.toBe(HEADER_CTA_HREF);
+  });
 });
 
 /* Полоса действия подвала (`.footer-cta`) — спека
