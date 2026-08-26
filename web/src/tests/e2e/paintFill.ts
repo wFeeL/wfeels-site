@@ -35,6 +35,32 @@ import { fileURLToPath } from 'node:url';
  */
 export const PAINT_FILL_THRESHOLD = 0.6;
 
+/** Верхняя граница заполнения — 101 %.
+ *
+ * Найдено на трио-раскладке разворота `zayavka-hub` (панель 2/4, ширина
+ * 390 px): до обрезки боксов по клипующим предкам (см. комментарий над
+ * `measurePaintFill`) заполнение доходило до 308,9 % — габарит краски
+ * считал содержимое горизонтальной ленты `overflow-x: auto`, которое
+ * НАРОЧНО лежит за пределами видимой полосы (раздел 3.3 брифа
+ * `12-case-pages-brief.md`: следующий кадр «выглядывает краем»).
+ *
+ * После обрезки заполнение панели, у которой ВЕСЬ путь от листа до самой
+ * панели обрезающий (нет промежуточного `overflow: visible`, как и у всех
+ * панелей разворота кейса сегодня — `.frame` в `CaseSpread.astro` ничего не
+ * обрезает сам, но и не разрешает детям вылезать за собственные клипующие
+ * обёртки), не может законно перейти за 100 %. Предел поставлен не в
+ * 100,0 %, а в 101 % — запас на субпиксельное округление
+ * `getBoundingClientRect()` (дробные ширины у флекс-раскладок), а не допуск
+ * для новой находки: три из четырёх панелей `zayavka-hub` дают ровно
+ * 100,0 % на обеих проверяемых ширинах уже сегодня. Число выше 101 %
+ * означает, что нашёлся контент, который физически выходит за раму
+ * панели БЕЗ клипующего предка между собой и панелью, — предел
+ * НЕ ослабляется, если однажды даст красный (тот же инвариант брифа, что
+ * уже действует у нижней границы): это находка о раскладке, а не повод
+ * поднять число.
+ */
+export const PAINT_FILL_MAX_RATIO = 1.01;
+
 /** Для схемы (не фотографии) требования П-3 строже и раздельные по осям:
  *  не меньше 70 % ширины и 60 % высоты поля. */
 export const SCHEMA_MIN_WIDTH_RATIO = 0.7;
@@ -66,7 +92,33 @@ export interface FillResult {
  *  объединение его собственного содержимого, переводится в CSS-пиксели
  *  через `viewBox`. Узел с детьми-элементами сам никогда не входит в
  *  объединение — это и есть исправление D-120: раньше в объединение
- *  попадала как раз такая обёртка. */
+ *  попадала как раз такая обёртка.
+ *
+ *  Каждый собранный прямоугольник обрезается по ближайшему предку с
+ *  РЕАЛЬНЫМ CSS-обрезанием (`overflow-x`/`overflow-y` в `hidden`/`clip`/
+ *  `scroll`/`auto`) между листом и панелью — не по границам самой панели
+ *  безусловно. Находка — трио-раскладка разворота `zayavka-hub` (панель
+ *  2/4, раздел 3.3 брифа `12-case-pages-brief.md`): на ≤599 px три кадра
+ *  лежат в горизонтальной ленте `.shots.trio { overflow-x: auto }` шириной
+ *  ~2,3 панели — второй и третий кадр НАРОЧНО стоят за пределами видимой
+ *  полосы (тот самый «выглядывает краем»), и их полный
+ *  `getBoundingClientRect()` тянется далеко за правый край панели. Без
+ *  обрезки объединение брало этот прирост в габарит краски и давало
+ *  заполнение 308,9 % — габарит краски был посчитан верно, но по
+ *  контенту, которого физически не видно без прокрутки (тот же род, что
+ *  ловушка 8 `50-code/CLAUDE.md`: верная величина не в том месте).
+ *
+ *  Обрезка привязана к КОНКРЕТНОМУ клипующему предку (здесь — самой ленте
+ *  `.shots.trio`, а не к панели безусловно): панель безусловно обрезала бы
+ *  заодно и легитимные листья, которые лежат в обычном потоке и НИЧЕМ не
+ *  подрезаются браузером, но чуть выходят за геометрическую границу панели
+ *  по не относящейся к делу причине (например, `sr-only`-текст доступности
+ *  на живой галерее главной — его точная позиция не несёт зрительного
+ *  смысла, и обрезка по панели схлопывала бы его до нуля и валила читаемое
+ *  заполнение галереи с ~98 % до ~4 % без всякого дефекта раскладки).
+ *  Обрезка не прячет находку в другую сторону: пустая или почти пустая
+ *  панель по-прежнему даёт низкое заполнение (обрезка только СНИЖАЕТ числа,
+ *  никогда не завышает). */
 export function measurePaintFill(panel: Element): FillResult {
   const panelRect = panel.getBoundingClientRect();
   const panelArea = panelRect.width * panelRect.height;
@@ -81,20 +133,39 @@ export function measurePaintFill(panel: Element): FillResult {
     return Number.isFinite(opacity) && opacity === 0;
   }
 
-  function pushRect(rect: { left: number; top: number; right: number; bottom: number }) {
-    const width = rect.right - rect.left;
-    const height = rect.bottom - rect.top;
+  /** Раздел 10.1: элемент, который реально обрезает СВОИХ детей по CSS —
+   *  ровно те четыре значения `overflow`, при которых браузер не рисует
+   *  содержимое за границами блока. */
+  function clipsChildren(el: Element): boolean {
+    const cs = getComputedStyle(el);
+    const clipValues = ['hidden', 'clip', 'scroll', 'auto'];
+    return clipValues.includes(cs.overflowX) || clipValues.includes(cs.overflowY);
+  }
+
+  function intersect(a: Box, b: Box): Box {
+    return {
+      left: Math.max(a.left, b.left),
+      top: Math.max(a.top, b.top),
+      right: Math.min(a.right, b.right),
+      bottom: Math.min(a.bottom, b.bottom),
+    };
+  }
+
+  function pushRect(rect: { left: number; top: number; right: number; bottom: number }, clip: Box | null) {
+    const r = clip ? intersect(rect, clip) : rect;
+    const width = r.right - r.left;
+    const height = r.bottom - r.top;
     if (width > 0 && height > 0) {
-      boxes.push({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom });
+      boxes.push(r);
     }
   }
 
-  function pushSvg(svg: SVGSVGElement) {
+  function pushSvg(svg: SVGSVGElement, clip: Box | null) {
     const svgRect = svg.getBoundingClientRect();
     const vb = svg.viewBox && svg.viewBox.baseVal;
     if (!vb || vb.width === 0 || vb.height === 0) {
       // Нет viewBox — переводить не из чего, берётся собственный бокс.
-      pushRect(svgRect);
+      pushRect(svgRect, clip);
       return;
     }
     let bbox: SVGRect;
@@ -113,35 +184,43 @@ export function measurePaintFill(panel: Element): FillResult {
       top,
       right: left + bbox.width * scaleX,
       bottom: top + bbox.height * scaleY,
-    });
+    }, clip);
   }
 
-  function walk(node: Element) {
+  function walk(node: Element, clip: Box | null) {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) {
         const text = child.textContent;
         if (!text || !text.trim()) continue;
         const range = document.createRange();
         range.selectNodeContents(child);
-        pushRect(range.getBoundingClientRect());
+        pushRect(range.getBoundingClientRect(), clip);
         continue;
       }
       if (child.nodeType !== Node.ELEMENT_NODE) continue;
       const el = child as Element;
       if (isHidden(el)) continue; // раздел 10.1.1, пункт 3 — скрытый узел не входит и не обходится глубже
+      // Если ЭТОТ узел сам обрезает своих детей по CSS — сужаем клип для
+      // всего, что лежит внутри него, ДО того как решаем, лист он или нет:
+      // атомарный лист может и сам оказаться таким обрезающим контейнером
+      // (например, пустой `overflow:hidden` блок), но обрезка на нём самом
+      // не имеет смысла — она касается только его СОДЕРЖИМОГО.
+      const innerClip = clipsChildren(el)
+        ? (clip ? intersect(clip, el.getBoundingClientRect()) : el.getBoundingClientRect())
+        : clip;
       if (el.tagName.toLowerCase() === 'svg') {
-        pushSvg(el as unknown as SVGSVGElement);
+        pushSvg(el as unknown as SVGSVGElement, clip);
         continue; // внутрь svg не спускаемся — getBBox уже даёт объединение
       }
       if (el.children.length === 0) {
-        pushRect(el.getBoundingClientRect()); // атомарный лист
+        pushRect(el.getBoundingClientRect(), clip); // атомарный лист
         continue;
       }
-      walk(el); // узел с детьми — сам не считается, спускаемся глубже
+      walk(el, innerClip); // узел с детьми — сам не считается, спускаемся глубже
     }
   }
 
-  walk(panel);
+  walk(panel, null);
 
   if (boxes.length === 0 || panelArea <= 0) {
     return { ratio: 0, paintArea: 0, panelArea, paintWidth: 0, paintHeight: 0, leafCount: boxes.length };
