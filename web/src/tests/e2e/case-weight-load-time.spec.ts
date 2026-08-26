@@ -1,4 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /* Сторож числа «0,4 с» на иллюстрации «Замер» (кейс «Этот сайт»).
  *
@@ -85,12 +88,73 @@ async function measureLoadSeconds(context: BrowserContext, page: Page, path: str
   return ms / 1000;
 }
 
-/* Рисунок стоит на ОБЕИХ главных, и число на нём — единственное замеренное
- * из четырёх. Английская версия печатает своё «0.4 s» с точкой вместо
- * запятой; сверять его с русским замером нельзя — это другая страница, и
- * весит она на 18 КБ меньше (`data/pageWeight.ts`, `PAGE_WEIGHT_KB_EN`).
- * Замер повторяется для каждой версии отдельно. */
-const PAGES = ['/', '/en'];
+/* Рисунок стоит на ОБЕИХ главных и, с решения D-122 (раздел 4.6 брифа
+ * страниц кейсов, правка 5), на странице кейса `site-v3` — а завтра может
+ * встать и на любой другой странице. Список страниц ниже был рукописным
+ * (`['/', '/en']`) и не мог узнать о новых хозяевах рисунка сам — ровно
+ * ловушка 15 (`50-code/CLAUDE.md`): список объектов проверки, вписанный
+ * руками, стареет молча в день, когда объектов становится больше. Список
+ * выводится из СОБРАННОЙ страницы (маркер `data-illustration="case-weight"`),
+ * тем же приёмом, что уже применяет `check-budget.mjs`.
+ *
+ * Английская версия печатает своё «0.4 s» с точкой вместо запятой; сверять
+ * его с русским замером нельзя — это другая страница, и весит она на 18 КБ
+ * меньше (`data/pageWeight.ts`, `PAGE_WEIGHT_KB_EN`). Замер повторяется для
+ * каждой версии отдельно — тест ниже читает число СО СТРАНИЦЫ, а не из
+ * исходников, поэтому какой бы хозяин ни оказался в списке, сверяется именно
+ * то, что видит человек. */
+const DIST = fileURLToPath(new URL('../../../dist/', import.meta.url));
+const WEIGHT_ILLUSTRATION_MARKER = 'data-illustration="case-weight"';
+/** Страницы, которые ОБЯЗАНЫ нести рисунок независимо от факта — тот же
+ *  обязательный минимум, что в `check-budget.mjs`: отсутствие рисунка на
+ *  главной остаётся красным дефектом, даже если у него по какой-то причине
+ *  вдруг пропал маркер (тогда искать на странице нечего, а красноту дать
+ *  всё равно необходимо). */
+const REQUIRED_PAGES = ['/', '/en'];
+
+function htmlFiles(dir: string, base = dir): string[] {
+  let entries: import('node:fs').Dirent[];
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries.flatMap((entry) => {
+    if (entry.name === '_astro') return [];
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return htmlFiles(full, base);
+    return entry.name.endsWith('.html') ? [relative(base, full)] : [];
+  });
+}
+
+/** `index.html` → `/`, `en/index.html` → `/en`, `cases/site-v3/index.html`
+ *  → `/cases/site-v3` — обратное тому, что Astro кладёт на диск для
+ *  статического маршрута. */
+function urlFromHtmlFile(relPath: string): string {
+  const posix = relPath.split(sep).join('/');
+  if (posix === 'index.html') return '/';
+  if (posix.endsWith('/index.html')) return `/${posix.slice(0, -'/index.html'.length)}`;
+  return `/${posix.replace(/\.html$/, '')}`;
+}
+
+if (!existsSync(DIST)) {
+  throw new Error(
+    `case-weight-load-time.spec.ts: сборка не найдена (${DIST}). Список страниц выводится ` +
+    'из dist/ (ловушка 15, `50-code/CLAUDE.md`) — сначала `npm run build` в web/.',
+  );
+}
+
+/* REQUIRED_PAGES попадают в список БЕЗУСЛОВНО — даже если у страницы почему-то
+   пропал маркер. Тест ниже читает число со страницы через локатор
+   `[data-cell="time-ours"] [data-count]`; если рисунка там нет вовсе, локатор
+   не находится и тест падает красным сам по себе — это и есть требуемая
+   красная реакция, без отдельной ветки «маркера нет, а страница обязательна». */
+const PAGES = Array.from(new Set([
+  ...htmlFiles(DIST)
+    .filter((file) => readFileSync(join(DIST, file), 'utf8').includes(WEIGHT_ILLUSTRATION_MARKER))
+    .map(urlFromHtmlFile),
+  ...REQUIRED_PAGES,
+])).sort();
 
 test.describe('иллюстрация «Замер» — время загрузки не врёт', () => {
   for (const path of PAGES) {
@@ -145,13 +209,15 @@ test.describe('иллюстрация «Замер» — время загруз
     expect(
       median,
       `страница медленнее, чем о себе говорит — ${report}. Либо чинить вес, либо ` +
-      'переизмерить и подставить новое число в `data/pageWeight.ts` (OUR_LOAD_SECONDS).',
+      'переизмерить и подставить новое число в `data/pageWeight.ts` (константа времени этой ' +
+      'страницы-хозяина — OUR_LOAD_SECONDS у главной, CASE_OUR_LOAD_SECONDS у кейса «site-v3»).',
     ).toBeLessThanOrEqual(claimed * TOLERANCE_SLOWER);
 
     expect(
       median,
       `страница давно быстрее, чем о себе говорит — ${report}. Число протухло в свою ` +
-      'невыгодную сторону: переизмерить и подставить в `data/pageWeight.ts` (OUR_LOAD_SECONDS).',
+      'невыгодную сторону: переизмерить и подставить в `data/pageWeight.ts` (та же константа ' +
+      'времени, что и выше).',
     ).toBeGreaterThanOrEqual(claimed * TOLERANCE_FASTER);
   });
   }
