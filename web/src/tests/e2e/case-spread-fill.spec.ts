@@ -243,6 +243,16 @@ test.describe('приложение — находка брифа: «Замер�
  * ------------------------------------------------------------------------*/
 const CASE_PAGES = distExists() ? distCasePages() : [];
 
+/** Проектная полоса ширины кадра трио-ленты (≤599px, раздел 3.3 брифа):
+ *  `flex: 0 0 78%` в `CaseSpread.astro` — не приблизительно, а точное
+ *  значение, замер даёт 0,7799…0,7800 на 390 и 599px. Полоса 0,75…0,81 —
+ *  допуск на субпиксельное округление флекс-раскладки и разные ширины
+ *  контейнера, а не смягчение: значение вне полосы означает, что кадр
+ *  снова занял не 78%, а что-то другое (в частности 100% — версия
+ *  дефекта, закрытого этой задачей). */
+const TRIO_RIBBON_IMG_WIDTH_MIN = 0.75;
+const TRIO_RIBBON_IMG_WIDTH_MAX = 0.81;
+
 for (const url of CASE_PAGES) {
   test(`панели разворота заполнены — ${url}`, async ({ page }) => {
     for (const width of [1440, 390]) {
@@ -281,8 +291,28 @@ for (const url of CASE_PAGES) {
         const hasImg = (await frame.locator('img').count()) > 0;
         if (hasImg) {
           const imgWidth = await frame.evaluate((el) => el.querySelector('img')?.getBoundingClientRect().width ?? 0);
-          expect(imgWidth / panelBox.width, `${label}: ширина <img> ниже ${PHOTO_MIN_IMG_WIDTH_RATIO * 100}% ширины панели`)
-            .toBeGreaterThanOrEqual(PHOTO_MIN_IMG_WIDTH_RATIO);
+          // Трио-лента (≤599px, раздел 3.3 брифа) — особый случай: кадр
+          // НАРОЧНО занимает 78% полосы, чтобы следующий выглядывал краем
+          // (это и есть предмет задачи, закрытой в этой правке — сторож
+          // «трио-лента … выглядывает краем» ниже). Порог 95% из 10.1.3
+          // рассчитан на панель со сплошным снимком, где кадр — это вся
+          // панель; для ленты он бы требовал ИМЕННО дефект, который здесь
+          // чинится, поэтому для неё действует отдельная, узкая полоса
+          // вокруг 78% (`flex: 0 0 78%` в `CaseSpread.astro`), а не 95%.
+          const isRibbon = await frame.evaluate((el) => {
+            const trio = el.querySelector('.shots.trio');
+            return trio ? getComputedStyle(trio).display === 'flex' : false;
+          });
+          if (isRibbon) {
+            const ratio = imgWidth / panelBox.width;
+            expect(ratio, `${label}: кадр трио-ленты ${(ratio * 100).toFixed(1)}% — ниже проектной полосы ${TRIO_RIBBON_IMG_WIDTH_MIN * 100}…${TRIO_RIBBON_IMG_WIDTH_MAX * 100}% (78% ± допуск)`)
+              .toBeGreaterThanOrEqual(TRIO_RIBBON_IMG_WIDTH_MIN);
+            expect(ratio, `${label}: кадр трио-ленты ${(ratio * 100).toFixed(1)}% — выше проектной полосы ${TRIO_RIBBON_IMG_WIDTH_MIN * 100}…${TRIO_RIBBON_IMG_WIDTH_MAX * 100}% (78% ± допуск)`)
+              .toBeLessThanOrEqual(TRIO_RIBBON_IMG_WIDTH_MAX);
+          } else {
+            expect(imgWidth / panelBox.width, `${label}: ширина <img> ниже ${PHOTO_MIN_IMG_WIDTH_RATIO * 100}% ширины панели`)
+              .toBeGreaterThanOrEqual(PHOTO_MIN_IMG_WIDTH_RATIO);
+          }
         }
 
         if (svgCopies > 0) {
@@ -294,6 +324,61 @@ for (const url of CASE_PAGES) {
       }
     }
   });
+}
+
+/* --------------------------------------------------------------------------
+ * Раздел 3.3 брифа, дефект найден и закрыт в этой задаче: на ≤599px трио-
+ * лента (`.shots.trio { display: flex; overflow-x: auto }`) обязана
+ * показывать край СЛЕДУЮЩЕГО кадра при `scrollLeft = 0` — иначе читатель не
+ * понимает, что лента вообще прокручивается. Было: `flex: 0 0 78%` не
+ * действовал — общее правило `.frame img { width: 100% }` задавало
+ * «специфицированную» ширину, автоматический минимум флекс-элемента
+ * (`min-width: auto`, спецификация п. 4.5) вычислялся из неё и перебивал
+ * `flex-basis`, каждый `<img>` занимал 100% ленты, кадры лежали встык без
+ * зазора обзора. Правило `.shots.trio img { min-width: 0 }` выключает этот
+ * автоматический минимум.
+ *
+ * Порог N = 24px: заведомо больше зазора между кадрами (`gap: 16px`) — иначе
+ * то, что видно, нельзя отличить от простого зазора, а не от кадра — и с
+ * запасом почти в 2,6 раза ниже фактического пика на самой узкой из двух
+ * проверяемых ширин (390px даёт 62,8px, 599px — 105,2px, замер
+ * `getBoundingClientRect()` до правки и после — см. комментарий в
+ * `CaseSpread.astro`). N не привязан к самим измеренным числам, чтобы
+ * сторож не был хрупким к субпиксельным колебаниям раскладки.
+ *
+ * Список страниц — из `dist/` (ловушка 15/21, `50-code/CLAUDE.md`), не
+ * вписан руками: сегодня трио несёт только `zayavka-hub`, бриф отдаёт его
+ * всем пяти кейсам следующей задачей, и цикл подхватит их сам.
+ * ------------------------------------------------------------------------*/
+const TRIO_PEEK_MIN_PX = 24;
+
+for (const url of CASE_PAGES) {
+  for (const width of [390, 599]) {
+    test(`трио-лента ${url} @ ${width}px — следующий кадр выглядывает краем не меньше ${TRIO_PEEK_MIN_PX}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(url, { waitUntil: 'load' });
+
+      const trios = page.locator('.shots.trio');
+      const count = await trios.count();
+      for (let i = 0; i < count; i++) {
+        const trio = trios.nth(i);
+        const label = `${url} @ ${width}px, лента ${i + 1}/${count}`;
+        const measured = await trio.evaluate((el) => {
+          const imgs = el.querySelectorAll('img');
+          if (imgs.length < 2) return null;
+          const containerRect = el.getBoundingClientRect();
+          const second = imgs[1].getBoundingClientRect();
+          return { scrollLeft: el.scrollLeft, peek: containerRect.right - second.left };
+        });
+        if (measured === null) continue; // меньше двух кадров — выглядывать нечему
+
+        expect(measured.scrollLeft, `${label}: замер обязан идти при scrollLeft = 0`).toBe(0);
+        console.log(`[case-spread-trio-peek] ${label} — второй кадр виден на ${measured.peek.toFixed(1)}px`);
+        expect(measured.peek, `${label}: второй кадр виден лишь на ${measured.peek.toFixed(1)}px — ниже порога ${TRIO_PEEK_MIN_PX}px`)
+          .toBeGreaterThanOrEqual(TRIO_PEEK_MIN_PX);
+      }
+    });
+  }
 }
 
 /* --------------------------------------------------------------------------
