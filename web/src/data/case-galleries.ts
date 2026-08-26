@@ -5,12 +5,12 @@ export interface CaseGallerySlide {
   src: string;
   alt: string;
   project: string;
-  subject: 'магазина' | 'сайта' | 'shop' | 'website';
+  subject: 'магазина' | 'сайта' | 'shop' | 'website' | 'консультанта';
 }
 
 /* Манифест кэшируется браузером отдельно от HTML. Версия в URL обязательна:
    иначе новая сборка могла получить старые пути слайдов ещё на пять минут. */
-export const CASE_GALLERIES_URL = '/case-galleries.json?v=4';
+export const CASE_GALLERIES_URL = '/case-galleries.json?v=5';
 
 export const STOREFRONT_SLIDES: readonly CaseGallerySlide[] = [
   {
@@ -141,6 +141,39 @@ export const WEBSITE_SLIDES: readonly CaseGallerySlide[] = [
     alt: 'Карточка кресла Arc Chair 02 в галерее Forma Editions',
     project: 'Forma Editions',
     subject: 'сайта',
+  },
+];
+
+/** Раздел 4.4 брифа: три кадра рабочего стенда `50-code/rag-consultant`,
+ *  снятые с временным токеном (`INGEST_TOKEN=demo-token`), без секретов в
+ *  кадре. Порядок совпадает с порядком разворотов `AI_CONSULTANT_SPREADS`
+ *  (`data/case-spreads.ts`): только первый кадр страницы несёт литеральный
+ *  `src`, эти три — манифест `/case-galleries.json` (раздел 10.2 брифа), тот
+ *  же приём, что уже несут `storefront`/`websites`. Плашка `DEMO —
+ *  СИНТЕТИЧЕСКИЕ ДАННЫЕ» наложена на сам кадр при съёмке (стенд — чужой
+ *  репозиторий, его разметку менять нельзя), тем же приёмом, что жёлтый знак
+ *  `DEMO / DRY-RUN` у `zayavka-hub` (раздел 4.3 брифа). */
+export const AI_CONSULTANT_SLIDES: readonly CaseGallerySlide[] = [
+  {
+    label: 'Ответ',
+    src: '/cases/ai-consultant/widget-answer.avif',
+    alt: 'Виджет консультанта отвечает на вопрос о цене маникюра и показывает источник uslugi-i-ceny.md',
+    project: 'Консультант',
+    subject: 'консультанта',
+  },
+  {
+    label: 'Отказ',
+    src: '/cases/ai-consultant/widget-refusal.avif',
+    alt: 'Виджет консультанта отвечает, что не нашел вопрос о погоде в материалах салона, и просит уточнить у администратора',
+    project: 'Консультант',
+    subject: 'консультанта',
+  },
+  {
+    label: 'База знаний',
+    src: '/cases/ai-consultant/admin-knowledge-base.avif',
+    alt: 'Админ-панель базы знаний со списком файлов и открытым текстом материала об услугах и ценах',
+    project: 'Консультант',
+    subject: 'консультанта',
   },
 ];
 

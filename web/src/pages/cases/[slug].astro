@@ -37,10 +37,10 @@ const structuredData = caseStudySchema({
 });
 
 /* Развороты — 70-workshop/specs/site-v3/12-case-pages-brief.md, раздел 2
-   (правило разворота) и раздел 4 (устройство каждого кейса). Перенесены
-   `zayavka-hub`, `websites`, `storefront` и `site-v3`; `ai-consultant`
-   остаётся в нынешнем устройстве — у него нет кадров (раздел 4.4/5 брифа),
-   `caseSpreads()` возвращает для него пустой массив. */
+   (правило разворота) и раздел 4 (устройство каждого кейса). Перенесены все
+   пять кейсов: `zayavka-hub`, `websites`, `storefront`, `site-v3` и
+   `ai-consultant` (раздел 4.4 — три кадра сняты со стенда
+   `50-code/rag-consultant`). */
 const spreads = caseSpreads(item.slug);
 const hasSpreads = spreads.length > 0;
 
@@ -51,10 +51,14 @@ const hasSpreads = spreads.length > 0;
    идут по манифесту (иначе девять кадров по ~100…120 КБ дают > 1 МБ
    литералом, замерено при первой сборке этой правки). У `zayavka-hub`
    кадры лёгкие (19…38 КБ) и манифеста для них нет — ключ не задаётся,
-   `CaseSpread` оставляет прежний литеральный `src` на всех кадрах. */
+   `CaseSpread` оставляет прежний литеральный `src` на всех кадрах.
+   `ai-consultant` (раздел 4.4 брифа) несёт манифест наравне с
+   `websites`/`storefront` — «только первый кадр страницы литерален»
+   действует по устройству, а не по весу конкретных файлов. */
 const CASE_SPREAD_GALLERY_KEY: Readonly<Record<string, string>> = {
   websites: 'websites-ru',
   storefront: 'storefront-ru',
+  'ai-consultant': 'ai-consultant-ru',
 };
 const spreadGalleryKey = CASE_SPREAD_GALLERY_KEY[item.slug];
 let spreadImageOffset = 0;
