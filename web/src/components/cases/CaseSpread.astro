@@ -67,6 +67,14 @@ const images = spread.images ?? [];
 const checks = spread.checks ?? [];
 const frameWidth = String(spread.frameWidth ?? 1586);
 const frameHeight = String(spread.frameHeight ?? 992);
+/* Раздел 3.5 брифа: одиночный портретный кадр (виджет консультанта,
+ * 1000×1250) берёт не полосу кадра (62%), а 40% содержимого — иначе панель
+ * 702px высотой 878px не помещается в окно ноутбука вместе с шапкой.
+ * Правило общее для любого будущего одиночного `photo` с портретной
+ * пропорцией (высота больше ширины), не только для `ai-consultant`: раскрой
+ * читается из формы кадра, а не из имени кейса. */
+const isPortraitSingle =
+  spread.kind === 'photo' && images.length === 1 && Number(frameHeight) > Number(frameWidth);
 /* Панель без кадра у КЕЙСА `site-v3` («Замер», «Проверка на месте») несёт
  * внутренний отступ (П-3: «внутренний отступ панели 32 px на 1440 и 768,
  * 16 px на 390») — панель с настоящим кадром отступа не несёт (кадр — это и
@@ -75,7 +83,7 @@ const frameHeight = String(spread.frameHeight ?? 992);
  * сдана и не трогается — `isInset` ограничен новыми двумя видами. */
 const isInset = spread.kind === 'weight' || spread.kind === 'checklist';
 ---
-<div class="spread" data-case-spread class:list={{ mirror }}>
+<div class="spread" data-case-spread class:list={{ mirror, portrait: isPortraitSingle }}>
   <div class="frame" data-spread-frame class:list={{ inset: isInset }}>
     {spread.kind === 'schema' ? (
       <CaseFlowIllustration single="b" />
@@ -160,6 +168,18 @@ const isInset = spread.kind === 'weight' || spread.kind === 'checklist';
   .spread.mirror { grid-template-columns: 1fr 62%; }
   .spread.mirror .frame { order: 2; }
   .spread.mirror .caption { order: 1; }
+
+  /* Раздел 3.5 брифа: одиночный портретный кадр (виджет консультанта)
+     берёт 40% содержимого, не 62% полосы кадра — иначе панель получается
+     выше окна ноутбука вместе с шапкой и разворот перестаёт читаться одним
+     взглядом. Ограничено `min-width: 900px` (а не общим `.spread`),
+     потому что на ≤899px `.spread` и так падает в одну колонку ниже — без
+     этого условия правило 40%/1fr победило бы там мобильный раскрой по
+     специфичности (два класса против одного) независимо от порядка. */
+  @media (min-width: 900px) {
+    .spread.portrait { grid-template-columns: 40% 1fr; }
+    .spread.portrait.mirror { grid-template-columns: 1fr 40%; }
+  }
 
   /* Поле НИКОГДА не несёт фиксированную высоту (сторож 10.1.3, П-3): высота
      панели = высота содержимого. Ни `height`, ни `min-height` здесь нет. */
