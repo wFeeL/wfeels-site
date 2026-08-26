@@ -132,10 +132,65 @@ export const PROCESS_HEADING = 'Как я работаю';
   .num {
     grid-column: 1;
     grid-row: 1;
+    position: relative;
     font: 800 2.5rem/1 var(--font-head);
     letter-spacing: -0.02em;
     color: var(--accent);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Линия-рассказчик, раздел 3 П4 брифа `11-line-narrator-brief.md`:
+     подчёркивание цифры — метка, что спина до неё дошла. `left: -8px` —
+     левый край подчёркивания встык к носу засечки спины (бриф: «x=162px»,
+     на 8px левее самой цифры, «x=170px» — тот же зазор, независимо от
+     ширины/масштаба, потому что оба числа читаются от одного и того же
+     края колонки). Дефолт (вне @supports/@media ниже) — КОНЕЧНОЕ
+     состояние (раздел 7.5: «конечное — по умолчанию»): подчёркивание
+     видно целиком при `reduce`, без поддержки `animation-timeline`, в
+     печати и ниже 900px. Сам глиф цифры не трогается — он уже акцентом в
+     полную непрозрачность. */
+  .num::after {
+    content: '';
+    position: absolute;
+    left: -8px;
+    right: 0;
+    bottom: -4px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--accent);
+    pointer-events: none;
+    transform-origin: left;
+    transform: scaleX(1);
+  }
+
+  /* Своя (безымянная) шкала вида НА САМОЙ ЦИФРЕ — не именованная шкала
+     секции: диапазон `cover var(--line-lead) … cover calc(100% -
+     var(--line-trail))` обязан прийтись на коробку самой цифры, тем же
+     доводом, что и у кнопки первого экрана (раздел 3 П2 брифа). Пять
+     цифр = пять экземпляров ОДНОГО правила — ни одного числа в CSS,
+     момент срабатывания каждой считает браузер из её собственной коробки
+     (раздел 3 П6 брифа: сдвиг раскладки правило не ломает). От 900px —
+     рассказу нет места на мобильной раскладке (раздел 7 п.6, приёмка
+     П-15). `fill-mode: both` — подчёркивание обязано стоять на
+     `scaleX(0)` ДО прихода линии, а не показывать конечное состояние. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      @media (min-width: 900px) {
+        .num::after {
+          transform: scaleX(0);
+          animation-name: process-num-underline;
+          animation-duration: 1ms;
+          animation-timing-function: linear;
+          animation-fill-mode: both;
+          animation-timeline: view();
+          animation-range: cover var(--line-lead) cover calc(100% - var(--line-trail));
+        }
+      }
+    }
+  }
+  @keyframes process-num-underline {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
   }
 
   /* Заголовок шага — `.t-body-lg` текстовым шрифтом, не `.t-h3` в Unbounded

@@ -21,6 +21,14 @@ import { HOME_SECTIONS } from '../../lib/sections';
  *  `LINE_PATHS[id].wide` — не «геометрически похож», а тот же самый текст,
  *  потому что сборка не трансформирует `d` никак между TS-строкой и HTML.
  *
+ *  ПРАВКА `70-workshop/specs/site-v3/11-line-narrator-brief.md`, раздел 3
+ *  П4 (решение D-125): секция может нести ВТОРОЙ `<path class="line-
+ *  branch">` в той же коробке — селектор основной проверки сужен до
+ *  `:not(.line-branch)` (раздел 4 брифа: «ломается и правится»), а ветви
+ *  проверяются СИММЕТРИЧНО отдельным блоком ниже — против
+ *  `LINE_PATHS[id].branch`, тем же приёмом («страница рисует не тот путь,
+ *  что нарисован реестром» — и обратно).
+ *
  *  Доказательство красноты (без этого сторож — просто прозаическое
  *  обещание, а не тест): отчёт исполнителя воспроизводит падение прямым
  *  экспериментом — временно возвращает рисование из локальной функции
@@ -34,7 +42,7 @@ test.describe('линия на фоне — страница рисует пут
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
 
-    const rendered = await page.locator('[data-line-side] > svg.line > path').evaluateAll((paths) =>
+    const rendered = await page.locator('[data-line-side] > svg.line > path:not(.line-branch)').evaluateAll((paths) =>
       paths.map((p) => {
         const owner = p.closest('[data-line-side]') as HTMLElement;
         const ownerId = owner.id || owner.tagName.toLowerCase();
@@ -74,6 +82,56 @@ test.describe('линия на фоне — страница рисует пут
       expect(ownerIds, `запись LINE_PATHS['${key}'] не соответствует ни одной секции на странице`).toContain(
         key,
       );
+    }
+  });
+});
+
+test.describe('линия на фоне — ветви рисуются из реестра (11-line-narrator-brief.md, раздел 3 П4, решение D-125)', () => {
+  test('атрибут d каждого svg.line path.line-branch совпадает с LINE_PATHS[id].branch', async ({ page }) => {
+    // От 900px — .line-branch видим только там (BackgroundLine.astro),
+    // а видимость через `display:none` не снимает узел из DOM, значит
+    // локатор находит его при любой ширине; ширина берётся ≥900px просто
+    // для единообразия с остальными сторожами линии.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+
+    const rendered = await page.locator('[data-line-side] > svg.line > path.line-branch').evaluateAll((paths) =>
+      paths.map((p) => {
+        const owner = p.closest('[data-line-side]') as HTMLElement;
+        const ownerId = owner.id || owner.tagName.toLowerCase();
+        return { ownerId, d: p.getAttribute('d') };
+      }),
+    );
+
+    const branchIds = Object.keys(LINE_PATHS).filter((id) => Boolean(LINE_PATHS[id].branch));
+    expect(rendered.length, 'число нарисованных .line-branch разошлось с числом записей реестра с полем branch').toBe(
+      branchIds.length,
+    );
+
+    for (const { ownerId, d } of rendered) {
+      const entry = LINE_PATHS[ownerId];
+      expect(entry?.branch, `в LINE_PATHS['${ownerId}'] нет поля branch, а страница рисует .line-branch`).toBeTruthy();
+      expect(
+        d,
+        `«${ownerId}»: атрибут d у .line-branch разошёлся с LINE_PATHS['${ownerId}'].branch`,
+      ).toBe(entry!.branch);
+    }
+  });
+
+  test('в LINE_PATHS нет поля branch, которое не нарисовано ни на одной секции страницы', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+
+    const ownerIdsWithBranch = await page.locator('[data-line-side]:has(> svg.line > path.line-branch)').evaluateAll((els) =>
+      els.map((el) => el.id || el.tagName.toLowerCase()),
+    );
+
+    for (const [key, entry] of Object.entries(LINE_PATHS)) {
+      if (!entry.branch) continue;
+      expect(
+        ownerIdsWithBranch,
+        `LINE_PATHS['${key}'].branch задан, но на странице у «${key}» нет .line-branch`,
+      ).toContain(key);
     }
   });
 });

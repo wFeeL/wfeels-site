@@ -105,6 +105,12 @@ const linePath = id ? LINE_PATHS[id] : undefined;
         aria-hidden="true"
       >
         <path d={linePath.wide} />
+        {/* Ветвь (раздел 3 П4 брифа `11-line-narrator-brief.md`, решение
+            D-125) — второй путь В ТОЙ ЖЕ коробке, раскрывается той же
+            шторкой выше (шторка кроет содержимое коробки целиком, второй
+            путь дорисовывается синхронно, второй механики не заводится).
+            Видимость от 900 px — правило в `BackgroundLine.astro`. */}
+        {linePath.branch && <path class="line-branch" d={linePath.branch} />}
       </svg>
       {/* Шторка — задача «пролагивает при листании» (D-080). Открывает путь
           выше через `transform: scaleY(...)` (композитится, не перекрашивает),
