@@ -105,7 +105,15 @@ const ui = GALLERY_UI[locale];
     display: grid;
     place-items: center;
     overflow: clip;
-    background: var(--surface);
+    /* Линия-рассказчик (`70-workshop/specs/site-v3/11-line-narrator-brief.md`,
+       раздел 10.3, Р-1): поле `CaseIllustrationField` вокруг этой галереи
+       рисуется `bare` (`illustrationBare` в `Cases.astro`) — прозрачным,
+       без собственного паспарту. Но сама подложка сцены под скрином несла
+       СОБСТВЕННУЮ непрозрачную заливку `--surface` и оставалась тем самым
+       непрозрачным листом, который правило кальки обязано было снять, а не
+       заглаживало намерением — приёмка (П-19) меряет результат. Та же
+       плотность 62%, что и у остальных листов главной. */
+    background: color-mix(in srgb, var(--surface) 62%, transparent);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
   }
