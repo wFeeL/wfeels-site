@@ -356,13 +356,21 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
      сломало бы почтовый значок, собираемый через `set:html` (комментарий у
      разметки выше). */
   .icon-links { display: flex; gap: 12px; margin: 0; }
+  /* Решение З-6 (раздел 15.6 брифа): контраст обводки к фону подвала был
+     1,33/1,45 (светлая/тёмная, `--border`) при пороге интерфейсных границ
+     3:1 — значок с невидимой обводкой не значок, а иконка в воздухе. Замена
+     на `--text-muted` в покое даёт 5,15/7,19, на `--text` в наведении и
+     фокусе — 16,06/14,74 (WCAG 2.1 1.4.3, тот же расчёт, что `tokens.test.ts`,
+     фон подвала — `#EFF1F4`/`#0B101A`): обе строки проходят с запасом, и
+     наведение остаётся контрастнее покоя (прежнее правило на `--text-faint`
+     делало наоборот — глушило обводку под курсором). */
   .icon-links :global(.icon-link) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 44px;
     height: 44px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--text-muted);
     border-radius: var(--radius-pill);
     color: var(--text-muted);
     transition: color var(--dur-micro) var(--ease),
@@ -371,7 +379,19 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
   .icon-links :global(.icon-link:hover),
   .icon-links :global(.icon-link:focus-visible) {
     color: var(--text);
-    border-color: var(--text-faint);
+    border-color: var(--text);
+  }
+
+  /* То же правило обводки — на secondary-кнопку полосы действия (З-2 понизил
+     её с primary): обведённая кнопка с невидимой обводкой хуже залитой.
+     Правило объявлено ЛОКАЛЬНО здесь, а не в `Button.astro`: у secondary-
+     кнопок вне подвала другой фон страницы и другой расчёт контраста. */
+  .cta-act :global(.btn.secondary) {
+    border-color: var(--text-muted);
+  }
+  .cta-act :global(.btn.secondary:hover),
+  .cta-act :global(.btn.secondary:focus-visible) {
+    border-color: var(--text);
   }
 
   /* Юридический ряд: столбиком по 44 px до 900 px (раздел 4.5 — своя точка
