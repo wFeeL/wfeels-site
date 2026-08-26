@@ -43,25 +43,25 @@ export const PRICING_EN: Record<string, PriceGroupText> = {
       'Лендинг из шаблона': {
         name: 'Landing page from a template',
         whatIncluded: 'a ready template, your own content, no migration and no OCR',
-        price: '15 000 ₽',
+        price: '10 000 ₽',
         note: null,
       },
       'Лендинг с индивидуальным дизайном': {
         name: 'Landing page with custom design',
         whatIncluded: 'design from scratch, animation, enquiry form, responsive layout',
-        price: '30 000 ₽',
+        price: '20 000 ₽',
         note: null,
       },
       'Сайт до 5 страниц': {
         name: 'Website up to 5 pages',
         whatIncluded: 'design system, navigation, forms, SEO basics, deploy',
-        price: '50 000 ₽',
+        price: '30 000 ₽',
         note: null,
       },
       'Сайт до 10 страниц': {
         name: 'Website up to 10 pages',
         whatIncluded: 'the same over a larger body of content',
-        price: '70 000 ₽',
+        price: '45 000 ₽',
         note: null,
       },
       'Больше 10 страниц': {
@@ -73,13 +73,13 @@ export const PRICING_EN: Record<string, PriceGroupText> = {
       'Аудит сайта + план правок': {
         name: 'Website audit + a plan of fixes',
         whatIncluded: 'a review, a list of problems, priorities — in writing',
-        price: '4 000 ₽',
+        price: '3 000 ₽',
         note: null,
       },
       'Доработка чужого сайта или бота': {
         name: "Changes to someone else’s site or bot",
         whatIncluded: null,
-        price: '2 100 ₽/hr, minimum 6 000 ₽',
+        price: '1 400 ₽/hr, minimum 4 000 ₽',
         note: 'the 1.4 risk factor is already in the rate',
       },
     },
@@ -90,19 +90,19 @@ export const PRICING_EN: Record<string, PriceGroupText> = {
       'Одна интеграция': {
         name: 'One integration',
         whatIncluded: 'form→CRM, payments, export to a spreadsheet, webhook',
-        price: '7 500 ₽',
+        price: '5 000 ₽',
         note: null,
       },
       'Backend / REST API': {
         name: 'Backend / REST API',
         whatIncluded: 'database schema, layers, migrations, authentication, tests, Swagger',
-        price: '35 000 ₽',
+        price: '20 000 ₽',
         note: null,
       },
       'Панель обращений / админка': {
         name: 'Enquiry dashboard / admin panel',
         whatIncluded: 'intake, statuses, filters, export, roles',
-        price: '45 000 ₽',
+        price: '30 000 ₽',
         note: null,
       },
     },
@@ -115,7 +115,7 @@ export const PRICING_EN: Record<string, PriceGroupText> = {
         whatIncluded:
           'up to 30 pages from you, a widget for the site, quoted sources, ' +
           'a refusal when the facts are missing',
-        price: '18 000 ₽',
+        price: '12 000 ₽',
         note: null,
       },
       'Консультант со сбором материалов': {
@@ -123,7 +123,7 @@ export const PRICING_EN: Record<string, PriceGroupText> = {
         whatIncluded:
           'collecting and structuring the sources, tuning the thresholds, ' +
           'testing on real questions',
-        price: '40 000 ₽',
+        price: '25 000 ₽',
         note: null,
       },
     },
@@ -134,25 +134,25 @@ export const PRICING_EN: Record<string, PriceGroupText> = {
       'Бот-приемщик заявок': {
         name: 'Enquiry intake bot',
         whatIncluded: 'one flow, notifications, no admin panel',
-        price: '9 000 ₽',
+        price: '6 000 ₽',
         note: null,
       },
       'Бот под задачу': {
         name: 'Custom bot',
         whatIncluded: 'flows, database, roles, admin commands, deploy',
-        price: '18 000 ₽',
+        price: '12 000 ₽',
         note: null,
       },
       'Mini App-витрина': {
         name: 'Mini App showcase',
         whatIncluded: 'a catalogue or a form, no stored state and no admin panel',
-        price: '30 000 ₽',
+        price: '20 000 ₽',
         note: null,
       },
       'Mini App-инструмент': {
         name: 'Mini App tool',
         whatIncluded: 'database, `initData`→JWT auth, admin panel, roles, notifications',
-        price: '85 000 ₽',
+        price: '55 000 ₽',
         note: null,
       },
     },
@@ -163,7 +163,7 @@ export const PRICING_EN: Record<string, PriceGroupText> = {
       'Пакет поддержки': {
         name: 'Support package',
         whatIncluded: null,
-        price: '10 000 ₽/mo',
+        price: '6 000 ₽/mo',
         note: '5 hours a month, priority, unused time partly carries over',
       },
       'Поддержка по запросу': {

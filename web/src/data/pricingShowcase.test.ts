@@ -22,18 +22,18 @@ describe('pricingShowcase — три верхние карточки-напра�
     ]);
   });
 
-  it('цены карточек — 30 000 / 50 000 / 18 000 ₽, дословно из data/pricing.ts', () => {
-    expect(TOP_CARDS.map((c) => c.price)).toEqual(['30 000 ₽', '50 000 ₽', '18 000 ₽']);
+  it('цены карточек — 20 000 / 30 000 / 12 000 ₽, дословно из data/pricing.ts', () => {
+    expect(TOP_CARDS.map((c) => c.price)).toEqual(['20 000 ₽', '30 000 ₽', '12 000 ₽']);
   });
 
   it('сроки карточек — от 5 / от 8 / от 3 дней (решение владельца 2026-08-13)', () => {
     expect(TOP_CARDS.map((c) => c.timeframe)).toEqual(['от 5 дней', 'от 8 дней', 'от 3 дней']);
   });
 
-  it('ступень «Лендинг из шаблона» (15 000 ₽) и «Сайт до 10 страниц» (70 000 ₽) среди карточек нет', () => {
+  it('ступень «Лендинг из шаблона» (10 000 ₽) и «Сайт до 10 страниц» (45 000 ₽) среди карточек нет', () => {
     for (const card of TOP_CARDS) {
-      expect(card.price).not.toBe('15 000 ₽');
-      expect(card.price).not.toBe('70 000 ₽');
+      expect(card.price).not.toBe('10 000 ₽');
+      expect(card.price).not.toBe('45 000 ₽');
     }
   });
 
@@ -76,12 +76,12 @@ describe('pricingShowcase — полка из шести карточек', () =
 
   it('цены полки — дословно из data/pricing.ts', () => {
     const byLabel = Object.fromEntries(SHELF_CARDS.map((c) => [c.label, c.price]));
-    expect(byLabel['Лендинг на готовом шаблоне']).toBe('15 000 ₽');
-    expect(byLabel['Бот-приемщик заявок']).toBe('9 000 ₽');
-    expect(byLabel['Автоматизация и интеграции']).toBe('7 500 ₽');
-    expect(byLabel['ИИ-консультант']).toBe('18 000 ₽');
-    expect(byLabel['Поддержка']).toBe('10 000 ₽/мес');
-    expect(byLabel['Аудит сайта']).toBe('4 000 ₽');
+    expect(byLabel['Лендинг на готовом шаблоне']).toBe('10 000 ₽');
+    expect(byLabel['Бот-приемщик заявок']).toBe('6 000 ₽');
+    expect(byLabel['Автоматизация и интеграции']).toBe('5 000 ₽');
+    expect(byLabel['ИИ-консультант']).toBe('12 000 ₽');
+    expect(byLabel['Поддержка']).toBe('6 000 ₽/мес');
+    expect(byLabel['Аудит сайта']).toBe('3 000 ₽');
   });
 
   it('у каждой карточки полки есть непустая ссылка на посадочную', () => {
