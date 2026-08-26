@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { LINE_PATHS } from '../../lib/linePaths';
 
 /** Тест «чернил» — бриф `70-workshop/specs/site-v3/05-line.md`, раздел 1.1
  *  и раздел 10, шаг 1.
@@ -187,8 +188,21 @@ test.describe('линия на фоне — тест чернил (05-line.md, �
     await page.goto('/');
 
     const results = await measureInkAtPathEnds(page);
-    expect(results.length, 'на странице должно быть 11 путей линии (10 секций + хвост подвала, раздел 10 шаг 4)')
-      .toBe(11);
+    // Число путей на странице не вписано числом: помимо основного `wide`-пути
+    // на каждую запись реестра (10 секций + хвост подвала), запись может
+    // нести второй путь `.line-branch` (раздел 3 П4 брифа
+    // `11-line-narrator-brief.md`, решение D-125, `linePaths.ts` —
+    // `LINE_PATHS[id].branch`). Число веток растёт независимо от числа
+    // секций — ожидание выводится из самого реестра, а не переписывается
+    // руками на каждом новом `.branch` (ловушки 15/21/24, `50-code/CLAUDE.md`).
+    const registryKeys = Object.keys(LINE_PATHS);
+    const branchCount = registryKeys.filter((id) => Boolean(LINE_PATHS[id].branch)).length;
+    const expectedPathCount = registryKeys.length + branchCount;
+    expect(
+      results.length,
+      `на странице должно быть ${expectedPathCount} путей линии: ${registryKeys.length} записей ` +
+      `реестра (секции + хвост подвала) + ${branchCount} со своей .line-branch`,
+    ).toBe(expectedPathCount);
 
     const failing = results.filter((r) => !r.hasInk);
     const report = failing
