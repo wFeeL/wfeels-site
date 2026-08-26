@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { caseGallerySlides, caseNarrative, caseServiceLinks } from '../data/casePages';
 import { caseHref, publishedCases } from '../data/cases';
+import { caseSpreads } from '../data/case-spreads';
 
 const DIST = fileURLToPath(new URL('../../dist/', import.meta.url));
 const read = (path: string) => readFileSync(`${DIST}${path}`, 'utf8');
@@ -53,8 +54,16 @@ describe('dist/cases — индексируемый каталог и detail-с�
    * `[STOREFRONT_SLIDES[0], STOREFRONT_SLIDES[3], STOREFRONT_SLIDES[6]]` /
    * `[WEBSITE_SLIDES[0], WEBSITE_SLIDES[6]]` валит именно эту проверку
    * (`toBe(9)`) на обеих галереях. */
-  it('две detail-галереи выводят все девять кадров, первый — без JavaScript', () => {
-    for (const slug of ['storefront', 'websites']) {
+  /* `websites` донашивает разметку `CaseGallery` только пока у него нет
+   * разворотов (раздел 3.7 брифа «Развороты»: «секция «Экраны» с
+   * `CaseGallery` снимается целиком… на странице кейса не выводится»). Список
+   * галерей выводится из `caseSpreads()`, а не вписан руками — тот же приём,
+   * что уже требует `50-code/CLAUDE.md`, ловушка 15/21: как только у
+   * следующего кейса появятся развороты, он сам уйдёт из этого списка. */
+  it('detail-галереи без разворотов выводят все девять кадров, первый — без JavaScript', () => {
+    const galleryCases = ['storefront', 'websites'].filter((slug) => caseSpreads(slug).length === 0);
+    expect(galleryCases, 'хотя бы одна галерея ещё не переехала на развороты').not.toHaveLength(0);
+    for (const slug of galleryCases) {
       const html = read(`cases/${slug}/index.html`);
       const slides = caseGallerySlides(slug);
       expect(slides.length, slug).toBe(9);
@@ -84,7 +93,29 @@ describe('dist/cases — индексируемый каталог и detail-с�
       expect(markers.length, `${slug}: число помеченных кадров`).toBe(9);
     }
     expect(read('cases/storefront/index.html')).toContain('width="780" height="1688"');
-    expect(read('cases/websites/index.html')).toContain('width="1586" height="992"');
+  });
+
+  /* `websites` перешёл на развороты (раздел 4.2 брифа) — девять кадров
+   * группами по три («крупный + два подкадра»), каждый со своим `alt`
+   * (`data/case-spreads.ts`), а не сеткой `CaseGallery`. Первый кадр
+   * страницы литеральный `src`, остальные восемь идут по манифесту
+   * `/case-galleries.json` тем же ключом `websites-ru`, что раньше отдавал
+   * их `CaseGallery` — раздел 10.2 брифа («все кадры, кроме первого на
+   * странице, идут без атрибута `src`»). */
+  it('websites: разворот выводит все девять кадров, первый — без JavaScript', () => {
+    const html = read('cases/websites/index.html');
+    const slides = caseSpreads('websites').flatMap((spread) => spread.images ?? []);
+    expect(slides.length, 'websites: суммарно девять кадров по трём разворотам').toBe(9);
+
+    expect(html, 'websites: первый кадр без src').toContain(`src="${slides[0].src}"`);
+    for (const slide of slides.slice(1)) {
+      expect(html, `websites: ${slide.src} не должен быть в первой загрузке`)
+        .not.toContain(`src="${slide.src}"`);
+    }
+    for (const slide of slides) {
+      expect(html, `websites: ${slide.alt}`).toContain(`alt="${slide.alt}"`);
+    }
+    expect(html).toContain('width="1586" height="992"');
   });
 
   it('связанные услуги ссылаются обратно на те же кейсы', () => {

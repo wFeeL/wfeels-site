@@ -16,6 +16,7 @@
  */
 import CaseFlowIllustration from '../home/CaseFlowIllustration.astro';
 import type { CaseSpread as CaseSpreadData } from '../../data/case-spreads';
+import { CASE_GALLERIES_URL } from '../../data/case-galleries';
 
 interface Props {
   spread: CaseSpreadData;
@@ -23,8 +24,19 @@ interface Props {
    *  (`index % 2 === 1` даёт зеркало, раздел 3.1: «первый разворот всегда
    *  кадром слева», формула та же, что уже несёт `CaseRow.astro`). */
   index: number;
+  /** Ключ манифеста `/case-galleries.json` (например `websites-ru`), когда
+   *  порядок кадров разворота совпадает с порядком слайдов той же галереи
+   *  (раздел 10.2 брифа: «все кадры, кроме первого на странице, идут без
+   *  атрибута `src`… подставляются наблюдателем из манифеста»). Без ключа
+   *  (`zayavka-hub` — лёгкие кадры 19…38 КБ, манифеста под них нет) все
+   *  кадры остаются с литеральным `src`, как раньше — регрессии для этого
+   *  кейса здесь нет. */
+  galleryKey?: string;
+  /** Позиция первого кадра ЭТОГО разворота в плоском списке манифеста —
+   *  считает вызывающая страница по кадрам всех предыдущих разворотов. */
+  imageOffset?: number;
 }
-const { spread, index } = Astro.props;
+const { spread, index, galleryKey, imageOffset = 0 } = Astro.props;
 const mirror = index % 2 === 1;
 const isTrio = spread.kind === 'photo-trio';
 const images = spread.images ?? [];
@@ -41,17 +53,31 @@ const images = spread.images ?? [];
         aria-label={isTrio ? spread.heading : undefined}
         tabindex={isTrio ? 0 : undefined}
       >
-        {images.map((img, i) => (
-          <img
-            class:list={{ big: isTrio && i === 0 }}
-            src={img.src}
-            alt={img.alt}
-            width="1586"
-            height="992"
-            loading="lazy"
-            decoding="async"
-          />
-        ))}
+        {images.map((img, i) => {
+          /* Раздел 10.2 брифа: только самый первый кадр страницы (первый
+             разворот, первый кадр) несёт литеральный `src` — гейт веса
+             (`check-budget.mjs`) считает `<img src>` независимо от
+             `loading="lazy"`. Девять кадров по ~100…120 КБ литералом дают
+             > 1 МБ на одной странице (замерено при первой сборке этой
+             правки — 1151,8 КБ против предела 500). */
+          const eager = index === 0 && i === 0;
+          const deferred = galleryKey && !eager;
+          return (
+            <img
+              class:list={{ big: isTrio && i === 0 }}
+              src={deferred ? undefined : img.src}
+              alt={img.alt}
+              width="1586"
+              height="992"
+              loading="lazy"
+              decoding="async"
+              data-gallery-screen={deferred ? true : undefined}
+              data-gallery-key={deferred ? galleryKey : undefined}
+              data-gallery-manifest={deferred ? CASE_GALLERIES_URL : undefined}
+              data-gallery-index={deferred ? imageOffset + i : undefined}
+            />
+          );
+        })}
       </div>
     )}
   </div>
@@ -190,15 +216,55 @@ const images = spread.images ?? [];
     if (window.__caseSpreadRevealInit) return;
     window.__caseSpreadRevealInit = true;
 
+    /* Раздел 10.2/8 брифа: кадры разворота, кроме самого первого на
+       странице, подставляются из того же манифеста `/case-galleries.json`,
+       что уже обслуживает `CaseGallery.astro` — один запрос манифеста на
+       страницу (промис кэшируется), подстановка — как только разворот
+       становится видимым (тот же триггер, что уже открывает разворот). */
+    var manifestPromises = {};
+    function loadManifest(url) {
+      if (!manifestPromises[url]) {
+        manifestPromises[url] = fetch(url).then(function (response) {
+          if (!response.ok) throw new Error('Gallery manifest unavailable');
+          return response.json();
+        });
+      }
+      return manifestPromises[url];
+    }
+    function revealImages(root) {
+      var imgs = Array.prototype.filter.call(
+        root.querySelectorAll('img[data-gallery-index]'),
+        function (img) { return !img.hasAttribute('src'); },
+      );
+      if (imgs.length === 0) return;
+      var first = imgs[0];
+      var key = first.getAttribute('data-gallery-key');
+      var slidesUrl = first.getAttribute('data-gallery-manifest');
+      if (!key || !slidesUrl) return;
+      loadManifest(slidesUrl).then(function (manifest) {
+        var slides = manifest[key];
+        if (!Array.isArray(slides)) throw new Error('Gallery data unavailable');
+        imgs.forEach(function (img) {
+          if (img.hasAttribute('src')) return;
+          var slideIndex = Number(img.getAttribute('data-gallery-index'));
+          var slide = slides[slideIndex];
+          if (slide && slide.src) img.src = slide.src;
+        });
+      }).catch(function () {
+        root.setAttribute('data-image-error', 'true');
+      });
+    }
+
     var els = document.querySelectorAll('[data-case-spread]');
     if (!('IntersectionObserver' in window)) {
-      els.forEach(function (el) { el.classList.add('is-visible'); });
+      els.forEach(function (el) { el.classList.add('is-visible'); revealImages(el); });
       return;
     }
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (entry.isIntersecting) {
           entry.target.classList.add('is-visible');
+          revealImages(entry.target);
           io.unobserve(entry.target);
         }
       });
