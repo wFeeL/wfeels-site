@@ -2,11 +2,11 @@ import { test, expect } from '@playwright/test';
 
 /** Линия-рассказчик — `70-workshop/specs/site-v3/11-line-narrator-brief.md`.
  *
- *  СКОП ЭТОГО ФАЙЛА — ТОЛЬКО П1 (непрерывность, уход за текст), П2 (кнопка
- *  первого экрана) и П6 (гасит на обратном пути). П3 (карточка «Корпоративный
- *  сайт»), П4 (спина шагов и цифры) и П5 (стрелка «Замера») — отдельная
- *  задача; когда она придёт, сторожа П-7…П-10б встают в этот же файл, а
- *  список в разделе 6 брифа («новых — один») закрывается целиком.
+ *  СКОП ЭТОГО ФАЙЛА — П1 (непрерывность, уход за текст), П2 (кнопка первого
+ *  экрана), П3 (карточка «Корпоративный сайт»), П4 (спина шагов и цифры) и
+ *  П6 (гасит на обратном пути). П5 (стрелка «Замера») — вне скопа этой
+ *  задачи: и отвод к полю, и сама стрелка — отдельная работа (граница
+ *  раздела задачи, «П5 не трогай»); её сторожа сюда не входят.
  *
  *  Общее правило приёмки (раздел 5 брифа): координаты целей тест читает
  *  САМ (`getBoundingClientRect()`), ни один абсолютный `y` документа не
@@ -323,5 +323,174 @@ test.describe('линия-рассказчик — П6/П12: ноль JavaScript
     expect(html).not.toContain('data-line-lit');
     expect(html).not.toContain('data-line-drawn');
     expect(html).not.toContain('data-lit');
+  });
+});
+
+test.describe('линия-рассказчик — П3: карточка «Корпоративный сайт», обвод в две фазы (раздел 3 П3; приёмка П-7)', () => {
+  const CARD_SELECTOR = '#pricing .top-grid > .card--accent';
+
+  async function barsScaleY(page: import('@playwright/test').Page) {
+    return page.locator(CARD_SELECTOR).evaluate((card) => {
+      const scaleYOf = (el: Element | null) => {
+        if (!el) return NaN;
+        const m = getComputedStyle(el).transform.match(/matrix\(([^)]+)\)/);
+        if (!m) return NaN;
+        return parseFloat(m[1].split(',')[3]);
+      };
+      return {
+        right: scaleYOf(card.querySelector('.line-outline--right')),
+        left: scaleYOf(card.querySelector('.line-outline--left')),
+      };
+    });
+  }
+
+  test('1440×900: у нуля прокрутки обе полосы на scaleY(0); правая рисуется первой, затем левая; на реверсе обе гаснут', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: VIEWPORT_1440_900 });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    await page.waitForTimeout(1600);
+
+    // 1) scrollY=0 — до прихода линии обе полосы убраны (П-5/fill-mode:both).
+    const atTop = await barsScaleY(page);
+    expect(atTop.right, 'при scrollY=0 правая полоса обязана быть на scaleY(0)').toBeLessThan(0.02);
+    expect(atTop.left, 'при scrollY=0 левая полоса обязана быть на scaleY(0)').toBeLessThan(0.02);
+
+    // Окно события читается с самой карточки (raздел 3 П6: чисел в тесте
+    // не больше, чем в CSS). ИСПРАВЛЕНО (проверено пробником с двойным
+    // `requestAnimationFrame` после `scrollTo` — см. ловушку 2, способ
+    // замера меняет число): у кнопки первого экрана единственная опорная
+    // точка — КОНЕЦ диапазона (`cover calc(100% − var(--line-trail))`),
+    // и она действительно равна `bottom − 0,67·vh`, ноль в формуле не
+    // нужен. У карточки нужны ОБЕ границы диапазона, а не одна, и НАЧАЛО
+    // диапазона (`cover var(--line-lead)`) устроено иначе: точка отсчёта
+    // самого `cover 0%` уже стоит на `top − vh` (коробка только показалась
+    // из-под низа экрана), и «зайти» на `--line-lead` (33vh) внутрь
+    // диапазона — прибавить, а не вычесть, эту долю: `(top − vh) +
+    // 0,33·vh = top − 0,67·vh`. Прежняя запись `top − 0,33·vh` пропускала
+    // слагаемое `−vh` целиком и указывала на точку почти на 900px (весь
+    // `vh`) позже настоящего начала — измеримо: буквальный прогон с этой
+    // формулой давал «середина» уже ПОСЛЕ того, как левая полоса прошла
+    // 77% своего пути, а не до её начала.
+    const box = await page.locator(CARD_SELECTOR).evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top + window.scrollY, bottom: r.bottom + window.scrollY };
+    });
+    const vh = VIEWPORT_1440_900.height;
+    const windowStart = box.top - vh + 0.33 * vh;
+    const windowEnd = box.bottom - 0.67 * vh;
+    const mid = (windowStart + windowEnd) / 2;
+
+    // 2) Середина окна — правая полоса дорисована («сверху вниз» завершена),
+    //    левая ещё не начата («снизу вверх» идёт во второй половине).
+    await page.evaluate((y) => window.scrollTo(0, y), Math.round(mid));
+    const atMid = await barsScaleY(page);
+    expect(atMid.right, `на середине окна (scrollY=${Math.round(mid)}) правая полоса обязана быть дорисована`).toBeGreaterThan(0.9);
+    expect(atMid.left, `на середине окна (scrollY=${Math.round(mid)}) левая полоса ещё не должна начаться`).toBeLessThan(0.15);
+
+    // 3) Конец окна — обе полосы дорисованы, карточка обведена целиком.
+    await page.evaluate((y) => window.scrollTo(0, y), Math.round(windowEnd) + 8);
+    const atEnd = await barsScaleY(page);
+    expect(atEnd.right, 'в конце окна правая полоса обязана быть дорисована').toBeGreaterThan(0.9);
+    expect(atEnd.left, 'в конце окна левая полоса обязана быть дорисована').toBeGreaterThan(0.9);
+
+    // 4) Реверс — вернулись на scrollY=0, обвод гаснет целиком (П6).
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const backToTop = await barsScaleY(page);
+    expect(backToTop.right, 'после возврата на scrollY=0 правая полоса обязана погаснуть').toBeLessThan(0.02);
+    expect(backToTop.left, 'после возврата на scrollY=0 левая полоса обязана погаснуть').toBeLessThan(0.02);
+
+    await ctx.close();
+  });
+
+  test('prefers-reduced-motion: reduce — обе полосы дорисованы при scrollY=0 (запасное состояние, П-13)', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: VIEWPORT_1440_900 });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    const atTop = await barsScaleY(page);
+    expect(atTop.right).toBeGreaterThan(0.9);
+    expect(atTop.left).toBeGreaterThan(0.9);
+    await ctx.close();
+  });
+
+  test('ниже 900px — обе полосы дорисованы при любом scrollY (П-15)', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width: 480, height: 900 } });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    await page.waitForTimeout(1600);
+    const atTop = await barsScaleY(page);
+    expect(atTop.right).toBeGreaterThan(0.9);
+    expect(atTop.left).toBeGreaterThan(0.9);
+    await ctx.close();
+  });
+});
+
+test.describe('линия-рассказчик — П4: спина шагов и подчёркивания цифр 01…05 (раздел 3 П4; приёмка П-8, П-15)', () => {
+  async function underlineScaleX(page: import('@playwright/test').Page, nth: number) {
+    return page.locator('#process .step .num').nth(nth).evaluate((el) => {
+      const m = getComputedStyle(el, '::after').transform.match(/matrix\(([^)]+)\)/);
+      if (!m) return NaN;
+      return parseFloat(m[1].split(',')[0]); // scaleX — первый компонент matrix
+    });
+  }
+
+  test('1440×900: подчёркивания приходят по очереди — первая цифра раньше последней, а не все разом', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: VIEWPORT_1440_900 });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    await page.waitForTimeout(1600);
+
+    // scrollY=0 — ни одно подчёркивание не начато.
+    for (let i = 0; i < 5; i++) {
+      const sx = await underlineScaleX(page, i);
+      expect(sx, `при scrollY=0 подчёркивание цифры №${i + 1} обязано быть на scaleX(0)`).toBeLessThan(0.02);
+    }
+
+    // Прокрутка до конца окна первой цифры (01) — она дорисована, а
+    // последняя (05), стоящая заметно ниже по документу, ещё нет.
+    const firstBottom = await page.locator('#process .step .num').first().evaluate((el) => el.getBoundingClientRect().bottom + window.scrollY);
+    const scrollYAfterFirst = Math.ceil(firstBottom - 0.67 * VIEWPORT_1440_900.height) + 8;
+    await page.evaluate((y) => window.scrollTo(0, y), scrollYAfterFirst);
+    const firstScaleX = await underlineScaleX(page, 0);
+    const lastScaleX = await underlineScaleX(page, 4);
+    expect(firstScaleX, 'подчёркивание первой цифры обязано быть дорисовано раньше последней').toBeGreaterThan(0.9);
+    expect(lastScaleX, 'подчёркивание последней цифры ещё не должно начаться, когда первая уже дорисована').toBeLessThan(0.9);
+
+    // Реверс — вернулись на scrollY=0, подчёркивание первой цифры гаснет (П6).
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const backToTop = await underlineScaleX(page, 0);
+    expect(backToTop, 'после возврата на scrollY=0 подчёркивание обязано погаснуть').toBeLessThan(0.02);
+
+    await ctx.close();
+  });
+
+  test('спина (.line-branch) видима от 900px и скрыта ниже (П-15)', async ({ browser }) => {
+    const narrow = await browser.newContext({ viewport: { width: 480, height: 900 } });
+    const narrowPage = await narrow.newPage();
+    await narrowPage.goto('/');
+    const narrowDisplay = await narrowPage.locator('#process .line-branch').evaluate((el) => getComputedStyle(el).display);
+    expect(narrowDisplay, 'ниже 900px спина обязана быть скрыта').toBe('none');
+    await narrow.close();
+
+    const wide = await browser.newContext({ viewport: VIEWPORT_1440_900 });
+    const widePage = await wide.newPage();
+    await widePage.goto('/');
+    const wideDisplay = await widePage.locator('#process .line-branch').evaluate((el) => getComputedStyle(el).display);
+    expect(wideDisplay, 'от 900px спина обязана быть видима').not.toBe('none');
+    await wide.close();
+  });
+
+  test('спина: ось на 1440 стоит на x = 151 ± 6 px (П-8)', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: VIEWPORT_1440_900 });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    const rect = await page.locator('#process .line-branch').evaluate((el) => (el as SVGPathElement).getBoundingClientRect());
+    // Спина уходит от правого дока (vb x=941) влево до оси x=88 и там же
+    // разворачивается вправо к x=1000 — самая левая точка всего пути и
+    // есть ось x=88 из требования брифа, значит левая кромка bbox самого
+    // элемента (плюс половина волосяного штриха, ей приписанная браузером)
+    // прямо и есть измеряемая величина, без пересчёта viewBox→px руками.
+    expect(rect.x, `левая кромка bbox спины на x=${rect.x}, ожидалось 151±6`).toBeGreaterThanOrEqual(145);
+    expect(rect.x, `левая кромка bbox спины на x=${rect.x}, ожидалось 151±6`).toBeLessThanOrEqual(157);
+    await ctx.close();
   });
 });
