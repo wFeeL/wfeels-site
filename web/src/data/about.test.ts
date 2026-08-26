@@ -6,7 +6,7 @@ import { splitBrandText, stripBrandMarkers } from '../lib/brandMarkers';
 
 describe('about.ts — внутренняя целостность', () => {
   it('фото задано с шириной, высотой и alt', () => {
-    expect(ABOUT_PHOTO.src).toBe('/wfeels-photo.jpg');
+    expect(ABOUT_PHOTO.src).toBe('/wfeels-photo.avif');
     expect(ABOUT_PHOTO.width).toBeGreaterThan(0);
     expect(ABOUT_PHOTO.height).toBeGreaterThan(0);
     expect(ABOUT_PHOTO.alt.length).toBeGreaterThan(0);

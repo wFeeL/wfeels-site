@@ -31,7 +31,7 @@ describe('dist/index.html — секции 9, 10 и 11', () => {
   it('секция 9: метка, заголовок, фото и весь текст дословно на странице', () => {
     expect(html).toContain('КТО ЭТО ДЕЛАЕТ');
     expect(html).toContain('>Обо мне<');
-    expect(html).toContain('src="/wfeels-photo.jpg"');
+    expect(html).toContain('src="/wfeels-photo.avif"');
     expect(html).toContain(ABOUT_LEAD);
     // `ABOUT_BLOCKS` — плоский список текстов без заголовков (брифом
     // `04-sections-brief.md`, раздел 4.3, пункт 15: подзаголовки сняты) —
