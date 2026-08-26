@@ -212,15 +212,47 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
     font-size: 1rem;
     line-height: 1.5;
     --footer-bg-mix: 98%;
-    background: color-mix(in srgb, var(--bg) var(--footer-bg-mix), black);
+    /* Фон подвала — на псевдоэлементе (`footer::before`), не здесь: линия
+       на фоне (`data-line-side`/`.line`, `z-index: -3`, `BackgroundLine.astro`)
+       красится в общем стеке `body`, а прежний непрозрачный `background`
+       прямо на `footer` красился между линией и текстом — линия обрывалась
+       видимым срезом на стыке `contact → подвал` (бриф `11-line-narrator-
+       brief.md`, раздел 1.3, п.1: «единственное место страницы, где линия
+       видимо кончается в никуда»). `transparent` — не отсутствие фона, а
+       явная отмена: без него правило ниже (`footer::before`) не давало бы
+       заметной разницы только случайно, если бы кто-то не заметил, что два
+       фона наложены друг на друга. */
+    background: transparent;
     /* Хвост линии на фоне (`05-line.md`, раздел 10 шаг 2): бокс хвоста
        центрируется на ОКНЕ через `--line-canvas` (`BackgroundLine.astro`),
        не от кромок `<footer>` — общее правило одно на все боксы линии,
        собственного переопределения `<footer>` больше не несёт. `position:
        relative` остаётся: даёт хвосту (`position: absolute; inset-block: 0`)
        точку отсчёта по ВЕРТИКАЛИ, покрывающую полную высоту подвала, включая
-       его собственный `padding-block`. */
+       его собственный `padding-block`. `footer` НЕ несёт `z-index` —
+       собственного стекового контекста не создаёт, и `footer::before` (ниже,
+       `z-index: -4`) разбирается в ОБЩЕМ корневом стеке вместе с линией
+       (`z-index: -3`) и сортируется по числу — если бы `footer` завёл здесь
+       `z-index`, `-4` оказался бы внутри чужого локального стека и уже не
+       спорил бы с `-3` снаружи. */
     position: relative;
+  }
+  /* Фон подвала (бриф `11-line-narrator-brief.md`, раздел 3, П1): красится
+     НИЖЕ линии (`-4` против `-3` у `.line`/`.line-curtain`), поэтому линия
+     остаётся видимой поверх него до самой нижней кромки страницы — там же,
+     где раньше был единственный разрыв («правка одно место — подвал»).
+     Хрупкость названа в брифе прямо: любой будущий `transform`, `filter`,
+     `opacity < 1`, `isolation`, `will-change` или `contain: paint` на самом
+     `footer` завёл бы ему собственный стековый контекст и уронил бы линию
+     под этот фон обратно — та же ловушка, что уже стоит в `05-line.md`,
+     6.1, и её проверяет П-14 приёмки. */
+  footer::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -4;
+    background: color-mix(in srgb, var(--bg) var(--footer-bg-mix), black);
+    pointer-events: none;
   }
   @media (prefers-color-scheme: dark) {
     :global(:root:not([data-theme='light'])) footer { --footer-bg-mix: 80%; }
