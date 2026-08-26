@@ -389,7 +389,10 @@ test('ссылки подвала видно как ссылки', async ({ page
     const c = getComputedStyle(el);
     return { color: c.color, deco: c.textDecorationLine };
   });
-  const text = await page.locator('footer .ai')
+  // `.ai` снят вместе со строкой «вместе с ИИ» (рычаг С-1) — сравнение идёт
+  // с текстом реквизитов, тем же приглушённым текстом подвала, что раньше
+  // нёс `.ai`.
+  const text = await page.locator('footer .requisites p').first()
     .evaluate((el) => getComputedStyle(el).color);
 
   // Правка дизайн-ревью 2026-08-22 (находка 3, «ссылки подвала и шапки
