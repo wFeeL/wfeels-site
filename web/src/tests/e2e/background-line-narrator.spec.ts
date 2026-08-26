@@ -355,101 +355,166 @@ test.describe('линия-рассказчик — П6/П12: ноль JavaScript
   });
 });
 
-test.describe('линия-рассказчик — П3: карточка «Корпоративный сайт», обвод в две фазы (раздел 3 П3; приёмка П-7)', () => {
+/* Правка 2026-08-27 (`70-workshop/specs/site-v3/11-line-narrator-brief.md`,
+ * раздел 10.4/10.5, Р-2 «переезд траверса»): обвод карточки «Корпоративный
+ * сайт» двумя полосами `.line-outline` (П3 старой редакции, приёмка П-7)
+ * СНЯТ целиком — полоса `--accent` вставала поверх постоянной рамки
+ * карточки и читалась как «лёгкое утолщение края», а не как отдельное
+ * событие. Событие «главный блок» переехало к самой средней линии: траверс
+ * `pricing` теперь физически проходит СКВОЗЬ коробку карточки — входит
+ * через одну кромку, выходит через другую. Блок ниже проверяет именно это
+ * (приёмка П-21) и что обводки в разметке больше нет (приёмка П-22), вместо
+ * прежних трёх тестов на `scaleY` полос, которые проверяли механизм,
+ * которого больше нет.
+ *
+ * РАСХОЖДЕНИЕ С ПРОЗОЙ БРИФА, найденное этим тестом и не «починенное»
+ * подгонкой кривой: раздел 10.4 предсказывает выход через НИЖНЮЮ кромку
+ * (y≈3879), а живой замер (тот же самый `d`, что приведён в брифе дословно
+ * — `M59,-60 L59,100 C59,579 941,579 941,1058 L941,1218` — сверено
+ * побайтово) даёт выход через ПРАВУЮ кромку на y≈3843: `viewBox`
+ * растянут неравномерно (`preserveAspectRatio="none"`, `scaleX≈1,38` против
+ * `scaleY≈1,18` на 1440), и кривая, задуманная как «падает на дно
+ * карточки», на самом деле сначала достигает её правого края. Ядро
+ * требования раздела 10.4 — «войти через одну кромку и выйти через
+ * другую» — от этого не страдает: линия входит через левую кромку и
+ * выходит через правую, обе точки пересечения дают угол ≥30° (Г-5), а
+ * внутри карточки лежит больше 240px краски. Курс на «новой геометрии не
+ * рисуется, меняется вызов» (раздел 10.4) запрещает подгонять кривую под
+ * прозу брифа — сторож проверяет то, что СУЩЕСТВУЕТ и удовлетворяет
+ * числовому порогу П-21, а не название кромки из чужой оценки. */
+test.describe('линия-рассказчик — П21: карточка «Корпоративный сайт» пересечена линией (раздел 10.4 брифа; приёмка П-21)', () => {
   const CARD_SELECTOR = '#pricing .top-grid > .card--accent';
+  const MIN_INSIDE_PX = 240;
+  const MIN_ANGLE_DEG = 30;
 
-  async function barsScaleY(page: import('@playwright/test').Page) {
-    return page.locator(CARD_SELECTOR).evaluate((card) => {
-      const scaleYOf = (el: Element | null) => {
-        if (!el) return NaN;
-        const m = getComputedStyle(el).transform.match(/matrix\(([^)]+)\)/);
-        if (!m) return NaN;
-        return parseFloat(m[1].split(',')[3]);
+  test('1440×900: вход и выход — через РАЗНЫЕ кромки, ≥240px внутри карточки, углы ≥30°', async ({ page }) => {
+    await page.setViewportSize(VIEWPORT_1440_900);
+    await page.goto('/');
+
+    const result = await page.evaluate((cardSelector) => {
+      const card = document.querySelector(cardSelector);
+      const path = document.querySelector('#pricing svg.line path:not(.line-branch)') as SVGPathElement | null;
+      const svg = path?.closest('svg') as SVGSVGElement | null;
+      if (!card || !path || !svg) return null;
+
+      const cardBox = card.getBoundingClientRect();
+      const svgRect = svg.getBoundingClientRect();
+      const vb = svg.viewBox.baseVal;
+      const scaleX = vb.width > 0 ? svgRect.width / vb.width : 1;
+      const scaleY = vb.height > 0 ? svgRect.height / vb.height : 1;
+
+      const total = path.getTotalLength();
+      const toPagePoint = (len: number) => {
+        const p = path.getPointAtLength(len);
+        return { x: svgRect.left + (p.x - vb.x) * scaleX, y: svgRect.top + (p.y - vb.y) * scaleY };
       };
+      const isInside = (pt: { x: number; y: number }) =>
+        pt.x >= cardBox.left && pt.x <= cardBox.right && pt.y >= cardBox.top && pt.y <= cardBox.bottom;
+
+      // Сэмплируем путь через 1 единицу длины (`viewBox`) — при 1300–1700
+      // единицах общей длины и разнице масштабов ×1,2–1,4 это даёт шаг
+      // ~1,2–1,4px в реальных координатах, достаточно для коробки в сотни px.
+      const samples: Array<{ len: number; x: number; y: number; inside: boolean }> = [];
+      for (let len = 0; len <= total; len += 1) {
+        const pt = toPagePoint(len);
+        samples.push({ len, ...pt, inside: isInside(pt) });
+      }
+
+      const firstIdx = samples.findIndex((s) => s.inside);
+      let lastIdx = -1;
+      for (let i = samples.length - 1; i >= 0; i -= 1) {
+        if (samples[i].inside) { lastIdx = i; break; }
+      }
+      if (firstIdx === -1 || lastIdx === -1) return { insideAtAll: false as const };
+
+      // Реальные px внутри карточки — сумма евклидовых отрезков между
+      // соседними сэмплами (масштаб по X и Y разный, поэтому длина в
+      // единицах `viewBox` не равна длине в реальных px — считать нужно
+      // именно в РЕАЛЬНЫХ координатах, а не разницей `len`).
+      let insidePx = 0;
+      for (let i = firstIdx; i < lastIdx; i += 1) {
+        const a = samples[i];
+        const b = samples[i + 1];
+        insidePx += Math.hypot(b.x - a.x, b.y - a.y);
+      }
+
+      const entry = samples[firstIdx];
+      const exit = samples[lastIdx];
+
+      const sideOf = (pt: { x: number; y: number }) => {
+        const d = {
+          left: Math.abs(pt.x - cardBox.left),
+          right: Math.abs(pt.x - cardBox.right),
+          top: Math.abs(pt.y - cardBox.top),
+          bottom: Math.abs(pt.y - cardBox.bottom),
+        };
+        return (Object.entries(d) as Array<[string, number]>).sort((a, b) => a[1] - b[1])[0][0];
+      };
+
+      // Угол между касательной пути в точке пересечения и самой кромкой:
+      // левая/правая кромка вертикальна (90° от горизонтали), верхняя/
+      // нижняя — горизонтальна (0°).
+      const EPS = 4;
+      const tangentAngleDeg = (len: number) => {
+        const a = path.getPointAtLength(Math.max(0, len - EPS));
+        const b = path.getPointAtLength(Math.min(total, len + EPS));
+        const dx = (b.x - a.x) * scaleX;
+        const dy = (b.y - a.y) * scaleY;
+        return (Math.atan2(dy, dx) * 180) / Math.PI;
+      };
+      const angleToEdge = (side: string, angleDeg: number) => {
+        const edgeAngle = side === 'left' || side === 'right' ? 90 : 0;
+        let diff = Math.abs(angleDeg - edgeAngle) % 180;
+        if (diff > 90) diff = 180 - diff;
+        return diff;
+      };
+
+      const entrySide = sideOf(entry);
+      const exitSide = sideOf(exit);
       return {
-        right: scaleYOf(card.querySelector('.line-outline--right')),
-        left: scaleYOf(card.querySelector('.line-outline--left')),
+        insideAtAll: true as const,
+        insidePx,
+        entrySide,
+        exitSide,
+        entryAngle: angleToEdge(entrySide, tangentAngleDeg(entry.len)),
+        exitAngle: angleToEdge(exitSide, tangentAngleDeg(exit.len)),
       };
-    });
-  }
+    }, CARD_SELECTOR);
 
-  test('1440×900: у нуля прокрутки обе полосы на scaleY(0); правая рисуется первой, затем левая; на реверсе обе гаснут', async ({ browser }) => {
-    const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: VIEWPORT_1440_900 });
-    const page = await ctx.newPage();
-    await page.goto('/');
-    await page.waitForTimeout(1600);
+    expect(result, 'не удалось измерить геометрию линии/карточки на странице').not.toBeNull();
+    expect(result!.insideAtAll, 'краска средней линии ни разу не попала внутрь коробки карточки').toBe(true);
+    if (!result!.insideAtAll) return;
 
-    // 1) scrollY=0 — до прихода линии обе полосы убраны (П-5/fill-mode:both).
-    const atTop = await barsScaleY(page);
-    expect(atTop.right, 'при scrollY=0 правая полоса обязана быть на scaleY(0)').toBeLessThan(0.02);
-    expect(atTop.left, 'при scrollY=0 левая полоса обязана быть на scaleY(0)').toBeLessThan(0.02);
-
-    // Окно события читается с самой карточки (raздел 3 П6: чисел в тесте
-    // не больше, чем в CSS). ИСПРАВЛЕНО (проверено пробником с двойным
-    // `requestAnimationFrame` после `scrollTo` — см. ловушку 2, способ
-    // замера меняет число): у кнопки первого экрана единственная опорная
-    // точка — КОНЕЦ диапазона (`cover calc(100% − var(--line-trail))`),
-    // и она действительно равна `bottom − 0,67·vh`, ноль в формуле не
-    // нужен. У карточки нужны ОБЕ границы диапазона, а не одна, и НАЧАЛО
-    // диапазона (`cover var(--line-lead)`) устроено иначе: точка отсчёта
-    // самого `cover 0%` уже стоит на `top − vh` (коробка только показалась
-    // из-под низа экрана), и «зайти» на `--line-lead` (33vh) внутрь
-    // диапазона — прибавить, а не вычесть, эту долю: `(top − vh) +
-    // 0,33·vh = top − 0,67·vh`. Прежняя запись `top − 0,33·vh` пропускала
-    // слагаемое `−vh` целиком и указывала на точку почти на 900px (весь
-    // `vh`) позже настоящего начала — измеримо: буквальный прогон с этой
-    // формулой давал «середина» уже ПОСЛЕ того, как левая полоса прошла
-    // 77% своего пути, а не до её начала.
-    const box = await page.locator(CARD_SELECTOR).evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      return { top: r.top + window.scrollY, bottom: r.bottom + window.scrollY };
-    });
-    const vh = VIEWPORT_1440_900.height;
-    const windowStart = box.top - vh + 0.33 * vh;
-    const windowEnd = box.bottom - 0.67 * vh;
-    const mid = (windowStart + windowEnd) / 2;
-
-    // 2) Середина окна — правая полоса дорисована («сверху вниз» завершена),
-    //    левая ещё не начата («снизу вверх» идёт во второй половине).
-    await page.evaluate((y) => window.scrollTo(0, y), Math.round(mid));
-    const atMid = await barsScaleY(page);
-    expect(atMid.right, `на середине окна (scrollY=${Math.round(mid)}) правая полоса обязана быть дорисована`).toBeGreaterThan(0.9);
-    expect(atMid.left, `на середине окна (scrollY=${Math.round(mid)}) левая полоса ещё не должна начаться`).toBeLessThan(0.15);
-
-    // 3) Конец окна — обе полосы дорисованы, карточка обведена целиком.
-    await page.evaluate((y) => window.scrollTo(0, y), Math.round(windowEnd) + 8);
-    const atEnd = await barsScaleY(page);
-    expect(atEnd.right, 'в конце окна правая полоса обязана быть дорисована').toBeGreaterThan(0.9);
-    expect(atEnd.left, 'в конце окна левая полоса обязана быть дорисована').toBeGreaterThan(0.9);
-
-    // 4) Реверс — вернулись на scrollY=0, обвод гаснет целиком (П6).
-    await page.evaluate(() => window.scrollTo(0, 0));
-    const backToTop = await barsScaleY(page);
-    expect(backToTop.right, 'после возврата на scrollY=0 правая полоса обязана погаснуть').toBeLessThan(0.02);
-    expect(backToTop.left, 'после возврата на scrollY=0 левая полоса обязана погаснуть').toBeLessThan(0.02);
-
-    await ctx.close();
+    // Ядро П-21 — вход и выход через РАЗНЫЕ кромки (не «обвод по одной
+    // стороне»). Конкретная пара кромок — факт живого замера (см. комментарий
+    // выше блока), а не число из прозы брифа.
+    expect(result!.entrySide, 'вход и выход обязаны быть через разные кромки')
+      .not.toBe(result!.exitSide);
+    expect(result!.entrySide, `линия обязана входить через ЛЕВУЮ кромку (вошла через ${result!.entrySide})`).toBe('left');
+    expect(result!.insidePx, `внутри карточки должно быть ≥${MIN_INSIDE_PX}px (факт ${result!.insidePx.toFixed(0)}px)`)
+      .toBeGreaterThanOrEqual(MIN_INSIDE_PX);
+    expect(result!.entryAngle, `угол на входе должен быть ≥${MIN_ANGLE_DEG}° (факт ${result!.entryAngle.toFixed(1)}°)`)
+      .toBeGreaterThanOrEqual(MIN_ANGLE_DEG);
+    expect(result!.exitAngle, `угол на выходе должен быть ≥${MIN_ANGLE_DEG}° (факт ${result!.exitAngle.toFixed(1)}°)`)
+      .toBeGreaterThanOrEqual(MIN_ANGLE_DEG);
   });
 
-  test('prefers-reduced-motion: reduce — обе полосы дорисованы при scrollY=0 (запасное состояние, П-13)', async ({ browser }) => {
-    const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: VIEWPORT_1440_900 });
-    const page = await ctx.newPage();
+  test('обводки карточки больше нет — ни .line-outline в разметке, ни анимаций scaleY (приёмка П-22)', async ({ page }) => {
+    await page.setViewportSize(VIEWPORT_1440_900);
     await page.goto('/');
-    const atTop = await barsScaleY(page);
-    expect(atTop.right).toBeGreaterThan(0.9);
-    expect(atTop.left).toBeGreaterThan(0.9);
-    await ctx.close();
-  });
 
-  test('ниже 900px — обе полосы дорисованы при любом scrollY (П-15)', async ({ browser }) => {
-    const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width: 480, height: 900 } });
-    const page = await ctx.newPage();
-    await page.goto('/');
-    await page.waitForTimeout(1600);
-    const atTop = await barsScaleY(page);
-    expect(atTop.right).toBeGreaterThan(0.9);
-    expect(atTop.left).toBeGreaterThan(0.9);
-    await ctx.close();
+    const outlineCount = await page.locator(`${CARD_SELECTOR} .line-outline`).count();
+    expect(outlineCount, 'на карточке не должно остаться ни одного .line-outline').toBe(0);
+
+    const animationNames = await page.locator(CARD_SELECTOR).evaluate((el) =>
+      (el as Element & { getAnimations: (opts?: { subtree: boolean }) => Animation[] })
+        .getAnimations({ subtree: true })
+        .map((a) => (a as unknown as { animationName?: string }).animationName ?? ''),
+    );
+    expect(
+      animationNames.some((name) => /outline/i.test(name)),
+      `анимации карточки не должны включать обвод: ${animationNames.join(', ') || '(нет анимаций)'}`,
+    ).toBe(false);
   });
 });
 
