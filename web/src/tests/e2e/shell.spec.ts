@@ -475,12 +475,15 @@ test('заголовок первой страницы начинается бл
   }
 });
 
-test('в подвале есть юридические ссылки и строка про ИИ', async ({ page }) => {
+test('в подвале есть юридические ссылки', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('footer a[href="/privacy"]')).toBeVisible();
   await expect(page.locator('footer a[href="/terms"]')).toBeVisible();
   await expect(page.locator('footer a[href="/consent"]')).toBeVisible();
-  await expect(page.locator('footer')).toContainText('вместе с ИИ');
+  // Строка «вместе с ИИ» ушла из подвала рычагом С-1 — сайт больше не несёт
+  // отдельной оговорки про ИИ в служебной полосе. Утверждение доказывается
+  // там, где оно теперь живёт: `dist-home-about-faq-contact.test.ts`
+  // проверяет каждый `ABOUT_BLOCKS` в собранной странице «Обо мне».
 });
 
 
