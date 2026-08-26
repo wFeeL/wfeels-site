@@ -230,7 +230,13 @@ def create_app(
             )
 
         accepted = JSONResponse({"status": "accepted"}, status_code=202)
-        redirect = RedirectResponse(f"{cfg.site_url}/thanks", status_code=303)
+        # Значение поля приходит от клиента и недоверенно, поэтому в путь редиректа
+        # никогда не подставляется само присланное значение — только явный выбор
+        # из ровно двух заранее известных страниц. Любое значение, кроме точного
+        # "en" (проверка на равенство, а не на пригодность строки), ведёт на
+        # русскую страницу — так же, как уже выбирается текст согласия чуть ниже.
+        thanks_path = "/en/thanks" if payload.consent_locale == "en" else "/thanks"
+        redirect = RedirectResponse(f"{cfg.site_url}{thanks_path}", status_code=303)
         ok = redirect if wants_redirect else accepted
 
         # Согласие на обработку персональных данных — правовое основание собирать

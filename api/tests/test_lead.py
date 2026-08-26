@@ -1,3 +1,5 @@
+from urllib.parse import urlsplit
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -116,8 +118,38 @@ def test_form_encoded_lead_redirects_to_thanks(client, sent):
         follow_redirects=False,
     )
     assert r.status_code == 303
-    assert r.headers["location"].endswith("/thanks")
+    assert urlsplit(r.headers["location"]).path == "/thanks"
     assert len(sent) == 1
+
+
+def test_form_encoded_lead_redirects_to_english_thanks_when_locale_is_en(
+    client, sent
+):
+    r = client.post(
+        "/api/lead",
+        data={**VALID, "consent_locale": "en", "elapsed_seconds": "90.0"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303
+    assert urlsplit(r.headers["location"]).path == "/en/thanks"
+    assert len(sent) == 1
+
+
+def test_form_encoded_lead_with_garbage_locale_is_rejected_not_redirected(
+    client, sent
+):
+    # Значение поля недоверенно: мусорная локаль не должна ни попасть в путь
+    # редиректа, ни быть молча принятой за один из двух известных языков —
+    # заявка с таким полем отклоняется целиком, а не тихо перенаправляется
+    # куда-то по присланной строке.
+    r = client.post(
+        "/api/lead",
+        data={**VALID, "consent_locale": "de", "elapsed_seconds": "90.0"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 422
+    assert "location" not in r.headers
+    assert sent == []
 
 
 def test_honeypot_is_silently_dropped(client, sent):
