@@ -4,6 +4,7 @@ import Base from '../../layouts/Base.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Container from '../../components/Container.astro';
 import CaseGallery from '../../components/cases/CaseGallery.astro';
+import CaseWeightIllustration from '../../components/home/CaseWeightIllustration.astro';
 import {
   caseGallerySlides,
   caseNarrative,
@@ -79,6 +80,23 @@ const structuredData = caseStudySchema({
         <section aria-labelledby="case-gallery-heading">
           <h2 id="case-gallery-heading" class="t-h2">Экраны</h2>
           <CaseGallery slides={slides} galleryKey={`${item.slug}-ru`} />
+        </section>
+      )}
+
+      {/* Иллюстрация «Замер» на самой странице кейса — решение D-122
+          (`70-workshop/specs/site-v3/12-case-pages-brief.md`, раздел 4.6):
+          страница показывает вес и время СЕБЯ, а не главной. Проп `host`
+          обязателен здесь — без него компонент печатал бы числа главной
+          под заголовком, который называет эту страницу.
+
+          Это подключение, а не разворот раздела 4.5: полноценная витрина
+          из двух панелей («Замер» + «Проверка на месте») — отдельная,
+          следующая задача; здесь только доказано, что рисунок способен
+          стоять на чужой странице и говорить правду о ней. */}
+      {item.slug === 'site-v3' && (
+        <section aria-labelledby="case-weight-heading">
+          <h2 id="case-weight-heading" class="t-h2">Столько весит эта страница</h2>
+          <CaseWeightIllustration host="case-site-v3" />
         </section>
       )}
 
