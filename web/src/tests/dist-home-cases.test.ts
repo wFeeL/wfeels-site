@@ -75,15 +75,17 @@ describe('dist/index.html — секция 5', () => {
     expect(section, 'дублирующей метки «Разобрать кейс →» нет').not.toContain('Разобрать кейс');
   });
 
-  /* Отдельная кнопка каталога не возвращалась: каталог достигается через
-     detail-страницу и её хлебные крошки, а высота секции главной остаётся
-     прежней. */
-  it('отдельной кнопки «Все кейсы» на главной нет', () => {
+  /* Ссылка на каталог возвращена (D-068 снята правкой владельца): без неё
+     `/cases/ai-consultant` и `/cases/zayavka-hub` были достижимы только
+     через хлебную крошку detail-страницы — то есть только для того, кто
+     уже стоит на кейсе. Сторож против регресса: убери ссылку из
+     `Cases.astro`, и эта проверка первой станет красной. */
+  it('ссылка «Все кейсы» на главную секцию ведёт в каталог `/cases`', () => {
     const start = html.indexOf('id="cases"');
     const end = html.indexOf('id="process"');
     const section = html.slice(start, end);
-    expect(section).not.toContain('Все кейсы');
-    expect(section).not.toContain('href="/cases"');
+    expect(section).toContain('Все кейсы');
+    expect(section.match(/href="\/cases"/g) ?? []).toHaveLength(1);
   });
 
   it('снятые с главной кейсы на ней не выводятся: ни заголовка, ни рисунка', () => {
