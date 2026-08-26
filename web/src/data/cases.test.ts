@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CASES, CASES_CATALOG_HREF, caseHref, homeCases, publishedCases } from './cases';
+import { CASES, CASES_CATALOG_HREF, caseHref, homeCases, publishedCases, isPublishable } from './cases';
 
 describe('cases.ts — внутренняя целостность', () => {
   it('пять кейсов всего — два недостроенных сняты правками владельца ' +
@@ -99,5 +99,32 @@ describe('cases.ts — внутренняя целостность', () => {
       '/cases/ai-consultant',
       '/cases/zayavka-hub',
     ]);
+  });
+});
+
+/* Отрицательная ветка границы публикации — та, ради которой граница и
+   заведена. До правки 2026-08-26 её проверял единственный живой пример:
+   недостроенная запись SlotBook. Владелец снял её тем же днём, и в боевых
+   данных неполных записей не осталось вовсе — предохранитель уцелел в коде,
+   но потерял всякое доказательство. Синтетическая запись возвращает его под
+   проверку, ничего не подмешивая в CASES. */
+describe('граница публикации: неполная запись не выпускается', () => {
+  const full = { slug: 'x', title: 'X', description: 'есть', stack: 'есть', onHome: false };
+
+  it('запись с описанием и стеком проходит', () => {
+    expect(isPublishable(full)).toBe(true);
+  });
+
+  it('без описания — не проходит', () => {
+    expect(isPublishable({ ...full, description: undefined })).toBe(false);
+  });
+
+  it('без стека — не проходит', () => {
+    expect(isPublishable({ ...full, stack: undefined })).toBe(false);
+  });
+
+  it('пустая строка считается отсутствием, а не текстом', () => {
+    expect(isPublishable({ ...full, description: '' })).toBe(false);
+    expect(isPublishable({ ...full, stack: '' })).toBe(false);
   });
 });
