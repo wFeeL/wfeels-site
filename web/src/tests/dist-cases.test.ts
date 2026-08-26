@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { caseGallerySlides, caseNarrative, caseServiceLinks } from '../data/casePages';
+import { caseNarrative, caseServiceLinks } from '../data/casePages';
 import { caseHref, publishedCases } from '../data/cases';
 import { caseSpreads } from '../data/case-spreads';
 
@@ -44,55 +44,30 @@ describe('dist/cases — индексируемый каталог и detail-с�
     });
   }
 
-  /* Сторож числа кадров (2026-08-26): подводка `/cases` обещает читателю
-   * «каталог, карточку товара, корзину и оформление заказа» и «в каждом
-   * показаны главная страница, ключевой раздел и целевое действие» — то есть
-   * все девять кадров каждой галереи, а не выборку. До этой правки здесь жил
-   * жёсткий список из трёх/двух индексов (см. `git log casePages.ts`), и
-   * «Still House» пропадал из «Сайтов» целиком. Проверено, что сторож красный
-   * на старом списке: временный откат `caseGallerySlides` к
-   * `[STOREFRONT_SLIDES[0], STOREFRONT_SLIDES[3], STOREFRONT_SLIDES[6]]` /
-   * `[WEBSITE_SLIDES[0], WEBSITE_SLIDES[6]]` валит именно эту проверку
-   * (`toBe(9)`) на обеих галереях. */
-  /* `websites` донашивает разметку `CaseGallery` только пока у него нет
-   * разворотов (раздел 3.7 брифа «Развороты»: «секция «Экраны» с
-   * `CaseGallery` снимается целиком… на странице кейса не выводится»). Список
-   * галерей выводится из `caseSpreads()`, а не вписан руками — тот же приём,
-   * что уже требует `50-code/CLAUDE.md`, ловушка 15/21: как только у
-   * следующего кейса появятся развороты, он сам уйдёт из этого списка. */
-  it('detail-галереи без разворотов выводят все девять кадров, первый — без JavaScript', () => {
-    const galleryCases = ['storefront', 'websites'].filter((slug) => caseSpreads(slug).length === 0);
-    expect(galleryCases, 'хотя бы одна галерея ещё не переехала на развороты').not.toHaveLength(0);
-    for (const slug of galleryCases) {
-      const html = read(`cases/${slug}/index.html`);
-      const slides = caseGallerySlides(slug);
-      expect(slides.length, slug).toBe(9);
+  /* Сторож «хотя бы одна галерея ещё не переехала на развороты» снят: с этой
+   * правкой у ОБЕИХ многокадровых галерей (`websites`, `storefront`) есть
+   * развороты, путь `CaseGallery` на страницах кейсов больше не используется
+   * нигде — держать проверку промежуточного состояния, у которого больше нет
+   * ни одного случая, значит проверять пустое множество. Предметная проверка
+   * не снята, а расщеплена на два именных теста ниже (по одному на кейс),
+   * тем же приёмом, что уже применяет тест `websites`: список кадров
+   * выводится из `caseSpreads()`, а не вписан руками (ловушка 15/21,
+   * `50-code/CLAUDE.md`). */
+  it('storefront: разворот выводит все девять кадров, первый — без JavaScript', () => {
+    const html = read('cases/storefront/index.html');
+    const slides = caseSpreads('storefront').flatMap((spread) => spread.images ?? []);
+    expect(slides.length, 'storefront: суммарно девять кадров по трём разворотам').toBe(9);
 
-      // Первый кадр обязан быть виден без JavaScript — литеральный `src`.
-      expect(html, `${slug}: первый кадр без src`).toContain(`src="${slides[0].src}"`);
-
-      // Остальные восемь не входят в первую загрузку: литерального `src`
-      // с их адресом в разметке быть не должно — их подставляет скрипт.
-      for (const slide of slides.slice(1)) {
-        expect(html, `${slug}: ${slide.src} не должен быть в первой загрузке`)
-          .not.toContain(`src="${slide.src}"`);
-      }
-
-      // Подписи и alt каждого из девяти кадров — в статической разметке,
-      // независимо от того, подставлен ли уже `src` скриптом.
-      for (const slide of slides) {
-        expect(html, `${slug}: ${slide.alt}`).toContain(`alt="${slide.alt}"`);
-        expect(html, `${slug}: ${slide.project}/${slide.label}`)
-          .toMatch(new RegExp(`<strong[^>]*>${slide.project}</strong>`));
-      }
-
-      // Ровно девять помеченных кадров, ни одного лишнего или потерянного.
-      // Тег `<img>`, а не голое слово: у скрипта ниже в разметке есть тот
-      // же селектор `[data-gallery-screen]` строкой в JS-модуле.
-      const markers = html.match(/<img\b[^>]*\bdata-gallery-screen\b/g) ?? [];
-      expect(markers.length, `${slug}: число помеченных кадров`).toBe(9);
+    expect(html, 'storefront: первый кадр без src').toContain(`src="${slides[0].src}"`);
+    for (const slide of slides.slice(1)) {
+      expect(html, `storefront: ${slide.src} не должен быть в первой загрузке`)
+        .not.toContain(`src="${slide.src}"`);
     }
-    expect(read('cases/storefront/index.html')).toContain('width="780" height="1688"');
+    for (const slide of slides) {
+      expect(html, `storefront: ${slide.alt}`).toContain(`alt="${slide.alt}"`);
+      expect(html, `storefront: подпись ${slide.caption}`).toContain(`>${slide.caption}<`);
+    }
+    expect(html).toContain('width="780" height="1688"');
   });
 
   /* `websites` перешёл на развороты (раздел 4.2 брифа) — девять кадров

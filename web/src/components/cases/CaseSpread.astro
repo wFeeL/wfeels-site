@@ -38,8 +38,18 @@ interface Props {
 }
 const { spread, index, galleryKey, imageOffset = 0 } = Astro.props;
 const mirror = index % 2 === 1;
-const isTrio = spread.kind === 'photo-trio';
+/* `isTrio` покрывает ОБА многокадровых раскроя (`photo-trio` — крупный +
+ * два подкадра, `photo-row-3` — три равных кадра в ряд, раздел 4.1 брифа):
+ * оба несут одну и ту же трио-ленту на ≤ 599 px (раздел 3.3), и класс
+ * `.trio` — тот самый маркер, по которому сторож 10.1.3 опознаёт исключение
+ * («вычисленный `display` равен `flex`»), общий для обоих раскроев. Раскрой
+ * (2×2-грид vs 3-в-ряд) на ≥ 600 px различает отдельный модификатор
+ * `.row3`. */
+const isTrio = spread.kind === 'photo-trio' || spread.kind === 'photo-row-3';
+const isRow3 = spread.kind === 'photo-row-3';
 const images = spread.images ?? [];
+const frameWidth = String(spread.frameWidth ?? 1586);
+const frameHeight = String(spread.frameHeight ?? 992);
 ---
 <div class="spread" data-case-spread class:list={{ mirror }}>
   <div class="frame" data-spread-frame>
@@ -48,7 +58,7 @@ const images = spread.images ?? [];
     ) : (
       <div
         class="shots"
-        class:list={{ trio: isTrio }}
+        class:list={{ trio: isTrio, row3: isRow3 }}
         role={isTrio ? 'group' : undefined}
         aria-label={isTrio ? spread.heading : undefined}
         tabindex={isTrio ? 0 : undefined}
@@ -62,13 +72,13 @@ const images = spread.images ?? [];
              правки — 1151,8 КБ против предела 500). */
           const eager = index === 0 && i === 0;
           const deferred = galleryKey && !eager;
-          return (
+          const frameImg = (
             <img
-              class:list={{ big: isTrio && i === 0 }}
+              class:list={{ big: spread.kind === 'photo-trio' && i === 0 }}
               src={deferred ? undefined : img.src}
               alt={img.alt}
-              width="1586"
-              height="992"
+              width={frameWidth}
+              height={frameHeight}
               loading="lazy"
               decoding="async"
               data-gallery-screen={deferred ? true : undefined}
@@ -77,6 +87,17 @@ const images = spread.images ?? [];
               data-gallery-index={deferred ? imageOffset + i : undefined}
             />
           );
+          /* `photo-row-3` (раздел 4.1 брифа): «подпись кадра (`<figcaption>`:
+             имя витрины + шаг) остаётся в статической разметке» — три
+             равных кадра не делят одну общую подпись (`.caption` справа),
+             у каждого своя. `photo`/`photo-trio` подписи по кадру не несут —
+             там одна подпись у панели уже есть. */
+          return isRow3 ? (
+            <figure class="shot">
+              {frameImg}
+              <figcaption class="shot-caption t-small">{img.caption}</figcaption>
+            </figure>
+          ) : frameImg;
         })}
       </div>
     )}
@@ -135,6 +156,30 @@ const images = spread.images ?? [];
   .shots.trio img:nth-of-type(2) { grid-area: s1; }
   .shots.trio img:nth-of-type(3) { grid-area: s2; }
 
+  /* `photo-row-3` (раздел 4.1 брифа, «три витрины в Telegram»): три РАВНЫХ
+     кадра в ряд — не крупный + два подкадра. Named-area раскрой выше рассчитан
+     на 2 колонки/2 ряда; здесь колонок три и области не именованы, поэтому
+     они явно сняты (`grid-template-areas: none`), а сама плашка `big`
+     (строка выше) на этот раскрой не навешивается вовсе (см. `.astro`:
+     `spread.kind === 'photo-trio'`). Панель 702px даёт `(702 − 2×24) / 3 =
+     218px` на кадр (раздел 4.1) — заведомо ниже правила «≥95% ширины
+     панели» из 10.1.3, и это не дефект: сумма трёх кадров и двух зазоров
+     равна ширине панели, что и проверяет отдельный геометрический сторож
+     (раздел 10.1.3, «оговорка на будущее» + `case-spread-fill.spec.ts`). */
+  .shots.trio.row3 {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-areas: none;
+  }
+  .shots.trio.row3 .shot {
+    margin: 0;
+    min-width: 0;
+  }
+  .shots.trio.row3 .shot-caption {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
   @media (max-width: 899px) {
     .spread, .spread.mirror { grid-template-columns: 1fr; }
     .spread.mirror .frame, .spread.mirror .caption { order: initial; }
@@ -165,6 +210,16 @@ const images = spread.images ?? [];
          этого пола не снимает. Замер `getBoundingClientRect()` до правки:
          `<img>` — 358px при контейнере 358px (100%, а не 78% = 279px).
          Явный `min-width: 0` выключает автоматический минимум. */
+      min-width: 0;
+      scroll-snap-align: start;
+    }
+    /* `photo-row-3`: флекс-элемент ленты — `<figure class="shot">`, а не
+       `<img>` напрямую (кадр несёт свой `<figcaption>`, раздел 4.1 брифа).
+       Правило выше нацелено на `img` и здесь на реальный флекс-элемент не
+       действует (кадр не флекс-контейнер) — тот же базис назначается
+       явно узлу, который им ДЕЙСТВИТЕЛЬНО является. */
+    .shots.trio.row3 .shot {
+      flex: 0 0 78%;
       min-width: 0;
       scroll-snap-align: start;
     }

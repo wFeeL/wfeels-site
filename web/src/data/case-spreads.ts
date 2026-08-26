@@ -16,9 +16,16 @@ export interface CaseSpreadImage {
   /** Честное описание того, что видно на кадре — без имён клиентов и
    *  выдуманных метрик (`40-portfolio/CLAUDE.md`). */
   alt: string;
+  /** Подпись кадра — «имя витрины + шаг» (раздел 4.1 брифа: «подпись
+   *  кадра (`<figcaption>`: имя витрины + шаг) остаётся в статической
+   *  разметке»). Используется только раскроем `photo-row-3`: у `photo` и
+   *  `photo-trio` подпись всего одна на панель (`.caption` рядом), три
+   *  равных кадра в ряд такой общей подписи не имеют — у каждого кадра
+   *  своя. */
+  caption?: string;
 }
 
-export type CaseSpreadKind = 'photo' | 'photo-trio' | 'schema';
+export type CaseSpreadKind = 'photo' | 'photo-trio' | 'photo-row-3' | 'schema';
 
 export interface CaseSpread {
   /** Метка панели — моно, акцент, как «ЗАДАЧА/ПОДХОД/РЕЗУЛЬТАТ» выше по
@@ -30,10 +37,18 @@ export interface CaseSpread {
   body: string;
   kind: CaseSpreadKind;
   /** `photo` — ровно один кадр; `photo-trio` — ровно три (первый — крупный,
-   *  раздел 4.2/4.3: «крупно X, подкадрами Y и Z»); `schema` — кадров нет,
+   *  раздел 4.2/4.3: «крупно X, подкадрами Y и Z»); `photo-row-3` — ровно
+   *  три равных кадра в ряд, без крупного (раздел 4.1: раскрой `storefront`
+   *  «три витрины в Telegram», портрет 780×1688); `schema` — кадров нет,
    *  панель занимает `CaseFlowIllustration.astro` (П-2, единственная
    *  законная схема кейса). */
   images?: readonly CaseSpreadImage[];
+  /** Внутренний размер кадра для атрибутов `width`/`height` (резервирует
+   *  раскладку, раздел 8 брифа: «поле кадра зарезервировано точной
+   *  пропорцией»). По умолчанию — ландшафт 1586×992 (раздел 3.5), у
+   *  `storefront` кадры портретные 780×1688. */
+  frameWidth?: number;
+  frameHeight?: number;
 }
 
 /** Раздел 4.3 брифа: четыре разворота, три на настоящих кадрах, один —
@@ -178,9 +193,102 @@ const WEBSITES_SPREADS: readonly CaseSpread[] = [
   },
 ];
 
+/** Раздел 4.1 брифа: три разворота, девять настоящих кадров, ноль схем.
+ *  Источник — `web/public/cases/storefront/*.avif`, портрет 780×1688
+ *  (раздел 3.5). Группировка — по витрине, а не по шагу пути: кейс
+ *  утверждает «одна продуктовая схема в трёх нишах», и три полных пути
+ *  рядом это показывают, три главные подряд — нет. Раскрой — `photo-row-3`
+ *  (три равных кадра в ряд, без крупного): у `photo-trio` первый кадр
+ *  крупный на всю ширину панели, здесь все три кадра — одна витрина целиком,
+ *  крупного среди них нет по смыслу. */
+const STOREFRONT_SPREADS: readonly CaseSpread[] = [
+  {
+    label: 'ПУТЬ ПОКУПАТЕЛЯ',
+    heading: 'Каталог, товар, заказ — не выходя из Telegram',
+    body:
+      'Каталог, карточка сумки и корзина с оформлением заказа — один ' +
+      'сценарий внутри Telegram, без перехода на отдельный сайт.',
+    kind: 'photo-row-3',
+    frameWidth: 780,
+    frameHeight: 1688,
+    images: [
+      {
+        src: '/cases/storefront/yasmina-home.avif',
+        alt: 'Главная Yasmina с категориями и сумочкой из бусин',
+        caption: 'Yasmina — главная',
+      },
+      {
+        src: '/cases/storefront/yasmina-product.avif',
+        alt: 'Карточка сумочки Fuchsia Marshmallow в приложении Yasmina',
+        caption: 'Yasmina — товар',
+      },
+      {
+        src: '/cases/storefront/yasmina-cart.avif',
+        alt: 'Корзина Yasmina с выбранной сумочкой и формой заказа',
+        caption: 'Yasmina — корзина',
+      },
+    ],
+  },
+  {
+    label: 'ТА ЖЕ СХЕМА, ДРУГАЯ НИША',
+    heading: 'Украшения: тот же путь, своя витрина',
+    body:
+      'Каталог украшений, карточка сотуара и корзина с формой заявки — та ' +
+      'же структура, другой ассортимент и оформление.',
+    kind: 'photo-row-3',
+    frameWidth: 780,
+    frameHeight: 1688,
+    images: [
+      {
+        src: '/cases/storefront/mariosa-home.avif',
+        alt: 'Главная Mariosa Jewelry с категориями украшений и карточкой серег',
+        caption: 'Mariosa — главная',
+      },
+      {
+        src: '/cases/storefront/mariosa-product.avif',
+        alt: 'Карточка аметистового сотуара Mariosa Jewelry с фотографией и описанием',
+        caption: 'Mariosa — товар',
+      },
+      {
+        src: '/cases/storefront/mariosa-cart.avif',
+        alt: 'Корзина Mariosa Jewelry с составом заявки и формой контакта',
+        caption: 'Mariosa — корзина',
+      },
+    ],
+  },
+  {
+    label: 'ТА ЖЕ СХЕМА, ТРЕТЬЯ НИША',
+    heading: 'Авторские игрушки: каталог с вариантами',
+    body:
+      'Каталог отличает базовые и индивидуальные модели, карточка товара ' +
+      'показывает конкретный вариант и его цену.',
+    kind: 'photo-row-3',
+    frameWidth: 780,
+    frameHeight: 1688,
+    images: [
+      {
+        src: '/cases/storefront/zayac-home.avif',
+        alt: 'Главная Zayac с авторской игрушкой и сценариями заказа',
+        caption: 'Zayac — главная',
+      },
+      {
+        src: '/cases/storefront/zayac-catalog.avif',
+        alt: 'Каталог Zayac с базовыми и индивидуальными моделями игрушек',
+        caption: 'Zayac — каталог',
+      },
+      {
+        src: '/cases/storefront/zayac-product.avif',
+        alt: 'Карточка белой базовой модели Zayac с параметрами и ценой',
+        caption: 'Zayac — товар',
+      },
+    ],
+  },
+];
+
 const SPREADS_BY_SLUG: Readonly<Record<string, readonly CaseSpread[]>> = {
   'zayavka-hub': ZAYAVKA_HUB_SPREADS,
   websites: WEBSITES_SPREADS,
+  storefront: STOREFRONT_SPREADS,
 };
 
 /** Развороты кейса, или пустой массив у кейсов, которых эта правка не несёт
@@ -220,7 +328,7 @@ for (const [slug, spreads] of Object.entries(SPREADS_BY_SLUG)) {
         '(раздел 5 брифа), а не по договорённости.',
       );
     }
-    const expected = spread.kind === 'photo-trio' ? 3 : 1;
+    const expected = spread.kind === 'photo-trio' || spread.kind === 'photo-row-3' ? 3 : 1;
     if (spread.images.length !== expected) {
       throw new Error(
         `${where}: у панели «${spread.kind}» ${spread.images.length} кадров, ожидалось ${expected}.`,
