@@ -203,7 +203,23 @@ const nextCase = allCases[(currentIndex + 1) % allCases.length];
     font: 600 0.6875rem/1.3 var(--font-mono);
     letter-spacing: 0.08em;
   }
-  .case-description { max-width: 60ch; margin: 24px 0 0; color: var(--text-muted); }
+  /* Раздел 3.4 брифа: было `max-width: 60ch` — мера в `ch` вычисляется из
+     ширины символа «0» ТЕКУЩЕГО начертания, а она у запасного и настоящего
+     `Onest` расходится (замер: 756,1 px у запасного, 877,8 px у
+     настоящего — на 122 px, то есть на 16%). После снятия `min-height`
+     (раздел 3.4) эта разница перестала гаситься запасом высоты шапки и
+     стала видимой раскладкой: у `ai-consultant` и `storefront` лид
+     укладывался в разное число строк на 1440 px (2 против 3, 3 против 4) —
+     `font-fallback-metrics.spec.ts` покраснел на этих двух страницах.
+     `hyphens: auto` (испытано первым, по образцу `.t-h1`) убрал расхождение
+     у `storefront`, но не у `ai-consultant` — ни один из словарных
+     переносов не подошёл к границе строки достаточно близко, чтобы
+     выиграть целую строку. Фиксированный `px` (мера того же порядка, что и
+     `60ch` настоящего начертания) не зависит от того, какое начертание
+     сейчас на экране — тот же приём, что уже стабилизировал перенос `h1`
+     «Панель обращений и админка» (`ServiceHero.astro`, `em`/`px` вместо
+     завязки на метрику шрифта). */
+  .case-description { max-width: 878px; margin: 24px 0 0; color: var(--text-muted); }
   .case-stack { margin: 16px 0 0; }
   .case-stack code {
     padding: 0;
@@ -299,19 +315,7 @@ const nextCase = allCases[(currentIndex + 1) % allCases.length];
   }
 
   @media (max-width: 479px) {
-    /* Высота первого блока фиксирует начало истории при подмене запасного
-       шрифта на Unbounded/Onest. Значения округлены вверх к 8px-сетке от
-       фактической высоты самого длинного варианта каждой композиции. */
-    .case-header { min-height: 448px; padding: 32px 0 64px; }
-    .case-header[data-slug="ai-consultant"] { min-height: 488px; }
-    .case-header[data-slug="site-v3"] { min-height: 520px; }
-    .case-header[data-slug="storefront"] { min-height: 592px; }
-    /* `zayavka-hub` — единственный кейс этой правки (раздел 3.4 брифа):
-       панель разворота резервирует свою высоту через `width`/`height` кадра,
-       поэтому скачок при подмене шрифта здесь гасится геометрией кадра, а не
-       запасом в шапке (раздел 3.4, «Скачок ниже шапки лечится отдельно»).
-       Остальные четыре шапки не трогаются этой правкой. */
-    .case-header[data-slug="zayavka-hub"] { min-height: 0; }
+    .case-header { padding: 32px 0 64px; }
     .case-header h1 { max-width: 300px; }
     section + section, .back-link, .origin-strip { margin-top: 64px; }
   }
@@ -320,11 +324,5 @@ const nextCase = allCases[(currentIndex + 1) % allCases.length];
     .narrative { grid-template-columns: 1fr; }
     .disclosure { grid-column: 1; }
     .origin-strip { grid-template-columns: 1fr; gap: 8px; }
-  }
-
-  @media (min-width: 900px) {
-    .case-header { min-height: 416px; }
-    .case-header[data-slug="storefront"] { min-height: 464px; }
-    .case-header[data-slug="zayavka-hub"] { min-height: 0; }
   }
 </style>
