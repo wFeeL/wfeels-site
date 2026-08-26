@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { CASES, CASES_CATALOG_HREF, caseHref, homeCases, publishedCases } from './cases';
 
 describe('cases.ts — внутренняя целостность', () => {
-  it('шесть кейсов всего — «Фабрика ботов» снята правкой владельца 2026-08-19', () => {
-    expect(CASES.length).toBe(6);
+  it('пять кейсов всего — два недостроенных сняты правками владельца ' +
+    '2026-08-19 и 2026-08-26', () => {
+    expect(CASES.length).toBe(5);
   });
 
   it('три кейса на главной — «Этот сайт», Telegram Mini App и сайты', () => {
@@ -59,8 +60,8 @@ describe('cases.ts — внутренняя целостность', () => {
   // Сторож снятия, а не памятник: «Фабрика ботов» ушла с главной правкой
   // владельца 2026-08-19, и вернуть её молча — через данные, мимо решения —
   // нельзя. Кейса нет ни в каком виде: ни строкой на главной, ни записью
-  // вне главной (в отличие от SlotBook и Storefront, которые записями
-  // остаются и ждут спеку 04).
+  // вне главной (в отличие от «ИИ-консультанта» и «Заявки-Хаба», которые
+  // остаются записями с `onHome: false`).
   it('«Фабрика ботов» снята из данных целиком (правка владельца 2026-08-19)', () => {
     expect(CASES.find((c) => c.slug === 'bot-factory')).toBeUndefined();
     expect(CASES.map((c) => c.title)).not.toContain('Фабрика ботов');
@@ -82,7 +83,7 @@ describe('cases.ts — внутренняя целостность', () => {
     expect(new Set(slugs).size).toBe(slugs.length);
   });
 
-  it('публичная выборка не выпускает пустую страницу SlotBook', () => {
+  it('публичная выборка публикует все и только пять записей с описанием и стеком', () => {
     expect(publishedCases().map((item) => item.slug)).toEqual([
       'site-v3', 'storefront', 'websites', 'ai-consultant', 'zayavka-hub',
     ]);

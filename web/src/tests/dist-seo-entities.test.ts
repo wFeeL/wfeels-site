@@ -56,7 +56,6 @@ describe('dist — подтвержденные SEO-сущности', () => {
     expect(urls).toEqual(
       publishedCases().map((item) => `https://wfeels.site/cases/${item.slug}`),
     );
-    expect(urls).not.toContain('https://wfeels.site/cases/slotbook');
   });
 
   for (const item of publishedCases()) {

@@ -19,7 +19,6 @@ describe('casePages.ts — опубликованные кейсы и честн
       '/cases/ai-consultant',
       '/cases/zayavka-hub',
     ]);
-    expect(pages.some((item) => item.slug === 'slotbook')).toBe(false);
   });
 
   it('у каждого опубликованного кейса есть содержательный и честно помеченный разбор', () => {
@@ -36,7 +35,7 @@ describe('casePages.ts — опубликованные кейсы и честн
   it('detail-выборки есть только у двух кейсов и не повторяют тяжелый manifest целиком', () => {
     expect(caseGallerySlides('storefront')).toHaveLength(3);
     expect(caseGallerySlides('websites')).toHaveLength(2);
-    for (const slug of ['site-v3', 'ai-consultant', 'zayavka-hub', 'slotbook']) {
+    for (const slug of ['site-v3', 'ai-consultant', 'zayavka-hub']) {
       expect(caseGallerySlides(slug), slug).toEqual([]);
     }
   });
@@ -60,6 +59,6 @@ describe('casePages.ts — опубликованные кейсы и честн
     }
 
     expect(casesForService('telegram-bot')).toEqual([]);
-    expect(caseServiceLinks('slotbook')).toEqual([]);
+    expect(caseServiceLinks('unknown-case')).toEqual([]);
   });
 });

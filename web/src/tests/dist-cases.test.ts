@@ -19,7 +19,6 @@ describe('dist/cases — индексируемый каталог и detail-с�
       expect(html, item.slug).toContain(item.description);
       expect(html, item.slug).toContain(item.stack);
     }
-    expect(html).not.toContain('/cases/slotbook');
   });
 
   for (const item of pages) {
@@ -66,9 +65,5 @@ describe('dist/cases — индексируемый каталог и detail-с�
           .toContain(`href="${caseHref(item.slug)}"`);
       }
     }
-  });
-
-  it('SlotBook не превращен в пустую индексируемую заглушку', () => {
-    expect(existsSync(`${DIST}cases/slotbook/index.html`)).toBe(false);
   });
 });

@@ -83,9 +83,7 @@ export function caseNarrative(caseSlug: string): CaseNarrative {
   return narrative;
 }
 
-/* Связи намеренно узкие: только прямое совпадение предмета кейса и услуги.
- * SlotBook не участвует — для него пока нет опубликованной страницы и
- * подтверждённого описания, из которого можно было бы вывести связь. */
+/* Связи намеренно узкие: только прямое совпадение предмета кейса и услуги. */
 const SERVICE_SLUGS_BY_CASE: Readonly<Record<string, readonly string[]>> = {
   'site-v3': ['website'],
   storefront: ['telegram-miniapp'],

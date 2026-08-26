@@ -113,7 +113,6 @@ test('sitemap содержит каталог и все опубликованн
   ]) {
     expect(xml, path).toContain(`${path}<`);
   }
-  expect(xml).not.toContain('/cases/slotbook');
 });
 
 test('canonical, hreflang и sitemap используют только production origin', () => {
