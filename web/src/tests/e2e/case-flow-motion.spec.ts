@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { routeWithMarker } from './illustrationRoute';
+import { routeWithMarker, htmlForMarker } from './illustrationRoute';
 
 /* Адрес страницы, на которой сегодня выведен рисунок. Правка владельца
  * 2026-08-20 сняла кейс «Заявка-Хаб» с главной: сегодня такой страницы нет, и
@@ -9,14 +9,34 @@ import { routeWithMarker } from './illustrationRoute';
 const ROUTE = routeWithMarker('data-case-flow');
 test.skip(ROUTE === null, 'кейс «Заявка-Хаб» снят с главной 2026-08-20 (правка владельца), и ни одна страница сборки его рисунок не выводит: набор проснётся со страницей каталога кейсов');
 
+/* Страница, которую нашёл ROUTE, — панель разворота кейса `/cases/zayavka-
+ * hub` (`CaseSpread.astro`), не прежняя секция главной. Компонент там
+ * работает в режиме ОДНОЙ копии разметки (`single="b"`, брифа `70-workshop/
+ * specs/site-v3/12-case-pages-brief.md`, раздел 2, П-3): раскрой `.ra`
+ * физически не рендерится (см. `CaseFlowIllustration.astro`, разметка
+ * `{single !== 'b' && (…)}`), и прогрессивная прорисовка линий по прокрутке
+ * снята для этого режима намеренно (комментарий в `CaseFlowIllustration.
+ * astro` у блока `@supports`: «здесь его лечит не JS-триггер, а снятие
+ * привязки к прокрутке»). Это НЕ регрессия «схемы на главной» — компонент
+ * не выводится на главной с 2026-08-20, задолго до этой ветки (тот же факт
+ * зафиксирован комментарием в `Cases.astro`: «Здесь они больше не
+ * импортируются»); это первое реальное пробуждение спящего прогона на новой,
+ * умышленно другой поверхности. Критерии `.ra`-раскроя и дуального
+ * переключения по ширине ниже поэтому идут только когда `.ra` физически
+ * есть в разметке найденной страницы — сегодня это не так, и они спят тем же
+ * приёмом, что и весь файл целиком (см. `IS_SINGLE_B`). Это находка,
+ * доложенная отдельно, а не тихая правка спека под баг. */
+const ROUTE_HTML = ROUTE === null ? null : htmlForMarker('data-case-flow');
+const IS_SINGLE_B = ROUTE_HTML !== null && /data-single="b"/.test(ROUTE_HTML);
 
 /* Движение иллюстрации «Заявка-Хаб» — бриф `70-workshop/specs/site-v3/
  * 07-flow-motion-brief.md`, раздел 15 (критерии 1–7). Прежняя редакция этого
  * файла держалась за селектор `.pkt.k-rt` и за движение по прокрутке;
  * ни того, ни другого больше нет: пакет один на раскрой, едет по ВРЕМЕНИ
  * (`offset-path` + `offset-distance`, период 9 с), а по прокрутке рисуются
- * только линии. Проверяется то же по сути — что движение действительно
- * происходит, — но через `getAnimations()`.
+ * только линии (и только вне режима `single="b"` — см. `IS_SINGLE_B` выше).
+ * Проверяется то же по сути — что движение действительно происходит, — но
+ * через `getAnimations()`.
  *
  * Три ловушки, на которых замер уже спотыкался; не переоткрывать их заново:
  *
@@ -30,13 +50,24 @@ test.skip(ROUTE === null, 'кейс «Заявка-Хаб» снят с глав
  * 3. Перебор кадров идёт ОДНИМ `page.evaluate()`, а не двумястами: двести
  *    круговых рейсов в браузер — это минуты, и половина их уходит на
  *    сериализацию, а не на замер.
+ *
+ * Селектор ищет узел через атрибут `[data-case-flow]`, а не через `#cases`:
+ * `#cases` — id секции главной (`Cases.astro`), рисунок сегодня там не
+ * выводится вовсе; `data-case-flow` — собственный признак компонента,
+ * не зависящий от того, на какой странице и в каком контейнере он стоит
+ * (тот же приём, что уже применяет затвор цикла внутри самого компонента).
  */
 
 const A = { layout: 'ra' as const, viewport: { width: 1440, height: 1000 }, viewBox: 608 };
 const B = { layout: 'rb' as const, viewport: { width: 390, height: 900 }, viewBox: 320 };
 const PERIOD_MS = 9000;
 
-/** Ширины из таблицы раздела 2 брифа: раскрой, кегль подписи, влезает ли. */
+/** Ширины из таблицы раздела 2 брифа 07: раскрой, кегль подписи, влезает ли.
+ *  Критерий проверяет ПОЛЕ (`.field`, паспарту `CaseIllustrationField.astro`
+ *  главной) — панель разворота кейса несёт другой контейнер (`.frame`,
+ *  `CaseSpread.astro`, без паспарту) с ДРУГИМ сторожем заполнения
+ *  (`case-spread-fill.spec.ts`, раздел 10.1 брифа 12). Блок целиком спит в
+ *  режиме `single="b"`, где `.field` физически нет. */
 const FIELD_WIDTHS = [
   { width: 390, layout: 'rb', minLabelPx: 14.0 },
   { width: 760, layout: 'rb', minLabelPx: 14.0 },
@@ -51,10 +82,11 @@ const FIELD_WIDTHS = [
  *  минимальный кегль подписи на экране (кегль × фактический масштаб). */
 async function measureField(page: Page, layout: string) {
   return page.evaluate((sel) => {
-    const svg = document.querySelector(`#cases svg.${sel}`) as SVGSVGElement | null;
-    if (!svg) throw new Error(`нет #cases svg.${sel}`);
+    const svg = document.querySelector(`[data-case-flow] svg.${sel}`) as SVGSVGElement | null;
+    if (!svg) throw new Error(`нет [data-case-flow] svg.${sel}`);
     if (getComputedStyle(svg).display === 'none') throw new Error(`svg.${sel} скрыт на этой ширине`);
-    const field = svg.closest('.field') as HTMLElement;
+    const field = svg.closest('.field') as HTMLElement | null;
+    if (!field) throw new Error('нет предка .field — этот критерий рассчитан на паспарту главной, не на панель разворота кейса');
     const fs = getComputedStyle(field);
     const fr = field.getBoundingClientRect();
     const inner = {
@@ -81,9 +113,10 @@ async function measureField(page: Page, layout: string) {
 test.describe('«Заявка-Хаб» — раскрой в поле и кегль подписи (критерии 1 и 2)', () => {
   for (const w of FIELD_WIDTHS) {
     test(`${w.width} px: раскрой .${w.layout} целиком в поле, подпись не мельче 14 px`, async ({ page }) => {
+      test.skip(IS_SINGLE_B, 'найденная страница держит рисунок в режиме single="b" (панель разворота кейса, .frame без паспарту) — критерий поля/паспарту главной сюда не относится, заполнение этой панели проверяет case-spread-fill.spec.ts');
       await page.setViewportSize({ width: w.width, height: 900 });
       await page.goto(ROUTE ?? '/');
-      await page.locator(`#cases svg.${w.layout}`).scrollIntoViewIfNeeded();
+      await page.locator(`[data-case-flow] svg.${w.layout}`).scrollIntoViewIfNeeded();
       const m = await measureField(page, w.layout);
 
       // Раскрой А несёт девять подписей (три источника раздельно), Б — семь
@@ -107,35 +140,64 @@ test.describe('«Заявка-Хаб» — раскрой в поле и кег�
 });
 
 test.describe('«Заявка-Хаб» — запасное состояние (критерий 5)', () => {
-  test('reduce: схема нарисована целиком, пакет неподвижен на кромке узла последнего канала', async ({ browser }) => {
-    const context = await browser.newContext({ reducedMotion: 'reduce', viewport: A.viewport });
+  /* Раскрой берётся тот, что физически есть на найденной странице: `.ra` в
+   * режиме `single="b"` не рендерится вовсе (см. комментарий выше про
+   * `IS_SINGLE_B`), и хардкодить его координаты значило бы проверять узел,
+   * которого нет. Ожидаемое положение пакета читается не числом, вписанным
+   * руками, а САМОЙ разметкой: покой — `--w13` (переменная на инлайновом
+   * `style` кружка), и «кромка последнего узла канала» — последний
+   * прямоугольник в `path.n` (тот же порядок, что уже использует `sweep()`
+   * ниже для критерия 3/4/7). Это надёжнее, чем два раза переписывать
+   * геометрию раскроя Б вручную (риск ошибиться в переносе — тот самый
+   * долг, ради которого компонент сам не пишет числа маршрута руками). */
+  const layout = IS_SINGLE_B ? B.layout : A.layout;
+  const viewport = IS_SINGLE_B ? B.viewport : A.viewport;
+
+  test(`reduce: схема нарисована целиком, пакет неподвижен на кромке узла последнего канала (раскрой .${layout})`, async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce', viewport });
     const page = await context.newPage();
     const errors: string[] = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     await page.goto(ROUTE ?? '/');
-    await page.locator('#cases svg.ra').scrollIntoViewIfNeeded();
+    await page.locator(`[data-case-flow] svg.${layout}`).scrollIntoViewIfNeeded();
 
-    const state = await page.evaluate(() => {
-      const svg = document.querySelector('#cases svg.ra') as SVGSVGElement;
+    const state = await page.evaluate((sel) => {
+      const svg = document.querySelector(`[data-case-flow] svg.${sel}`) as SVGSVGElement;
       const pkt = svg.querySelector('.pkt') as SVGCircleElement;
       const line = svg.querySelector('path.d') as SVGPathElement;
       const sr = svg.getBoundingClientRect();
       const pr = pkt.getBoundingClientRect();
       const scale = sr.width / svg.viewBox.baseVal.width;
+      const squares = (svg.querySelector('path.n') as SVGPathElement).getAttribute('d') || '';
+      const rects = [...squares.matchAll(/M(\d+),(\d+)H(\d+)V(\d+)/g)].map((m) => ({
+        x: +m[1], y: +m[2], w: +m[3] - +m[1], h: +m[4] - +m[2],
+      }));
+      const last = rects[rects.length - 1];
       return {
         dashoffset: getComputedStyle(line).strokeDashoffset,
         animations: pkt.getAnimations().length,
         offsetDistance: getComputedStyle(pkt).offsetDistance,
+        w13: pkt.style.getPropertyValue('--w13').trim(),
         x: (pr.x + pr.width / 2 - sr.x) / scale,
         y: (pr.y + pr.height / 2 - sr.y) / scale,
+        last,
       };
-    });
+    }, layout);
 
     expect(state.dashoffset, 'линия схемы на нулевом кадре рисования при reduce').toBe('0px');
     expect(state.animations, 'при reduce у пакета не должно быть ни одной анимации').toBe(0);
-    expect(state.offsetDistance).toBe('99.54%');
-    expect(state.x, `пакет по X: ${state.x.toFixed(1)}`).toBeCloseTo(544, 0);
-    expect(state.y, `пакет по Y: ${state.y.toFixed(1)}`).toBeCloseTo(192, 0);
+    expect(state.offsetDistance, 'покой пакета обязан стоять на --w13, а не на анимационном значении').toBe(state.w13);
+    // Покой — кромка последнего узла канала: центр пакета лежит на границе
+    // его плашки (допуск — собственный радиус пакета, 4 единицы viewBox), не
+    // внутри и не поодаль от неё.
+    const onLeft = Math.abs(state.x - state.last.x) <= 4;
+    const onRight = Math.abs(state.x - (state.last.x + state.last.w)) <= 4;
+    const onTop = Math.abs(state.y - state.last.y) <= 4;
+    const onBottom = Math.abs(state.y - (state.last.y + state.last.h)) <= 4;
+    expect(
+      onLeft || onRight || onTop || onBottom,
+      `пакет (${state.x.toFixed(1)},${state.y.toFixed(1)}) не на кромке последнего узла ${JSON.stringify(state.last)}`,
+    ).toBe(true);
     expect(errors, `консоль не пуста:\n${errors.join('\n')}`).toEqual([]);
     await context.close();
   });
@@ -146,7 +208,7 @@ test.describe('«Заявка-Хаб» — запасное состояние (
 async function sweep(page: Page, layout: string, frames: number) {
   return page.evaluate(
     async ({ sel, frames, period }) => {
-      const svg = document.querySelector(`#cases svg.${sel}`) as SVGSVGElement;
+      const svg = document.querySelector(`[data-case-flow] svg.${sel}`) as SVGSVGElement;
       const pkt = svg.querySelector('.pkt') as SVGCircleElement;
       const anims = pkt.getAnimations();
       if (anims.length !== 2) throw new Error(`у пакета ${anims.length} анимаций, ожидалось 2 (маршрут + видимость)`);
@@ -211,10 +273,16 @@ for (const cfg of [
 ]) {
   test.describe(`«Заявка-Хаб» — раскрой ${cfg.name}: цикл движения`, () => {
     test(`пакет не перекрывает подпись, пауза единственная, возврат не режет подписи (критерии 3, 4, 7)`, async ({ browser }) => {
+      // Раскрой А физически не рендерится в режиме single="b" (панель
+      // разворота кейса) — см. `IS_SINGLE_B` выше. Тест не удалён и не
+      // подогнан под несуществующий узел: он проснётся сам, если рисунок
+      // однажды снова выведут в дуальном режиме.
+      test.skip(cfg.name === 'А' && IS_SINGLE_B, 'раскрой .ra не рендерится в режиме single="b" — панель разворота кейса несёт только .rb (CaseFlowIllustration.astro, П-3 брифа 12)');
+
       const context = await browser.newContext({ reducedMotion: 'no-preference', viewport: cfg.viewport });
       const page = await context.newPage();
       await page.goto(ROUTE ?? '/');
-      await page.locator(`#cases svg.${cfg.layout}`).scrollIntoViewIfNeeded();
+      await page.locator(`[data-case-flow] svg.${cfg.layout}`).scrollIntoViewIfNeeded();
 
       const FRAMES = 200;
       const { frames, plates, texts, segments } = await sweep(page, cfg.layout, FRAMES);
@@ -308,17 +376,23 @@ for (const cfg of [
 }
 
 test.describe('«Заявка-Хаб» — затвор цикла (критерий 6)', () => {
-  test('вне окна цикл стоит, в окне идёт', async ({ browser }) => {
-    const context = await browser.newContext({ reducedMotion: 'no-preference', viewport: A.viewport });
+  /* Раскрой берётся тот, что физически есть на найденной странице — см.
+   * `IS_SINGLE_B` выше; хардкодить `.ra` значило бы проверять узел, которого
+   * в режиме `single="b"` не существует. */
+  const layout = IS_SINGLE_B ? B.layout : A.layout;
+  const viewport = IS_SINGLE_B ? B.viewport : A.viewport;
+
+  test(`вне окна цикл стоит, в окне идёт (раскрой .${layout})`, async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: 'no-preference', viewport });
     const page = await context.newPage();
     await page.goto(ROUTE ?? '/');
 
     const readTime = () =>
-      page.evaluate(() => {
-        const pkt = document.querySelector('#cases svg.ra .pkt') as SVGCircleElement;
+      page.evaluate((sel) => {
+        const pkt = document.querySelector(`[data-case-flow] svg.${sel} .pkt`) as SVGCircleElement;
         const t = pkt.getAnimations()[0]?.currentTime;
         return typeof t === 'number' ? t : Number(t ?? 0);
-      });
+      }, layout);
 
     // Иллюстрация далеко внизу страницы — при загрузке она вне окна.
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -331,7 +405,7 @@ test.describe('«Заявка-Хаб» — затвор цикла (критер
       `вне окна цикл прирос на ${(off2 - off1).toFixed(0)} мс — затвор не сработал`,
     ).toBeLessThan(50);
 
-    await page.locator('#cases svg.ra').scrollIntoViewIfNeeded();
+    await page.locator(`[data-case-flow] svg.${layout}`).scrollIntoViewIfNeeded();
     await page.waitForTimeout(200);
     const on1 = await readTime();
     await page.waitForTimeout(1000);

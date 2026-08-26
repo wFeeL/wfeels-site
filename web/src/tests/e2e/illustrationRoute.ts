@@ -37,3 +37,16 @@ export function routeWithMarker(marker: string): string | null {
   }
   return null;
 }
+
+/** Разметка той же страницы сборки, что находит `routeWithMarker` — нужна,
+ *  когда прогону важно не только «где», но и «в каком режиме» рисунок
+ *  выведен (например, различить `single="b"` панели разворота кейса от
+ *  дуального раскроя главной), не открывая страницу браузером второй раз. */
+export function htmlForMarker(marker: string): string | null {
+  if (!existsSync(DIST)) return null;
+  for (const file of htmlFiles(DIST)) {
+    const html = readFileSync(file, 'utf8');
+    if (html.includes(marker)) return html;
+  }
+  return null;
+}
