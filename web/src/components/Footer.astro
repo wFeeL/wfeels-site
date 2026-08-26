@@ -121,26 +121,35 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
         Значки — здесь же, вторичным действием, там, где нет полосы (раздел 2:
         «Д-4: они перестают быть единственным действием»). */}
     <div class="footer-meta">
-      {!cta && <p class="reply">{t.footerReplyMode}</p>}
-
-      <div class="requisites">
-        <p>{t.footerLegalName}</p>
-        <p>{t.footerLegalStatus}</p>
-        <p>{CITY_AND_CONTRACT}</p>
-        <p>
-          {t.footerLegalContact}:{' '}
-          <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>
-        </p>
-      </div>
-
-      {!cta && (
-        <div class="icon-links">
-          <a class="icon-link" href={TELEGRAM_URL} rel="me" aria-label={t.footerTelegram}>
-            <TelegramMark size={20} />
-          </a>
-          <Fragment set:html={emailIconLinkHtml(t.footerEmail, 'icon-link')} />
+      {/* Решение З-4 (`09-footer-brief.md`, раздел 15.4): обёртка `.meta-top`
+          ставит реквизиты и правую ячейку рядом — без неё правая ячейка не
+          несла бы места и держала пустое поле справа от `.requisites`
+          (мера `65ch` упирается раньше контейнера). Своей точки перелома
+          нет: перенос делает содержимое (раздел 4.5), тем же приёмом уже
+          живёт `.legal-row`. */}
+      <div class="meta-top">
+        <div class="requisites">
+          <p>{t.footerLegalName}</p>
+          <p>{t.footerLegalStatus}</p>
+          <p>{CITY_AND_CONTRACT}</p>
+          <p>
+            {t.footerLegalContact}:{' '}
+            <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>
+          </p>
         </div>
-      )}
+
+        {!cta && (
+          <div class="meta-aside">
+            <p class="reply">{t.footerReplyMode}</p>
+            <div class="icon-links">
+              <a class="icon-link" href={TELEGRAM_URL} rel="me" aria-label={t.footerTelegram}>
+                <TelegramMark size={20} />
+              </a>
+              <Fragment set:html={emailIconLinkHtml(t.footerEmail, 'icon-link')} />
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Доступное имя навигации несёт атрибут `aria-label`, а не спрятанный
           узел с `id` (раздел 6, пункт 5 брифа): видимой подписи у ряда больше
@@ -293,12 +302,15 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
   }
 
   /* ── Служебная полоса ────────────────────────────────────────────────── */
-  /* `gap: 16px` на прямых потомках даёт РОВНО те зазоры, которые требует
-     раздел 4.4 («оба шестнадцатипиксельных зазора обязательны»): между
-     `p.reply` и `.requisites`, между `.requisites` и `.icon-links` (когда
-     полосы нет) и между тем, что выше, и `.legal-row` — единое число во всех
-     трёх местах, поэтому единственное правило `gap` покрывает их разом, а не
-     три отдельных `margin-top`. */
+  /* Решение З-4 (раздел 15.4 брифа): `.footer-meta` теперь несёт РОВНО двух
+     прямых потомков — `.meta-top` (реквизиты + правая ячейка) и
+     `.legal-row`. Единственный `gap: 32px` между ними — та же цена, что
+     раньше складывалась из `gap: 16px` контейнера и `margin-bottom: 16px`
+     `.requisites` (Д-1, раздел 4.0 брифа, ошибка 2): протрузия почтовой
+     ссылки на 12,5 px вниз (комментарий у `.requisites a`) требует зазора
+     ≥ 16 px ПОСЛЕ вычета протрузии, 32 − 12,5 = 19,5 px даёт запас. Число
+     не выросло — просто больше не расщеплено на два объявления в двух
+     разных узлах. */
   /* Верхнего отступа у `.footer-meta` самого по себе нет: без полосы действия
      зазор от верхнего края подвала уже даёт `padding-top` `<footer>` (48),
      с полосой — верхний зазор в 24 несёт `margin` черты `.footer-divider`
@@ -306,30 +318,55 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
   .footer-meta {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 32px;
   }
 
-  .reply {
-    margin: 0;
-    max-width: 65ch;
+  /* Обёртка З-4: реквизиты и правая ячейка — соседи по одному ряду, пока
+     содержимое помещается (раздел 4.4/4.5 брифа, перенос делает содержимое,
+     а не объявленная ширина окна). `justify-content: space-between`
+     разводит их к разным краям контейнера — именно так пустое поле справа
+     от `.requisites` (Д-2, раздел 15.4) занимает правая ячейка, а не остаётся
+     дырой. */
+  .meta-top {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 48px;
+    row-gap: 32px;
+    align-items: flex-start;
+    justify-content: space-between;
   }
 
   /* Раздел 4.4 брифа (продолжение Д-1, комментарий у `.requisites a` ниже):
      `padding-block: 14px` растит цель нажатия последней ссылки (почта по
-     договорам) вверх и вниз, не растя высоту строки — `gap: 16px` у
-     `.footer-meta` считает зазор от «сухой» строки и не видит протрузии.
-     Измерено (`boundingBox()`, 390/768/1440): бокс `.requisites`
-     заканчивается на той же координате, где кончается строка, а сама
-     ссылка выступает на 12 px ниже — зазор до следующей цели нажатия
-     (`.icon-links`/`.legal-row`) садится с номинальных 16 до 4 px. Чинится
-     здесь, а не в поле ссылки (14 в `padding-block` не трогать — см.
-     комментарий у `.requisites a`): `margin-bottom` добавляется К `gap`
-     контейнера (flex не схлопывает свой `gap` с чужим `margin`), 16 — то же
-     число шкалы отступов раздела 5, что и сам `gap`, даёт зазор 4 + 16 =
-     20 px, с запасом над требуемыми ≥16. */
-  .requisites { max-width: 65ch; margin-bottom: 16px; }
+     договорам) вверх и вниз, не растя высоту строки — измерением найдено,
+     что бокс `.requisites` заканчивается на той же координате, где кончается
+     строка, а сама ссылка выступает на 12 px ниже. Зазор до следующей цели
+     нажатия несёт `gap` родителя (`.footer-meta`/`.meta-top`), а не поле
+     самой ссылки (14 в `padding-block` не трогать — см. комментарий у
+     `.requisites a`) и не собственный `margin-bottom` здесь — расщеплённое
+     на два узла число (Д-1) теперь сведено в один `gap: 32px` выше. */
+  .requisites { max-width: 65ch; }
   .requisites p { margin: 0; }
   .requisites p + p { margin-top: 4px; }
+
+  /* Правая ячейка З-4: строка режима ответа и два значка, напротив
+     реквизитов. `flex: 0 1 auto` — ячейка не растягивается на свободное
+     место `.meta-top`, только сжимается при нехватке ширины; `max-width:
+     30ch` — та же мера, которой сама строка режима ответа ограничена в
+     `.cta-sub` (там 65ch, здесь ýже: ячейка вторична и не должна
+     соперничать шириной со столбцом реквизитов). */
+  .meta-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 0 1 auto;
+    max-width: 30ch;
+  }
+
+  .reply {
+    margin: 0;
+  }
+
   /* Раздел 10, пункт 2 (Д-1): поля, а не `min-height` внутри абзаца.
      `inline-flex`-коробка участвовала в строчном ритме и добавляла строке
      лишние 44 px (`display: inline-flex; min-height: 44px` — снятое
