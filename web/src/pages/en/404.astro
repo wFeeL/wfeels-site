@@ -16,21 +16,19 @@ const t = dict('en');
       description="This page doesn't exist."
       noindex={true}
       nofollow={true}>
-  <div class="short-page">
-    <Container>
-      <Section label="404">
-        <h1 class="t-h1">This page doesn't exist</h1>
-        <p class="lead t-body-lg">
-          The address may be mistyped, or the page may have moved.
-        </p>
-        <p class="tagline t-body">{t.siteTagline}</p>
-        <div class="ways">
-          <Button href="/en" variant="secondary">Home</Button>
-          <Button href="/en#contact" variant="secondary">Get in touch</Button>
-        </div>
-      </Section>
-    </Container>
-  </div>
+  <Container>
+    <Section label="404">
+      <h1 class="t-h1" data-short-page>This page doesn't exist</h1>
+      <p class="lead t-body-lg">
+        The address may be mistyped, or the page may have moved.
+      </p>
+      <p class="tagline t-body">{t.siteTagline}</p>
+      <div class="ways">
+        <Button href="/en" variant="secondary">Home</Button>
+        <Button href="/en#contact" variant="secondary">Get in touch</Button>
+      </div>
+    </Section>
+  </Container>
 </Base>
 
 <style>
@@ -43,13 +41,14 @@ const t = dict('en');
   .tagline { margin-top: 16px; color: var(--text-muted); }
   .ways { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
 
-  /* Б-3 — тот же приём, что у русской `pages/404.astro`, обоснование там же.
-     `.short-page` даёт `main` переключатель `:has()` на центрирование по
-     вертикали ТОЛЬКО на этой странице; на узких экранах авто-поля
-     схлопываются в 0 и ничего не меняют. */
-  :global(main:has(.short-page)) {
+  /* Б-3 — тот же приём, что у русской `pages/404.astro`, обоснование и разбор
+     дефекта первого захода — там же. Маркер `data-short-page` — на уже
+     существующем `h1`, без новой обёртки; авто-поля — на `.container`. */
+  :global(main:has([data-short-page])) {
     display: flex;
     flex-direction: column;
   }
-  .short-page { margin-block: auto; }
+  :global(main:has([data-short-page]) > .container) {
+    margin-block: auto;
+  }
 </style>

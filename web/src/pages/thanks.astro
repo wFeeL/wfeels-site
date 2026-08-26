@@ -6,20 +6,18 @@ import Button from '../components/Button.astro';
 import { TELEGRAM_URL } from '../lib/contacts';
 ---
 <Base title="Заявка отправлена — wfeels" description="Заявка получена." noindex={true} nofollow={true}>
-  <div class="short-page">
-    <Container>
-      <Section label="Контакт">
-        <h1 class="t-h1">Заявка ушла</h1>
-        <p class="t-body-lg lead">Отвечу в течение дня.</p>
-        <!-- Запасной канал был дан тому, у кого отправка не получилась, и не дан
-             тому, у кого получилась. Адрес тот же, что в сообщении об ошибке. -->
-        <!-- Ссылка стоит на той же строке намеренно: перенос строки перед тегом
-             компилятор Astro съедает вместе с пробелом, и выходит «напрямую:Telegram». -->
-        <p class="fallback">Если за сутки ответа не будет — напишите напрямую: <a href={TELEGRAM_URL}>Telegram</a></p>
-        <Button href="/" variant="secondary">На главную</Button>
-      </Section>
-    </Container>
-  </div>
+  <Container>
+    <Section label="Контакт">
+      <h1 class="t-h1" data-short-page>Заявка ушла</h1>
+      <p class="t-body-lg lead">Отвечу в течение дня.</p>
+      <!-- Запасной канал был дан тому, у кого отправка не получилась, и не дан
+           тому, у кого получилась. Адрес тот же, что в сообщении об ошибке. -->
+      <!-- Ссылка стоит на той же строке намеренно: перенос строки перед тегом
+           компилятор Astro съедает вместе с пробелом, и выходит «напрямую:Telegram». -->
+      <p class="fallback">Если за сутки ответа не будет — напишите напрямую: <a href={TELEGRAM_URL}>Telegram</a></p>
+      <Button href="/" variant="secondary">На главную</Button>
+    </Section>
+  </Container>
 </Base>
 
 <style>
@@ -39,15 +37,16 @@ import { TELEGRAM_URL } from '../lib/contacts';
     text-decoration-line: underline;
   }
 
-  /* Б-3 (решение исполнителя, обоснование — `pages/404.astro`, тот же приём
-     дословно): на высоких мониторах тело `/thanks` стояло прижатым к верху,
-     подвал — к низу, между ними пустой фон. `main` (`base.css`) не трогается
-     — переключатель `:has()` адресован только страницам с маркером
-     `.short-page`. Авто-поля, не `justify-content: center`, — на узких
-     экранах, где тело выше окна, схлопываются в 0 и ничего не меняют. */
-  :global(main:has(.short-page)) {
+  /* Б-3 (решение исполнителя, обоснование и разбор дефекта первого захода —
+     `pages/404.astro`, тот же приём дословно): на высоких мониторах тело
+     `/thanks` стояло прижатым к верху, подвал — к низу, между ними пустой
+     фон. Маркер `data-short-page` — на уже существующем `h1`, без новой
+     обёртки; авто-поля — на `.container`, не `justify-content: center`. */
+  :global(main:has([data-short-page])) {
     display: flex;
     flex-direction: column;
   }
-  .short-page { margin-block: auto; }
+  :global(main:has([data-short-page]) > .container) {
+    margin-block: auto;
+  }
 </style>

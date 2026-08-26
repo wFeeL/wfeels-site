@@ -14,16 +14,14 @@ import { TELEGRAM_URL } from '../../lib/contacts';
  * чтобы прямой переход по `/en/thanks` уже сегодня не был потерян. */
 ---
 <Base title="Message Sent — wfeels" description="Your enquiry has been received." noindex={true} nofollow={true}>
-  <div class="short-page">
-    <Container>
-      <Section label="Contact">
-        <h1 class="t-h1">Your message is on its way</h1>
-        <p class="t-body-lg lead">I'll reply within a day.</p>
-        <p class="fallback">If you haven't heard back within a day, write to me directly: <a href={TELEGRAM_URL}>Telegram</a></p>
-        <Button href="/en" variant="secondary">Home</Button>
-      </Section>
-    </Container>
-  </div>
+  <Container>
+    <Section label="Contact">
+      <h1 class="t-h1" data-short-page>Your message is on its way</h1>
+      <p class="t-body-lg lead">I'll reply within a day.</p>
+      <p class="fallback">If you haven't heard back within a day, write to me directly: <a href={TELEGRAM_URL}>Telegram</a></p>
+      <Button href="/en" variant="secondary">Home</Button>
+    </Section>
+  </Container>
 </Base>
 
 <style>
@@ -39,10 +37,13 @@ import { TELEGRAM_URL } from '../../lib/contacts';
     text-decoration-line: underline;
   }
 
-  /* Б-3 — тот же приём, что у русской `pages/thanks.astro`, обоснование там же. */
-  :global(main:has(.short-page)) {
+  /* Б-3 — тот же приём, что у русской `pages/thanks.astro`, обоснование и
+     разбор дефекта первого захода — там же и в `pages/404.astro`. */
+  :global(main:has([data-short-page])) {
     display: flex;
     flex-direction: column;
   }
-  .short-page { margin-block: auto; }
+  :global(main:has([data-short-page]) > .container) {
+    margin-block: auto;
+  }
 </style>
