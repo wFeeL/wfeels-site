@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import {
-  HEADER_CTA_HREF, headerCtaHref, normalizePath, samePath, sections, showHeaderCta,
+  HEADER_CTA_HREF, headerCtaHref, normalizePath, samePath, sections, showFooterCta,
+  showHeaderCta,
 } from './nav';
 import { hasTranslation, LOCALES } from '../i18n/locales';
 import { hasHomeSection } from './sections';
@@ -149,5 +153,115 @@ describe('headerCtaHref', () => {
   it('на английской главной — тот же якорь, а не уход на русский /contact', () => {
     expect(headerCtaHref('/en')).toBe('#contact');
     expect(headerCtaHref('/en/')).toBe('#contact');
+  });
+});
+
+/* Полоса действия подвала (`.footer-cta`) — спека
+ * `70-workshop/specs/site-v3/09-footer-brief.md`, раздел 3. Правило одной
+ * фразой (3.1): полосы нет там, где у страницы есть СВОЙ призыв внизу.
+ *
+ * Список путей ниже снят С ФАКТА, а не выписан из головы и не переписан из
+ * раздела 1 брифа (там названо «24 страницы» — это число уже устарело на
+ * момент брифа: не учитывает пять английских юридических и служебных
+ * страниц, заведённых тем же днём, `50-code/CLAUDE.md`, ловушка 21). Снято
+ * командой `find dist -name "*.html" | wc -l` по `npm run build` в этом же
+ * ворктри 2026-08-26 — **29** собранных страниц, не 24. Список путей ниже —
+ * результат того же обхода, переведённый в маршруты.
+ *
+ * Ожидание для каждого пути не переписано вторым ручным перечнем «где полоса
+ * есть/нет» — это повторило бы ошибку раздела 3.2 (список из варианта был
+ * неполон) на новом месте. Вместо этого ожидание читается из СОДЕРЖИМОГО
+ * уже собранной страницы: есть ли внутри `<main>` тег `<form>` — это и есть
+ * признак раздела 3.3 («страница, содержащая `main form`, полосы не
+ * получает»). `/thanks` и его английская пара — особый случай той же
+ * секции: формы там уже нет (заявка отправлена), но полоса всё равно не
+ * положена по отдельной причине, и это явное исключение, а не самая
+ * страница, угаданная по имени. */
+describe('showFooterCta', () => {
+  const DIST = fileURLToPath(new URL('../../dist/', import.meta.url));
+
+  function htmlFiles(dir: string): string[] {
+    if (!existsSync(dir)) return [];
+    const out: string[] = [];
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) out.push(...htmlFiles(p));
+      else if (e.name.endsWith('.html')) out.push(p);
+    }
+    return out;
+  }
+
+  /** Путь файла в `dist/` → маршрут сайта (`cases/index.html` → `/cases`,
+   *  `404.html` → `/404`, корневой `index.html` → `/`). */
+  function routeOf(file: string): string {
+    const rel = file.slice(DIST.length);
+    if (rel === 'index.html') return '/';
+    const withoutIndex = rel.endsWith('/index.html')
+      ? rel.slice(0, -'/index.html'.length)
+      : rel.slice(0, -'.html'.length);
+    return `/${withoutIndex}`;
+  }
+
+  /** Есть ли в собранной странице своя форма внизу — признак раздела 3.3,
+   *  проверенный содержимым, а не названием пути. */
+  function hasOwnMainForm(html: string): boolean {
+    const main = html.match(/<main[\s>][\s\S]*?<\/main>/);
+    return !!main && main[0].includes('<form');
+  }
+
+  if (!existsSync(DIST)) {
+    it('сборка существует (npm run build перед этим набором)', () => {
+      throw new Error(
+        `\nВ ${DIST} нет ни одного .html. Сначала выполни \`npm run build\` в ` +
+        'web/, затем повтори `npm run test:unit` — раздел «Проверка» README.',
+      );
+    });
+    return;
+  }
+
+  const files = htmlFiles(DIST).filter((f) => !f.endsWith('.json'));
+  const pages = files.map((f) => ({ path: routeOf(f), html: readFileSync(f, 'utf8') }));
+
+  it('обход dist нашёл все реальные страницы — не меньше, чем сегодня (29)', () => {
+    expect(pages.length).toBeGreaterThanOrEqual(29);
+  });
+
+  for (const { path, html } of pages) {
+    const delocalized = normalizePath(path).replace(/^\/en(\/|$)/, '/');
+    const expectHidden = delocalized === '/thanks' || hasOwnMainForm(html);
+
+    it(`${path} — полоса ${expectHidden ? 'скрыта' : 'показана'} (main form: ${hasOwnMainForm(html)}${delocalized === '/thanks' ? ', /thanks' : ''})`, () => {
+      expect(showFooterCta(path)).toBe(!expectHidden);
+    });
+  }
+
+  it('посчитано верное число страниц с полосой и без — 15 и 14 из 29', () => {
+    const shown = pages.filter(({ path }) => showFooterCta(path)).length;
+    expect(shown).toBe(15);
+    expect(pages.length - shown).toBe(14);
+  });
+
+  // Отдельно, без обращения к dist: сама формула читается по путям из
+  // раздела 3.1 буквально — эти пять примеров называют правило по имени,
+  // а обход выше проверяет его на каждой реальной странице.
+  it('правило по имени: главная, /contact, /thanks и посадочная услуги — без полосы', () => {
+    expect(showFooterCta('/')).toBe(false);
+    expect(showFooterCta('/contact')).toBe(false);
+    expect(showFooterCta('/contact/')).toBe(false);
+    expect(showFooterCta('/thanks')).toBe(false);
+    expect(showFooterCta('/services/website')).toBe(false);
+  });
+
+  it('правило по имени: каталог услуг — не посадочная, полоса есть', () => {
+    expect(showFooterCta('/services')).toBe(true);
+    expect(showFooterCta('/services/')).toBe(true);
+  });
+
+  it('локаль снимается так же, как у showHeaderCta', () => {
+    expect(showFooterCta('/en')).toBe(false);
+    expect(showFooterCta('/en/thanks')).toBe(false);
+    expect(showFooterCta('/en/contact')).toBe(false);
+    expect(showFooterCta('/en/privacy')).toBe(true);
+    expect(showFooterCta('/en/404')).toBe(true);
   });
 });
