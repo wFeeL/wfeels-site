@@ -8,8 +8,8 @@ const slides = [
   ['relayos/02-workflow-builder.avif', /Конструктор автоматизаций RelayOS/, 1586, 992, 'RelayOS'],
   ['relayos/03-connections.avif', /Раздел подключений RelayOS/, 1586, 992, 'RelayOS'],
   ['still-house/01-home.avif', /Главная страница бутик-отеля/, 1586, 992, 'Still House'],
-  ['still-house/02-rooms.webp', /Каталог номеров Still House/, 1586, 992, 'Still House'],
-  ['still-house/03-room-booking.webp', /Страница номера Still House/, 1586, 992, 'Still House'],
+  ['still-house/02-rooms.avif', /Каталог номеров Still House/, 1586, 992, 'Still House'],
+  ['still-house/03-room-booking.avif', /Страница номера Still House/, 1586, 992, 'Still House'],
   ['forma-editions/01-home.avif', /Главная страница галереи/, 1586, 992, 'Forma Editions'],
   ['forma-editions/02-collection.avif', /Каталог предметов Forma Editions/, 1586, 992, 'Forma Editions'],
   ['forma-editions/03-product.avif', /Карточка кресла Arc Chair 02/, 1586, 992, 'Forma Editions'],
@@ -129,7 +129,7 @@ test.describe('галерея кейса сайтов', () => {
       HTMLImageElement.prototype.decode = () =>
         Promise.reject(new DOMException('Искусственный отказ decode'));
     });
-    await page.route('**/cases/websites/still-house/02-rooms.webp', async (route) => {
+    await page.route('**/cases/websites/still-house/02-rooms.avif', async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1_200));
       await route.continue();
     });
