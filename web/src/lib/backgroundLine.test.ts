@@ -34,27 +34,37 @@ describe('линия на фоне — Ч-4 «Акт» (раздел 4.2)', () =
     expect(data.contact.side).toBe('right');
   });
 
-  it('ровно три перехода на действующем составе: pain→services, cases→process, faq→contact', () => {
+  it('ровно три перехода на действующем составе: services→pricing, cases→process, faq→contact', () => {
+    // Правка 2026-08-27 (`70-workshop/specs/site-v3/11-line-narrator-brief.md`,
+    // раздел 10.4, Р-2): `pain` и `services` переведены на акт `'in'`, поэтому
+    // граница акта «вход/дело» переехала с «pain→services» на
+    // «services→pricing» — переход теперь владеет `pricing`, не `services`.
     const owners = turnOwners();
-    expect(owners).toEqual(['services', 'process', 'contact']);
+    expect(owners).toEqual(['pricing', 'process', 'contact']);
   });
 
   it('направления переходов чередуются: lr, rl, lr', () => {
     const data = computeLineData();
-    expect(data.services.turn).toBe('lr');
+    expect(data.pricing.turn).toBe('lr');
     expect(data.process.turn).toBe('rl');
     expect(data.contact.turn).toBe('lr');
   });
 
-  it('акт 1 (pain, ≈650 px < 900) поглощён входом — переход hero→pain отсутствует', () => {
+  it('акт «вход» несёт три секции без внутренних переходов: hero, pain, services — одна сторона, одна группа', () => {
+    // Правка 2026-08-27: `pain` и `services` не «поглощены» коротким прогоном
+    // (как раньше `pain` при мерже коротких групп) — они литерально несут
+    // тот же акт `'in'`, что и `hero`, поэтому переходов внутри группы нет
+    // ни по одной причине, а не только потому что группа короче порога.
     const data = computeLineData();
     expect(data.pain.turn).toBe('none');
     expect(data.pain.side).toBe(data.hero.side);
+    expect(data.services.turn).toBe('none');
+    expect(data.services.side).toBe(data.hero.side);
   });
 
-  it('сторона не меняется внутри одной группы (услуги/цены/кейсы — одна сторона)', () => {
+  it('сторона не меняется внутри одной группы (цены/кейсы — одна сторона)', () => {
     const data = computeLineData();
-    const group = ['services', 'pricing', 'cases'].map((id) => data[id].side);
+    const group = ['pricing', 'cases'].map((id) => data[id].side);
     expect(new Set(group).size).toBe(1);
   });
 
@@ -63,9 +73,10 @@ describe('линия на фоне — Ч-4 «Акт» (раздел 4.2)', () =
     // сливает ни одной группы, значит переход стоит на КАЖДОЙ границе акта.
     const heights = Object.fromEntries(HOME_SECTIONS.map((s) => [s.id, 1000]));
     const owners = turnOwners(HOME_SECTIONS, heights, 1000);
-    // Границы актов на действующем составе: pain(1), services(2), process(3), contact(out) —
-    // первая секция каждой не-первой группы владеет переходом.
-    expect(owners).toEqual(['pain', 'services', 'process', 'contact']);
+    // Границы актов на действующем составе (правка 2026-08-27): вход
+    // (hero, pain, services), 2 (pricing, cases), 3 (process…faq), выход
+    // (contact) — первая секция каждой не-первой группы владеет переходом.
+    expect(owners).toEqual(['pricing', 'process', 'contact']);
   });
 
   it('короткий подвал возвращает акт «выход» под порог и сливает faq→contact', () => {
@@ -75,7 +86,7 @@ describe('линия на фоне — Ч-4 «Акт» (раздел 4.2)', () =
     // а не игнорируется алгоритмом.
     const heights = { ...MEASURED_SECTION_HEIGHT, contact: 200 };
     const owners = turnOwners(HOME_SECTIONS, heights, 50);
-    expect(owners).toEqual(['services', 'process']);
+    expect(owners).toEqual(['pricing', 'process']);
   });
 
   it('lineDataFor возвращает null для якоря вне HOME_SECTIONS', () => {

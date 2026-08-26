@@ -39,23 +39,6 @@ const SHELF_CARDS = shelfCards(locale);
 <div class="top-grid">
   {TOP_CARDS.map((card) => (
     <Card stack={true} accent={!!card.recommended}>
-      {/* Линия-рассказчик (`70-workshop/specs/site-v3/11-line-narrator-brief.md`,
-          раздел 3, П3): обвод рекомендуемой карточки — две полосы 2px полного
-          `--accent` по вертикальным кромкам, «сверху вниз» по правой (докa
-          пришла справа), затем «снизу вверх» по левой. Не `::before`/`::after`
-          самого `.card` — оба заняты `Card.astro` (угловые засечки, лампа
-          наведения); отдельные `aria-hidden`-элементы того же практического
-          рода (декоративные, `pointer-events: none`, композитный
-          `transform: scaleY()`) без конфликта с чужой разметкой. Рисуются
-          только у рекомендуемой карточки — второй такой на странице нет
-          (`card.recommended`, тот же признак, что даёт `accent` пропу Card
-          выше). */}
-      {card.recommended && (
-        <>
-          <span class="line-outline line-outline--right" aria-hidden="true"></span>
-          <span class="line-outline line-outline--left" aria-hidden="true"></span>
-        </>
-      )}
       <div class:list={['top-body', { 'top-body--recommended': !!card.recommended }]}>
         {card.recommended && (
           <span class="badge"><span class="badge-star" aria-hidden="true">★</span>{card.recommended.label}</span>
@@ -174,74 +157,17 @@ const SHELF_CARDS = shelfCards(locale);
     :global(.top-grid > .card--accent) { transform: translateY(-12px); }
   }
 
-  /* Линия-рассказчик, раздел 3 П3 (`11-line-narrator-brief.md`): обвод
-     рекомендуемой карточки. Дефолт (вне @supports/@media ниже) — КОНЕЧНОЕ
-     состояние (раздел 7.5 брифа: «конечное состояние — состояние по
-     умолчанию»): обе полосы стоят на `scaleY(1)`, обвод виден целиком —
-     запасное поведение при `reduce`, без поддержки `animation-timeline`,
-     в печати/forced-colors и ниже 900px тем же приёмом, что у остального
-     рассказа. Радиус полос равен радиусу карточки (`--radius-md`) — брифом
-     назван явно: полоса стоит вплотную к скруглённому углу карточки. */
-  :global(.top-grid > .card--accent .line-outline) {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    border-radius: var(--radius-md);
-    background: var(--accent);
-    pointer-events: none;
-    transform: scaleY(1);
-  }
-  :global(.top-grid > .card--accent .line-outline--right) { right: 0; transform-origin: top; }
-  :global(.top-grid > .card--accent .line-outline--left) { left: 0; transform-origin: bottom; }
-
-  /* Две фазы на ОДНОЙ шкале вида самой карточки (не своей — `view-timeline-
-     name` на `.card--accent`, полосы читают её как `animation-timeline`),
-     тем же диапазоном, что несёт весь рассказ (`--line-lead`/`--line-trail`,
-     `BackgroundLine.astro`), поделённым на две равные половины: первая —
-     от начала окна до середины («сверху вниз», правая кромка — та, с
-     которой пришла линия, док справа), вторая — от середины до конца
-     («снизу вверх», левая). Середина выражена формулой, не числом
-     («чисел в CSS — ноль», раздел 3 П6 брифа): `var(--line-lead) +
-     (100% − var(--line-trail) − var(--line-lead)) / 2` — ровно половина
-     всего окна `cover var(--line-lead) … cover calc(100% − var(--line-trail))`,
-     при `--line-lead: 33vh; --line-trail: 67vh` это `calc(50% − 17vh)`,
-     здесь оставлено в общем виде, чтобы правка любой из двух переменных
-     не расходилась молча с этим местом. `fill-mode: both` — здесь уместно
-     и обязательно (в отличие от кнопки первого экрана, П2): до прихода
-     линии обе полосы обязаны стоять на `scaleY(0)`, а не показывать
-     конечное состояние. */
-  @supports (animation-timeline: view()) {
-    @media (prefers-reduced-motion: no-preference) {
-      @media (min-width: 900px) {
-        :global(.top-grid > .card--accent) {
-          view-timeline-name: --pricing-card-view;
-        }
-        :global(.top-grid > .card--accent .line-outline) {
-          transform: scaleY(0);
-          animation-name: line-outline-draw;
-          animation-duration: 1ms;
-          animation-timing-function: linear;
-          animation-fill-mode: both;
-          animation-timeline: --pricing-card-view;
-        }
-        :global(.top-grid > .card--accent .line-outline--right) {
-          animation-range:
-            cover var(--line-lead)
-            cover calc(var(--line-lead) + (100% - var(--line-trail) - var(--line-lead)) / 2);
-        }
-        :global(.top-grid > .card--accent .line-outline--left) {
-          animation-range:
-            cover calc(var(--line-lead) + (100% - var(--line-trail) - var(--line-lead)) / 2)
-            cover calc(100% - var(--line-trail));
-        }
-      }
-    }
-  }
-  @keyframes line-outline-draw {
-    from { transform: scaleY(0); }
-    to   { transform: scaleY(1); }
-  }
+  /* Обвод рекомендуемой карточки двумя полосами 2px (П3, раздел 3 старой
+     редакции брифа) СНЯТ решением раздела 10.5 `11-line-narrator-brief.md`
+     (правка 2026-08-27): полоса `--accent` вставала поверх постоянной рамки
+     карточки (`border: 1px rgb(47,91,255)`) и читалась как «лёгкое утолщение
+     края», а не как отдельное событие. Событие «главный блок» переехало к
+     самой средней линии — раздел 10.4, траверс `pricing` теперь физически
+     проходит сквозь коробку этой карточки (вход через левую кромку, выход
+     через нижнюю, 284 px из 449 её высоты). Карточка правки не требует: её
+     заливка `rgba(47,91,255,0.09)` уже пропускает линию на 91%. Вместе с
+     обводом сняты оба псевдоэлемента `.line-outline`, обе анимации `scaleY`
+     и разметка `<span class="line-outline…">` выше. */
 
   .top-body {
     display: flex;

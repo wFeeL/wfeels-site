@@ -59,14 +59,18 @@ describe('линия на фоне — таблица шторки воспро�
   });
 
   it('прямые пути (без событий) сводятся к двум стопам — упрощение не плодит лишний CSS', () => {
-    const straightIds = ['hero', 'pain', 'pricing', 'cases', 'guarantees', 'about', 'faq', 'footer'];
+    // Правка 2026-08-27 (`70-workshop/specs/site-v3/11-line-narrator-brief.md`,
+    // раздел 10.4, Р-2): траверс переехал из `services` в `pricing` —
+    // `services` стал прямой, `pricing` стал S-кривой, списки ниже поменялись
+    // местами ровно на эту пару.
+    const straightIds = ['hero', 'pain', 'services', 'cases', 'guarantees', 'about', 'faq', 'footer'];
     for (const id of straightIds) {
       expect(LINE_PATHS[id].reveal.length, `${id}: ожидалось 2 стопа (прямая)`).toBe(2);
     }
   });
 
   it('траверсы (S-кривая) дают больше двух стопов — кривизна не сглаживается до прямой', () => {
-    for (const id of ['services', 'process', 'contact']) {
+    for (const id of ['pricing', 'process', 'contact']) {
       expect(LINE_PATHS[id].reveal.length, `${id}: ожидалась не-прямая раскладка`).toBeGreaterThan(2);
     }
   });

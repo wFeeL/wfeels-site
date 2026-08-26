@@ -47,7 +47,16 @@ import type { Locale } from '../i18n/locales';
  *  (`lib/backgroundLine.ts`, `computeActGroups`): отступы страницы из смены
  *  `act` больше не выводятся, правка владельца 2026-08-20 сделала зазор между
  *  секциями одинаковым на всех стыках (`pages/index.astro`, `GAP`). Второго
- *  перечня актов не заводится. */
+ *  перечня актов не заводится.
+ *
+ *  Правка 2026-08-27 (`70-workshop/specs/site-v3/11-line-narrator-brief.md`,
+ *  раздел 10.4, Р-2 «переезд траверса»): `pain` и `services` переведены на
+ *  `'in'` — граница переходов линии переезжает с «услуги/цены» на
+ *  «вход/дело» между `services` и `pricing`. Значения `1` и `2` остаются в
+ *  типе (`HomeAct`) — их несут `pricing`/`cases`/`process`… ниже — но
+ *  `1` временно не занята ни одной секцией; это не мёртвый код, а свободное
+ *  значение того же перечисления, которое вернётся, если акт «проблема»
+ *  снова получит собственную секцию. */
 export type HomeAct = 'in' | 1 | 2 | 3 | 'out';
 
 export interface HomeSection {
@@ -77,10 +86,21 @@ export interface HomeSection {
   act: HomeAct;
 }
 
+/* Правка 2026-08-27 (`70-workshop/specs/site-v3/11-line-narrator-brief.md`,
+ * раздел 10.4): акты `pain` и `services` переведены с `1`/`2` на `'in'`,
+ * чтобы граница переходов линии (Ч-4, `computeActGroups`) переехала на один
+ * стык вниз — с «услуги/цены» на «услуги/цены» → нет, на границу «вход/дело»
+ * между `services` и `pricing`. Траверс слева направо, который раньше тонул
+ * под сеткой карточек услуг, теперь достаётся `pricing` и физически проходит
+ * сквозь карточку «Корпоративный сайт». Число переходов, их направления и
+ * стороны секций НИЖЕ `pricing` не меняются (проверено чтением
+ * `computeActGroups`/`computeLineData` — только группировка сдвигается).
+ * Смысл акта тоже сдвигается: граница «кто я и что делаю» → «сколько это
+ * стоит и что уже сделано», а не отменяется. */
 export const HOME_SECTIONS: readonly HomeSection[] = [
   { id: 'hero', order: 1, title: 'Секция 1 — Первый экран', railLabel: 'НАЧАЛО', railFirst: true, act: 'in' },
-  { id: 'pain', order: 2, title: 'Секция 2 — Как обычно бывает', railLabel: 'КАК БЫВАЕТ', railFirst: true, act: 1 },
-  { id: 'services', order: 3, title: 'Секция 3 — Что я делаю', railLabel: 'УСЛУГИ', railFirst: true, act: 2 },
+  { id: 'pain', order: 2, title: 'Секция 2 — Как обычно бывает', railLabel: 'КАК БЫВАЕТ', railFirst: true, act: 'in' },
+  { id: 'services', order: 3, title: 'Секция 3 — Что я делаю', railLabel: 'УСЛУГИ', railFirst: true, act: 'in' },
   { id: 'pricing', order: 4, title: 'Секция 4 — Цены', railLabel: 'ЦЕНЫ', railFirst: true, act: 2 },
   { id: 'cases', order: 5, title: 'Секция 5 — Кейсы', railLabel: 'КЕЙСЫ', railFirst: true, act: 2 },
   { id: 'process', order: 6, title: 'Секция 6 — Как я работаю', railLabel: 'ПРОЦЕСС', railFirst: true, act: 3 },
