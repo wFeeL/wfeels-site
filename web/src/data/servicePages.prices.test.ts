@@ -34,18 +34,47 @@ function priceOf(group: string, entry: string): string {
   return e.price;
 }
 
+/* Цена ищется по ГРАНИЦАМ, а не подстрокой.
+ *
+ * Правка `2026-08-26`. До неё стояло `html.includes(price)`, и сторож был
+ * прав ровно до того дня, когда сменились сами числа: при снижении прайса
+ * (D-111) он покраснел на четырёх страницах, ни на одной из которых чужой
+ * цены нет. Разбор каждого совпадения:
+ *
+ *   `5 000 ₽` (одна интеграция) — найдено ВНУТРИ `45 000 ₽` на `/services/
+ *   website`, `55 000 ₽` на `/services/telegram-miniapp` и `25 000 ₽` на
+ *   `/services/ai-consultant`;
+ *   `6 000 ₽` (минимальный вход) — найдено внутри СОБСТВЕННОЙ цены страницы
+ *   `6 000 ₽/мес` на `/services/website-support`.
+ *
+ * То есть проверка мерила верную величину негодным способом, и дефект спал
+ * до тех пор, пока ни одна ступень не оказалась началом другой. Это тот же
+ * род, что описан в `50-code/CLAUDE.md`: сторож есть, ловит не то. Ослаблять
+ * его нельзя — критерий 9 настоящий: покупатель на странице услуги не должен
+ * видеть цену другой услуги.
+ *
+ * Две границы, обе выведены из разобранных совпадений, а не подобраны:
+ *   слева — перед ценой не может стоять цифра (иначе `5 000` внутри `45 000`);
+ *   справа — за ценой не может стоять `/` (иначе `6 000 ₽` внутри `6 000 ₽/мес`).
+ * Пробел слева законен и частый: «от 10 000 ₽».
+ */
+function mentions(html: string, price: string): boolean {
+  const escaped = price.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<!\\d)${escaped}(?!/)`).test(html);
+}
+
 describe('критерий 9 — на странице только её собственные цены', () => {
   for (const page of SERVICE_PAGES) {
     const own = new Set(page.tiers.map((t) => priceOf(t.group, t.entry)));
     const html = readFileSync(`dist/services/${page.slug}/index.html`, 'utf8');
 
     it(`${page.slug} — все свои цены показаны`, () => {
-      expect([...own].filter((p) => !html.includes(p))).toEqual([]);
+      expect([...own].filter((p) => !mentions(html, p))).toEqual([]);
     });
 
     it(`${page.slug} — ни одной чужой цены`, () => {
       const foreign = [...allPrices].filter(
-        (p) => !own.has(p) && p !== MILESTONE_THRESHOLD && html.includes(p),
+        (p) => !own.has(p) && p !== MILESTONE_THRESHOLD && mentions(html, p),
       );
       expect(foreign).toEqual([]);
     });
