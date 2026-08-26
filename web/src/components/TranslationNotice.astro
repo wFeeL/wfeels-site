@@ -1,0 +1,50 @@
+---
+/* Оговорка о приоритете русской редакции — обязательное условие правки
+ * 2026-08-26 («Достроить английскую версию сайта до состояния, в котором её
+ * законно показывать»). Перевод юридического документа без такой оговорки
+ * сам становится вторым документом и обязательством, а это хуже, чем
+ * отсутствие перевода вовсе: две редакции одной темы, ни одна из которых не
+ * названа главной, спорят друг с другом в день, когда разойдутся.
+ *
+ * Один компонент на три английские правовые страницы (`/en/privacy`,
+ * `/en/terms`, `/en/consent`) — тот же принцип, что у `DraftNotice.astro`:
+ * три копии одной формулировки разошлись бы молча при следующей правке.
+ * Визуальный язык нарочно тот же (рамка `--accent`, подложка `--accent-soft`,
+ * тот же радиус и поля) — это тоже блок-уведомление с цветной рамкой, только
+ * с другим смыслом («перевод для удобства», а не «документ ещё не
+ * действует»), поэтому у него свой класс и свой атрибут-метка
+ * (`data-translation-notice`), а не переиспользование `DraftNotice`. */
+interface Props {
+  /** Путь до русской редакции ЭТОГО документа — оговорка ссылается на неё
+   *  рядом с собой, а не только называет её на словах. */
+  ruHref: string;
+}
+const { ruHref } = Astro.props;
+---
+<p class="translation-notice" data-translation-notice>
+  This page is a translation provided for convenience. The
+  {' '}<a href={ruHref} hreflang="ru">Russian edition</a>{' '}
+  is the legally binding version; if the translation and the Russian text
+  differ, the Russian text controls.
+</p>
+
+<style>
+  /* Мера строки и визуальный язык — те же, что у `DraftNotice.astro`
+   * (рамка `--accent`, подложка `--accent-soft`, тот же радиус и поля): это
+   * тоже блок-уведомление с цветной рамкой, просто с противоположным по духу
+   * сообщением («перевод», а не «черновик»). Разные классы и атрибуты —
+   * разный смысл не должен опираться на один и тот же селектор. */
+  .translation-notice {
+    max-width: 62ch;
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    font-size: 1rem;
+    margin: 0 0 32px;
+  }
+  .translation-notice a {
+    color: var(--accent);
+    text-decoration-line: underline;
+  }
+</style>

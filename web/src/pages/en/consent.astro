@@ -1,0 +1,178 @@
+---
+import Base from '../../layouts/Base.astro';
+import Container from '../../components/Container.astro';
+import Section from '../../components/Section.astro';
+import Prose from '../../components/Prose.astro';
+import TranslationNotice from '../../components/TranslationNotice.astro';
+
+/* Английская редакция `/consent`, построена 2026-08-26. Источник содержания
+ * — `docs/legal/public/consent.md`, редакция 1.3 от 2026-08-25, та же
+ * редакция и дата, что у русской страницы `/consent`. Оговорка о приоритете
+ * (`TranslationNotice`) — сразу после заголовка. Форма ссылается сюда с
+ * `/en` (`LeadForm.astro`, `locale === 'en'`). */
+---
+<Base title="Consent to the Processing of Personal Data — wfeels"
+      description="Consent to the processing of data submitted through the wfeels.site form."
+      noindex={true}>
+  <Container>
+    <Section>
+      <h1 class="t-h1">Consent to the Processing of Personal Data</h1>
+      <TranslationNotice ruHref="/consent" />
+      <Prose>
+        <p><strong>Revision 1.3 of 25 August 2026.</strong></p>
+        <p>
+          Status: the edition in force for the mandatory, not
+          pre-ticked, form checkbox. It is not combined with accepting the
+          Terms, a marketing mailing list, or permission to publish a case
+          study.
+        </p>
+
+        <h2>1. Who this consent is given to</h2>
+        <p>
+          I give my consent to Сабуров Даниил Денисович, Tax ID{' '}
+          <code>183700967882</code>, a self-employed individual under the
+          Professional Income Tax regime, place of business — Saint
+          Petersburg, email <code>i@dsaburov.ru</code>, to process my
+          personal data on the terms below.
+        </p>
+
+        <h2>2. Purposes</h2>
+        <ul>
+          <li>to receive and review my enquiry;</li>
+          <li>to contact me by the method I specified;</li>
+          <li>to clarify the task, timeline and an estimate of cost;</li>
+          <li>to prepare a proposal, a specification and an individual contract at my initiative;</li>
+          <li>to confirm the fact and the terms of this consent.</li>
+        </ul>
+        <p>
+          This consent does not permit marketing mailings, mass messages,
+          or publication of my name, testimonial or project materials.
+        </p>
+        <p>
+          A Telegram username may be given as a contact for a reply. Direct
+          correspondence that a user starts themselves via a Telegram link
+          is also governed by the terms of that service, and is not a
+          submission of the web form.
+        </p>
+
+        <h2>3. Data covered</h2>
+        <ul>
+          <li>name or preferred form of address;</li>
+          <li>the email or Telegram username I provide;</li>
+          <li>the selected service;</li>
+          <li>a description of the task;</li>
+          <li>the date and time of submission, the page URL, and the enquiry identifier;</li>
+          <li>the version of the Policy and of this consent, and the fact and method of confirmation;</li>
+          <li>my reply to a follow-up question, if sent through the same verified channel and relating to this enquiry.</li>
+        </ul>
+        <p>
+          Limited technical data used for site security is processed
+          separately, on the basis stated in the Privacy Policy, not on the
+          basis of this checkbox. Once negotiations begin, business
+          correspondence may be processed to conclude a contract at my
+          initiative; this is also a separate basis.
+        </p>
+        <p>
+          I understand that the free-text field is not meant for passport
+          or banking details, special-category or biometric data, or
+          personal data of third parties. I will not enter such information
+          unless it is genuinely necessary and an agreed secure channel has
+          been set up.
+        </p>
+
+        <h2>4. Operations and method</h2>
+        <p>
+          Collection, recording, systematisation, accumulation, storage,
+          clarification, retrieval, use, transfer to a party lawfully
+          entrusted with processing, blocking, deletion and destruction are
+          permitted. Processing is carried out by automated and mixed
+          means.
+        </p>
+        <p>
+          The primary SQLite database is on a RUVDS VPS in the RUcloud data
+          centre at: Russian Federation, Moscow Region, Korolyov,
+          Pionerskaya St., 4. Only after the record has been successfully
+          written there is a full copy of the enquiry sent via the Telegram
+          Bot API to the Controller's private service chat. Telegram uses
+          foreign distributed infrastructure and group entities across
+          several jurisdictions. I have been informed of the cross-border
+          nature of this delivery and I consent to it, for the stated
+          purposes and to the stated extent. The bot deletes the Telegram
+          copy after 23 hours, and the private chat's own «1 day»
+          auto-delete timer serves as an independent safeguard; the standard
+          retention period does not exceed 24 hours.
+        </p>
+        <p>
+          VPS infrastructure is provided by OOO «МТ ФИНАНС» (trading as
+          RUVDS), Tax ID <code>7706424050</code>, OGRN{' '}
+          <code>1157746680332</code>, registered address: 127051, Moscow,
+          Tsvetnoy Blvd, 26, bldg. 1, room 12. This is a provider of leased
+          computing infrastructure; the application and the enquiry
+          database are administered by the Controller. Access to the
+          application and database is restricted by technical means and the
+          Controller's own credentials.
+        </p>
+
+        <h2>5. Duration</h2>
+        <p>
+          This consent is valid until its purposes are achieved, but an
+          enquiry that does not result in a contract is kept for no more
+          than 90 calendar days from submission. Limited evidence of
+          consent may be kept for no more than 1095 calendar days from
+          submission, to prove its lawfulness.
+        </p>
+        <p>
+          If a contract is concluded, the data needed for the contract,
+          payments, acceptance of work, compliance with the law, and
+          defence of rights continues to be processed on the corresponding
+          lawful bases, for the periods set out in the Privacy Policy.
+        </p>
+
+        <h2>6. Withdrawal and rights</h2>
+        <p>
+          Consent can be withdrawn by writing to{' '}
+          <a href="mailto:i@dsaburov.ru">i@dsaburov.ru</a> with the subject
+          line «Отзыв согласия на обработку персональных данных» (Withdrawal
+          of consent to the processing of personal data). The message
+          should state the contact used in the enquiry and details that
+          allow it to be found without collecting extra data.
+        </p>
+        <p>
+          On receiving a withdrawal, the Controller stops processing and
+          destroys the data no later than 30 calendar days afterwards,
+          unless another lawful basis exists. If part of the data continues
+          to be processed on another basis, the Controller states the
+          scope, purpose, basis and duration of that processing in the
+          reply to the subject.
+        </p>
+        <p>
+          Full details are set out in the{' '}
+          <a href="/en/privacy">Privacy Policy</a>.
+        </p>
+
+        <h2>7. Wording used on the form</h2>
+        <p>The checkbox is empty by default. The text next to it reads:</p>
+        <blockquote>
+          <p>
+            I give consent to the processing of my data (name, contact
+            details, selected service, enquiry text) so you can reply to my
+            enquiry, including delivery of a copy through Telegram.
+          </p>
+        </blockquote>
+        <p>
+          The words «consent to the processing of my data» link to{' '}
+          <a href="/en/consent">/en/consent</a>. In the same visual block, but
+          outside the checkbox's own label, sits the line «For details, see
+          the privacy policy», linking to{' '}
+          <a href="/en/privacy">/en/privacy</a>. The Privacy Policy is not
+          «accepted» by this checkbox. The server stores the revisions of
+          both documents, the time, the enquiry identifier, the exact
+          wording of the action, and the fact that the checkbox was ticked.
+        </p>
+      </Prose>
+      <a href="/en#contact" class="back-to-form">
+        <span aria-hidden="true">←</span> Back to the form
+      </a>
+    </Section>
+  </Container>
+</Base>

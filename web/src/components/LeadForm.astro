@@ -106,11 +106,12 @@ const LEGAL_VERSION = '1.3-2026-08-25';
           stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </span>
-    {/* Документ согласия существует только по-русски — это юридический текст,
-        и его перевод был бы не переводом, а вторым документом (`i18n/en.ts`,
-        комментарий у `legalPolicy`). Поэтому подпись переведена, а ссылка
-        помечена языком цели: `hreflang="ru"` объявляет, что за ней русский
-        текст, вместо того чтобы умолчать об этом. */}
+    {/* Документ согласия и Политика теперь существуют на каждом языке —
+        `/consent`/`/privacy` по-русски, `/en/consent`/`/en/privacy` по-английски
+        (правка 2026-08-26): перевод юридического текста с оговоркой о
+        приоритете русской редакции, а не второй документ. Ссылка ведёт на
+        версию ЯЗЫКА СТРАНИЦЫ — `hreflang` больше не нужен, он предупреждал
+        именно о переходе на чужой язык, а его тут больше нет. */}
     {/* Визуально это один компактный блок, как в референсе Дениса. Юридически
         действия разделены: `label` подтверждает только отдельное согласие,
         а Политика рядом остаётся информационной ссылкой и не становится
@@ -118,14 +119,12 @@ const LEGAL_VERSION = '1.3-2026-08-25';
     <span class="consent-copy">
       <label for="f-consent">
         {t.formConsentBefore}<a
-          href="/consent"
-          hreflang={locale === 'ru' ? undefined : 'ru'}
+          href={locale === 'ru' ? '/consent' : '/en/consent'}
         >{t.formConsentLink}</a>{t.formConsentAfter}<span class="req" aria-hidden="true"> *</span>
       </label>{' '}
       <span class="privacy-note">
         {t.formPrivacyBefore}<a
-          href="/privacy"
-          hreflang={locale === 'ru' ? undefined : 'ru'}
+          href={locale === 'ru' ? '/privacy' : '/en/privacy'}
         >{t.formPrivacyLink}</a>.
       </span>
     </span>

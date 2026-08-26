@@ -35,13 +35,15 @@ const here = Astro.url.pathname;
 
 /* Юридическую группу сняли 2026-08-21 ровно до заполнения документов. Теперь
    все три страницы действуют, поэтому ссылки возвращены.
-   Сами документы русские; если снова появится английская страница, `hreflang`
-   предупредит о языке цели до перехода. */
-const foreign = lang === 'en';
+   С 2026-08-26 английские страницы под `/en/…` существуют по-настоящему
+   (перевод с оговоркой о приоритете русской редакции, а не второй документ) —
+   ссылка подвала ведёт на СВОЮ языковую версию, `hreflang` больше не нужен:
+   он предупреждал именно о переходе на чужой язык, а его тут больше нет. */
+const legalPrefix = lang === 'en' ? '/en' : '';
 const LEGAL = [
-  { href: '/privacy', text: t.legalPolicy },
-  { href: '/terms', text: t.legalTerms },
-  { href: '/consent', text: t.legalConsent },
+  { href: `${legalPrefix}/privacy`, text: t.legalPolicy },
+  { href: `${legalPrefix}/terms`, text: t.legalTerms },
+  { href: `${legalPrefix}/consent`, text: t.legalConsent },
 ];
 
 /* К трем практическим обязательствам добавлено оформление сделки: договор и
@@ -167,7 +169,6 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
             <li>
               <a
                 href={item.href}
-                hreflang={foreign ? 'ru' : undefined}
                 aria-current={samePath(item.href, here) ? 'page' : undefined}
               ><span class="link-label">{item.text}</span></a>
             </li>

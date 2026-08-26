@@ -1,0 +1,315 @@
+---
+import Base from '../../layouts/Base.astro';
+import Container from '../../components/Container.astro';
+import Section from '../../components/Section.astro';
+import Prose from '../../components/Prose.astro';
+import TranslationNotice from '../../components/TranslationNotice.astro';
+
+/* Английская редакция `/privacy`, построена 2026-08-26 (правка «Достроить
+ * английскую версию сайта»). Источник содержания — канонический документ
+ * `docs/legal/public/privacy.md`, редакция 1.3 от 2026-08-25: та же
+ * редакция и та же дата, что на русской странице `/privacy`, просто с
+ * полным набором из двенадцати разделов канонического текста, а не с
+ * сокращённым изложением `pages/privacy.astro`. Обязательная оговорка о
+ * приоритете (`TranslationNotice`) стоит сразу после заголовка. */
+---
+<Base title="Privacy Policy — wfeels"
+      description="How personal data is processed and protected on wfeels.site."
+      noindex={true}>
+  <Container>
+    <Section>
+      <h1 class="t-h1">Privacy Policy</h1>
+      <TranslationNotice ruHref="/privacy" />
+      <Prose>
+        <p><strong>Revision 1.3 of 25 August 2026.</strong></p>
+        <p>
+          Status: the edition in force for the scheme «primary database in
+          the Russian Federation → full copy in a closed Telegram chat».
+        </p>
+
+        <h2>1. General provisions</h2>
+        <p>
+          1.1. This Policy sets out how personal data of visitors to
+          <code>https://wfeels.site</code>, people who submit an enquiry, and
+          clients are processed and protected.
+        </p>
+        <p>
+          1.2. Data controller: Сабуров Даниил Денисович, a self-employed
+          individual under the special tax regime «Professional Income Tax»,
+          Tax ID <code>183700967882</code>, place of business — Saint
+          Petersburg.
+        </p>
+        <p>
+          1.3. Contact for requests, withdrawal of consent, and personal-data
+          enquiries: <a href="mailto:i@dsaburov.ru">i@dsaburov.ru</a>.
+        </p>
+        <p>
+          1.4. This Policy applies only to processing carried out by the
+          Controller. Third-party sites and services act under their own
+          documents.
+        </p>
+
+        <h2>2. Processing principles</h2>
+        <p>The Controller:</p>
+        <ul>
+          <li>processes data lawfully, in good faith, and only for purposes defined in advance;</li>
+          <li>does not collect data that is excessive for those purposes;</li>
+          <li>ensures accuracy and, where necessary, correction of data;</li>
+          <li>does not merge databases created for incompatible purposes;</li>
+          <li>keeps data no longer than the purposes of processing or the law require;</li>
+          <li>takes legal, organisational and technical protective measures;</li>
+          <li>destroys or anonymises data once its purpose is achieved, unless another lawful basis for retention exists.</li>
+        </ul>
+
+        <h2>3. Categories of data subjects and purposes</h2>
+        <h3>3.1. Site visitors</h3>
+        <p>
+          Purposes: secure operation of the site, protecting the form from
+          automated submissions, and rate limiting.
+        </p>
+        <p>
+          Data: IP address, page URL, time of the request, technical request
+          markers, how long the form took to fill in, and the value of the
+          anti-spam field.
+        </p>
+        <p>
+          Basis: the Controller's legitimate interest in the site's security,
+          provided the visitor's rights do not prevail; for data included in
+          a submitted enquiry, the subject's consent also applies.
+        </p>
+
+        <h3>3.2. People submitting an enquiry</h3>
+        <p>
+          Purposes: to receive and process the enquiry, contact the sender,
+          clarify the task, prepare a proposal, and, where the sender
+          initiates it, conclude a contract.
+        </p>
+        <p>Data:</p>
+        <ul>
+          <li>name or preferred form of address;</li>
+          <li>a contact the sender enters themself: email or Telegram username;</li>
+          <li>the selected service;</li>
+          <li>a description of the task;</li>
+          <li>the URL of the page the form was sent from;</li>
+          <li>IP address and limited technical anti-spam data;</li>
+          <li>date and time of submission;</li>
+          <li>the version of the Policy and of the separate consent;</li>
+          <li>the fact and method of confirming consent;</li>
+          <li>business correspondence relating to the enquiry, once pre-contractual discussion has begun.</li>
+        </ul>
+        <p>
+          Basis: the subject's separate consent — for submitting the form;
+          once negotiations begin, also actions taken at the subject's
+          initiative aimed at concluding a contract. These bases are not
+          merged with processing for site security.
+        </p>
+
+        <h3>3.3. Clients and client representatives</h3>
+        <p>
+          Purposes: concluding and performing a contract, settlements,
+          issuing a self-employed tax receipt, acceptance of work, warranty
+          fixes, claims handling, and defence of lawful rights.
+        </p>
+        <p>
+          Data: full name, position and authority of the representative,
+          contact details, the party's requisites, the Tax ID of a corporate
+          or sole-trader client, contracts, specifications, correspondence,
+          and details of payments, acceptance reports, remarks, deliverables
+          and access granted.
+        </p>
+        <p>
+          Basis for the client itself: concluding and performing the
+          contract, complying with legal duties, and defending rights. For a
+          representative or contact person who is not a party to the
+          contract: the legitimate interest of the Controller and of the
+          represented client in concluding and performing the contract,
+          provided that person's rights and freedoms do not prevail; the
+          client supplies the authority and the minimum necessary contact
+          details.
+        </p>
+
+        <h3>3.4. Authors of testimonials and case-study participants</h3>
+        <p>
+          Purposes: publishing a testimonial, a name, a position, a company
+          name, a logo, project imagery and agreed metrics in the portfolio.
+        </p>
+        <p>
+          Basis: for a trade name, logo and non-personal materials —
+          separate contractual permission from the rights holder; for the
+          name, position, image, quote or testimonial of an identifiable
+          individual — that person's own separate consent to the disclosure
+          of personal data. One basis does not substitute for the other.
+        </p>
+
+        <h2>4. Data that should not be sent through the form</h2>
+        <p>
+          The form is not intended for passport data, banking details,
+          health information, biometric data, criminal-record data,
+          political or religious views, details of intimate life, or
+          personal data of third parties. Do not enter such information in
+          the free-text field. If it is genuinely required for a project,
+          the parties agree a separate secure channel and legal basis in
+          advance.
+        </p>
+
+        <h2>5. Operations and methods of processing</h2>
+        <p>
+          The Controller may collect, record, systematise, accumulate,
+          store, clarify, retrieve, use, transfer to a party lawfully
+          entrusted with processing, block, delete and destroy data.
+        </p>
+        <p>
+          Processing is carried out by automated and mixed means. No
+          decision producing legal consequences for the subject is made
+          solely on the basis of automated processing.
+        </p>
+
+        <h2>6. Storage location and recipients</h2>
+        <p>
+          6.1. Primary recording, systematisation, accumulation, storage,
+          clarification and retrieval of data belonging to citizens of the
+          Russian Federation take place in an SQLite database on a RUVDS
+          VPS in the RUcloud data centre at: Russian Federation, Moscow
+          Region, Korolyov, Pionerskaya St., 4.
+        </p>
+        <p>
+          6.2. Once the record has been successfully written to the
+          Russian primary database, a full copy of the enquiry is sent via
+          the Telegram Bot API to the Controller's private service chat. If
+          the primary write fails, nothing is sent to Telegram. The
+          delivery identifier and result are stored separately from the
+          text of the enquiry. The bot deletes the Telegram copy after 23
+          hours; the private chat itself additionally has an independent
+          «1 day» Telegram auto-delete timer, so the standard retention
+          period does not exceed 24 hours.
+        </p>
+        <p>
+          6.3. The full content of an enquiry is not written to container
+          or application logs. Logs contain only the data needed for
+          diagnostics and security.
+        </p>
+        <p>
+          6.4. The Controller does not receive or store card data. Payment
+          is made by bank transfer or through a personal «Request Money»
+          request in the T-Bank app; the payer confirms the transfer in
+          their own bank's app or interface.
+        </p>
+        <p>
+          6.5. VPS infrastructure is provided by OOO «МТ ФИНАНС» (trading
+          as RUVDS), Tax ID <code>7706424050</code>, OGRN{' '}
+          <code>1157746680332</code>, registered address: 127051, Moscow,
+          Tsvetnoy Blvd, 26, bldg. 1, room 12. This is a provider of leased
+          computing infrastructure. The application and the enquiry
+          database are administered by the Controller. Access to the
+          application and database is restricted by technical means and the
+          Controller's own credentials.
+        </p>
+        <p>
+          6.6. The Controller does not sell personal data and does not
+          transfer it for someone else's advertising.
+        </p>
+        <p>
+          6.7. Telegram is a foreign service with distributed infrastructure
+          and group entities across several jurisdictions. Transferring a
+          full copy of the enquiry is a cross-border transfer. Its purpose
+          is delivery to the Controller, not advertising. Before submitting
+          the form, the user is shown this information and separately
+          confirms consent to delivery of a copy via Telegram. Telegram's
+          own terms are published in its{' '}
+          <a href="https://telegram.org/privacy" rel="noopener">Privacy Policy</a>.
+        </p>
+        <p>
+          6.8. When replying to the sender by email, correspondence related
+          to the enquiry may be processed within Yandex's mail
+          infrastructure. The user chooses email as their contact
+          themselves; if they gave a Telegram username instead, the reply
+          is sent to that Telegram contact.
+        </p>
+
+        <h2>7. Retention periods</h2>
+        <ul>
+          <li>an enquiry that did not result in a contract is kept for no more than 90 calendar days from the date the form was submitted; related pre-contractual correspondence — no more than 90 days after the last substantive contact;</li>
+          <li>the IP address in the rate limiter is kept for no more than one hour;</li>
+          <li>diagnostic logs do not contain the full text of an enquiry and are limited by automatic rotation: no more than three 10 MB files per container; they are removed on overwrite or on deletion of the corresponding container and its storage;</li>
+          <li>evidence of consent is kept for no more than 1095 calendar days from the date the form was submitted, to the extent needed to prove lawfulness;</li>
+          <li>a contract, specification, acceptance reports, and payment and tax documents are kept for the mandatory period of that document; where no specific period is set — no longer than is justified by performance and the defence of rights, usually three years after an obligation ends, extended for the duration of any dispute that has begun;</li>
+          <li>correspondence is kept only to the extent it confirms material terms, performance, settlements, a claim, or the lawfulness of processing, and is deleted together with the corresponding file;</li>
+          <li>temporary passwords, tokens, private keys and backup codes are not archived with the contract file: once access is handed over or ends, they are revoked or deleted without waiting for the general document-retention period;</li>
+          <li>contractual permission for non-personal case-study materials remains in force for the period stated in it; personal data cleared for disclosure is processed until the separate consent ends or a request to stop is received;</li>
+          <li>an agreed SQLite backup is created every 24 hours in a separate Docker volume on the same Russian VPS and kept for no more than seven days;</li>
+          <li>RUVDS's optional external backup service is not connected and is not claimed as a separate external copy.</li>
+        </ul>
+        <p>
+          Where the law or a contract requires a different period, that
+          period applies. Once it expires, data is destroyed or anonymised.
+        </p>
+
+        <h2>8. Cookies and local storage</h2>
+        <p>
+          As of this revision, the site does not use cookies, advertising
+          analytics, or cross-site tracking systems. The chosen interface
+          theme may be stored in the browser's <code>localStorage</code>
+          under the key <code>theme</code>; this value is not sent to the
+          Controller as part of an enquiry.
+        </p>
+        <p>
+          Before analytics, advertising pixels, external CAPTCHA, or other
+          tracking technologies are connected, this Policy and the consent
+          interface will be revised.
+        </p>
+
+        <h2>9. Protective measures</h2>
+        <p>
+          The Controller documents an assessment of possible harm, current
+          threats, the level of protection required, and the applicable set
+          of measures. Measures in place include access control,
+          authentication, TLS, secrets protection, software updates, keeping
+          the full text of enquiries out of logs, event logging, incident
+          response, and agreed SQLite backups. Access is not published or
+          shared with anyone who does not need it for their work. Before
+          going live, a test-restore procedure from a local backup is
+          carried out and recorded.
+        </p>
+
+        <h2>10. Rights of the data subject</h2>
+        <p>
+          A data subject may request information about processing, demand
+          correction, blocking or deletion of data, withdraw consent,
+          object to processing based on legitimate interest, and appeal the
+          Controller's actions.
+        </p>
+        <p>
+          Requests are sent to <a href="mailto:i@dsaburov.ru">i@dsaburov.ru</a>.
+          To protect the data, the Controller may ask for information
+          confirming the requester's identity and their connection to the
+          data requested. No excessive documents are requested in response.
+        </p>
+        <p>
+          Withdrawing consent does not make processing carried out before
+          the withdrawal was received unlawful, and does not end processing
+          for which another lawful basis exists after withdrawal.
+        </p>
+
+        <h2>11. Changes to this Policy</h2>
+        <p>
+          A new revision is published at the same address with a new number
+          and date. Changes are not applied retroactively to consent
+          already given. If a new purpose requires consent, it is requested
+          separately before that processing begins.
+        </p>
+
+        <h2>12. Contacts</h2>
+        <p>
+          Сабуров Даниил Денисович<br />
+          Tax ID: <code>183700967882</code><br />
+          Tax status: Professional Income Tax payer, not a sole trader<br />
+          Place of business: Saint Petersburg<br />
+          Email: <a href="mailto:i@dsaburov.ru">i@dsaburov.ru</a>
+        </p>
+      </Prose>
+      <a href="/en#contact" class="back-to-form">
+        <span aria-hidden="true">←</span> Back to the form
+      </a>
+    </Section>
+  </Container>
+</Base>

@@ -1,0 +1,35 @@
+---
+import Base from '../../layouts/Base.astro';
+import Container from '../../components/Container.astro';
+import Section from '../../components/Section.astro';
+import Button from '../../components/Button.astro';
+
+/* Английский двойник `/404`, построен 2026-08-26. Как и русская страница,
+ * это обычная страница по своему адресу (`/en/404`, отвечает 200) — она не
+ * подменяет собой обработку настоящих ошибок 404 на непредвиденных адресах
+ * под `/en/*`: это забота раздачи (сервера/CDN), а не отдельного файла в
+ * этой директории Astro. */
+---
+<Base title="Page Not Found — wfeels"
+      description="This page doesn't exist."
+      noindex={true}
+      nofollow={true}>
+  <Container>
+    <Section label="404">
+      <h1 class="t-h1">This page doesn't exist</h1>
+      <p class="lead t-body-lg">
+        The address may be mistyped, or the page may have moved.
+      </p>
+      <div class="ways">
+        <Button href="/en" variant="secondary">Home</Button>
+        <Button href="/en#contact" variant="secondary">Get in touch</Button>
+      </div>
+    </Section>
+  </Container>
+</Base>
+
+<style>
+  /* Тот же ритм, что у русской страницы (`pages/404.astro`). */
+  .lead { margin-top: 16px; }
+  .ways { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+</style>

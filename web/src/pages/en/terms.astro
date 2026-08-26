@@ -1,0 +1,228 @@
+---
+import Base from '../../layouts/Base.astro';
+import Container from '../../components/Container.astro';
+import Section from '../../components/Section.astro';
+import Prose from '../../components/Prose.astro';
+import TranslationNotice from '../../components/TranslationNotice.astro';
+
+/* Английская редакция `/terms`, построена 2026-08-26. Источник содержания —
+ * `docs/legal/public/terms.md`, редакция 1.2 от 2026-08-25, та же редакция и
+ * дата, что у русской страницы `/terms`. Оговорка о приоритете
+ * (`TranslationNotice`) — сразу после заголовка. */
+---
+<Base title="Terms of Service — wfeels"
+      description="Terms of use for wfeels.site and how an individual contract is concluded."
+      noindex={true}>
+  <Container>
+    <Section>
+      <h1 class="t-h1">Terms of Service</h1>
+      <TranslationNotice ruHref="/terms" />
+      <Prose>
+        <p><strong>Revision 1.2 of 25 August 2026.</strong></p>
+
+        <h2>1. Provider</h2>
+        <p>
+          Сабуров Даниил Денисович, Tax ID <code>183700967882</code>, a
+          self-employed individual under the special tax regime
+          «Professional Income Tax», not registered as a sole trader. Place
+          of business — Saint Petersburg. Email for contracts, enquiries
+          and claims: <a href="mailto:i@dsaburov.ru">i@dsaburov.ru</a>.
+        </p>
+
+        <h2>2. Status of the information on the site</h2>
+        <p>
+          2.1. The site contains information about experience, services,
+          the possible scope of work, and indicative prices and timelines.
+        </p>
+        <p>
+          2.2. The site, its pages, form messages, and prices shown as
+          «from» do not constitute a public offer. They do not obligate the
+          Provider to conclude a contract with anyone who gets in touch.
+        </p>
+        <p>
+          2.3. Under the model used here, a Contract is concluded after the
+          task has been discussed, an individual specification, price,
+          timeline and stages have been agreed, and the parties have signed
+          a separate document. Submitting the enquiry form is not, by
+          itself, acceptance. That said, an actual exchange of messages can
+          form a contract if the parties clearly and unambiguously agreed
+          all material terms and followed whatever form they chose;
+          legally significant messages are therefore worded without
+          ambiguity.
+        </p>
+
+        <h2>3. Services</h2>
+        <p>
+          The Provider builds and improves websites, software solutions,
+          automations, integrations, backend systems, Telegram bots and
+          Mini Apps, carries out audits, and provides agreed support. The
+          exact deliverable and scope of work are always defined in an
+          individual contract and specification.
+        </p>
+        <p>
+          Client materials, content migration, domain, hosting, licences,
+          subscriptions, payment-system fees, AI model costs and
+          third-party services are included in the price only when the
+          specification says so explicitly. As a general rule, domains,
+          hosting, licences and accounts are registered to and paid for
+          directly by the client.
+        </p>
+
+        <h2>4. How a deal is concluded</h2>
+        <ol>
+          <li>The client sends an enquiry or gets in touch through the contact given.</li>
+          <li>The parties clarify the goal, source materials, deliverable and constraints.</li>
+          <li>The Provider sends a proposal and a draft specification.</li>
+          <li>The parties sign an individual contract and its specification annex.</li>
+          <li>Once signed, the Provider issues an invoice and payment details, or sends an individual «Request Money» request from the T-Bank app, linked to the contract and stage.</li>
+          <li>The Provider starts work once the first payment required by the contract and the necessary materials have been received.</li>
+        </ol>
+        <p>
+          Exchanging signed PDFs from agreed email addresses, or another
+          method of electronic signature explicitly named in the contract,
+          is acceptable.
+        </p>
+
+        <h2>5. Price and payment</h2>
+        <p>
+          The final price is set once the task has been reviewed and is
+          fixed in the contract or specification.
+        </p>
+        <p>Unless the parties agree a different schedule:</p>
+        <ul>
+          <li>for a total price under <code>70 000 ₽</code> — 50% once the estimate is agreed and the contract is signed, before work starts; the remaining 50% — after delivery, under the contract, and before launch;</li>
+          <li>for a price of <code>70 000 ₽</code> or more — payment by the milestones set out in the specification.</li>
+        </ul>
+        <p>
+          Any prepayment is an advance, not a deposit. For each payment
+          received, the Provider issues a self-employed tax receipt through
+          the My Tax app and passes it to the client. A corporate or
+          sole-trader client provides the correct Tax ID for the receipt.
+        </p>
+        <p>
+          The payment procedure, purpose and deadline are set out in the
+          individual contract, the invoice, or the personal transfer
+          request.
+        </p>
+
+        <h2>6. Performance and changes</h2>
+        <p>
+          6.1. The client provides lawful materials, access and decisions
+          needed for the work in good time. A delay on the client's part
+          may push the deadline back by the corresponding period plus a
+          reasonable time to resume the task.
+        </p>
+        <p>
+          6.2. The Provider shows interim results in the manner set out in
+          the specification.
+        </p>
+        <p>
+          6.3. Changing the deliverable, its scope, integrations, page
+          count, scenarios, or the number of revision rounds is done in
+          writing. Extra work does not start until the new price and
+          deadline are agreed.
+        </p>
+        <p>
+          6.4. The use of software tools and artificial-intelligence
+          systems is allowed under the Provider's supervision. The
+          client's confidential and personal data is not passed to an
+          external system without an agreed basis for doing so.
+        </p>
+
+        <h2>7. Acceptance and delivery of the result</h2>
+        <p>
+          The procedure for demonstration, review, comments and acceptance
+          is set out in the contract. A substantiated objection is one that
+          points to a specific discrepancy with the specification. New
+          requests are not a defect and are priced separately.
+        </p>
+        <p>
+          The result is delivered electronically. Source files,
+          instructions and access are handed over to the extent set out in
+          the specification. The channel and scope of delivery are recorded
+          in the contract, an acceptance report, or related correspondence.
+        </p>
+
+        <h2>8. Warranty fixes</h2>
+        <p>
+          Within 30 calendar days of acceptance, the Provider fixes, free of
+          charge, reproducible discrepancies between the result and the
+          agreed specification, unless they arose from changes made by the
+          client, a third party, an external platform, or a failure to
+          follow instructions.
+        </p>
+        <p>
+          New features, new content, design or integration changes,
+          external API updates, and the consequences of third-party
+          interference are billed separately. The client's statutory rights
+          concerning defects are not limited by this commercial warranty.
+        </p>
+
+        <h2>9. Intellectual property</h2>
+        <p>
+          Rights to a specially created result are transferred or granted
+          to the extent, and at the point, stated in the contract, usually
+          after the corresponding stage is paid in full.
+        </p>
+        <p>
+          Rights to third-party libraries, fonts, images, platforms and
+          other components are governed by their own rights holders'
+          licences. The Provider's own general-purpose work created earlier
+          is not transferred unless the contract explicitly says otherwise;
+          the client receives a sufficient right to use it as part of the
+          paid result.
+        </p>
+        <p>
+          Publishing the logo, interface or commercial materials of a
+          project requires the separate permission of the rights holder.
+          Publishing the name, position, image, quote or testimonial of an
+          identifiable individual requires that person's own separate
+          consent to the disclosure of personal data; the client's
+          permission does not substitute for it.
+        </p>
+
+        <h2>10. Termination and refunds</h2>
+        <p>
+          The procedure for terminating the contract, settling the
+          completed part, and any refund is governed by the individual
+          contract and applicable law. A prepayment is not declared
+          unconditionally non-refundable. A refund calculation is set out
+          in writing, taking into account the work actually performed and
+          applicable law.
+        </p>
+
+        <h2>11. Personal data</h2>
+        <p>
+          Processing of visitors' and enquirers' data is described in the{' '}
+          <a href="/en/privacy">Privacy Policy</a>. The separate consent for
+          the form is at <a href="/en/consent">/en/consent</a>. Consent to
+          advertising or to the portfolio is not included in consent to
+          process an enquiry.
+        </p>
+
+        <h2>12. Claims</h2>
+        <p>
+          A claim is sent to <a href="mailto:i@dsaburov.ru">i@dsaburov.ru</a>{' '}
+          with a description of the demand, the contract number, and any
+          relevant materials. A reply is sent within the period required by
+          law or the contract.
+        </p>
+        <p>
+          The claims procedure does not limit an individual consumer's
+          rights and does not deprive them of the right to go to court or
+          to a government authority in the cases provided by law.
+        </p>
+
+        <h2>13. Changes to these Terms</h2>
+        <p>
+          A new revision applies to use of the site after the date it is
+          published. The terms of a contract already signed are not
+          changed by publishing a new page without the parties' agreement.
+        </p>
+      </Prose>
+      <a href="/en#contact" class="back-to-form">
+        <span aria-hidden="true">←</span> Back to the form
+      </a>
+    </Section>
+  </Container>
+</Base>

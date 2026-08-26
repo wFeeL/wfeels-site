@@ -1,0 +1,39 @@
+---
+import Base from '../../layouts/Base.astro';
+import Container from '../../components/Container.astro';
+import Section from '../../components/Section.astro';
+import Button from '../../components/Button.astro';
+import { TELEGRAM_URL } from '../../lib/contacts';
+
+/* Английский двойник `/thanks`, построен 2026-08-26. Сегодня на него не ведёт
+ * ни одна ссылка сайта: без JavaScript форма `/en` отправляется напрямую в
+ * `api/app/main.py`, а серверный редирект там до сих пор ведёт на русский
+ * `/thanks` (правка Python — за пределами этого захода, отмечено в отчёте).
+ * Страница построена заранее, чтобы адрес отвечал настоящим содержимым в
+ * тот день, когда редирект научится выбирать язык по `consent_locale`, и
+ * чтобы прямой переход по `/en/thanks` уже сегодня не был потерян. */
+---
+<Base title="Message Sent — wfeels" description="Your enquiry has been received." noindex={true} nofollow={true}>
+  <Container>
+    <Section label="Contact">
+      <h1 class="t-h1">Your message is on its way</h1>
+      <p class="t-body-lg lead">I'll reply within a day.</p>
+      <p class="fallback">If you haven't heard back within a day, write to me directly: <a href={TELEGRAM_URL}>Telegram</a></p>
+      <Button href="/en" variant="secondary">Home</Button>
+    </Section>
+  </Container>
+</Base>
+
+<style>
+  /* Тот же ритм 24/32/48, что у русской страницы (`pages/thanks.astro`). */
+  .lead { margin: 24px 0 0; }
+  .fallback {
+    margin: 24px 0 32px;
+    font-size: 1rem;
+    color: var(--text-muted);
+  }
+  .fallback a {
+    color: var(--accent);
+    text-decoration-line: underline;
+  }
+</style>

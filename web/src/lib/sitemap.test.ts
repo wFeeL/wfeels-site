@@ -15,6 +15,19 @@ describe('isIndexable', () => {
     expect(isIndexable('/thanks')).toBe(false);
   });
 
+  it('английские двойники юридических и служебных страниц не попадают', () => {
+    expect(isIndexable('/en/privacy')).toBe(false);
+    expect(isIndexable('/en/terms')).toBe(false);
+    expect(isIndexable('/en/consent')).toBe(false);
+    expect(isIndexable('/en/thanks')).toBe(false);
+    expect(isIndexable('/en/404')).toBe(false);
+  });
+
+  it('английская главная и её похожие по началу пути адреса не задеты', () => {
+    expect(isIndexable('/en')).toBe(true);
+    expect(isIndexable('/en/privacy-archive')).toBe(true);
+  });
+
   it('служебный раздел не попадает целиком', () => {
     expect(isIndexable('/dev')).toBe(false);
     expect(isIndexable('/dev/ui')).toBe(false);
