@@ -20,8 +20,11 @@ import {
   OUR_LOAD_SECONDS_TEXT_EN,
   TYPICAL_LOAD_SECONDS_TEXT_EN,
   PAGE_WEIGHT_KB_EN,
+  CASE_PAGE_WEIGHT_KB,
+  CASE_OUR_LOAD_SECONDS_TEXT,
   weightMultiplier,
   weightMultiplierPhrase,
+  pageWeightKb,
 } from './pageWeight';
 import { assertParallel, type Locale } from '../i18n/locales';
 
@@ -100,16 +103,88 @@ for (const [locale, cells] of Object.entries(WEIGHT_CELLS_BY_LOCALE)) {
   }
 }
 
-export function weightIllustration(locale: Locale) {
+/* ─────────────────────── Страница кейса `site-v3` ──────────────────────
+ *
+ * Решение D-122 (раздел 4.6 брифа страниц кейсов, правка 2): рисунок
+ * «Замер» ставится не только в секцию кейсов главной, но и на саму страницу
+ * `/cases/site-v3` — и обязан показывать вес и время ЭТОЙ страницы, а не
+ * главной. `weightIllustration()` поэтому принимает вторым аргументом
+ * страницу-хозяина; без него функция продолжала бы читать `PAGE_WEIGHT_KB`
+ * независимо от того, где стоит рисунок, — то есть дефект D-122 в чистом
+ * виде.
+ *
+ * Клетки `weight-typical`/`time-typical` (медиана и типовое время) от
+ * хозяина не зависят — они про ЧУЖИЕ страницы — и здесь не пересобираются:
+ * `WEIGHT_CELLS` и `CASE_SITE_V3_WEIGHT_CELLS` делят один и тот же текст этих
+ * двух клеток буквально (без общей фабрики — риск разойтись у неизменной
+ * пары ниже, чем у фабрики, которую ещё не написали). */
+export type WeightIllustrationHost = 'home' | 'case-site-v3';
+
+/** Те же четыре клетки, что у главной (`WEIGHT_CELLS`), но `time-ours` и
+ *  `weight-ours` — числа страницы кейса `site-v3`
+ *  (`CASE_OUR_LOAD_SECONDS_TEXT`, `CASE_PAGE_WEIGHT_KB`), а не главной.
+ *  Подписи и чужая сторона — те же слова, что у главной: сравнение с
+ *  медианой одно и то же независимо от того, чья страница слева. */
+const CASE_SITE_V3_WEIGHT_CELLS: readonly WeightCell[] = [
+  { key: 'time-ours', side: 'ours', value: `${CASE_OUR_LOAD_SECONDS_TEXT} с`, caption: 'Время загрузки нашей страницы' },
+  { key: 'time-typical', side: 'typical', value: `${TYPICAL_LOAD_SECONDS_TEXT} с`, caption: 'Время загрузки обычной страницы' },
+  { key: 'weight-ours', side: 'ours', value: `${CASE_PAGE_WEIGHT_KB} КБ`, caption: 'Вес нашей страницы' },
+  { key: 'weight-typical', side: 'typical', value: `${TYPICAL_PAGE_MB_TEXT} МБ`, caption: 'Вес обычной страницы' },
+];
+
+/* Тот же порядок и тот же состав ключей, что у главной — иначе раскладка
+   «наша/чужая» (`.cmp` в `CaseWeightIllustration.astro`) для кейса и для
+   главной разъехались бы по-разному, незаметно для сборки. */
+if (CASE_SITE_V3_WEIGHT_CELLS.map((c) => c.key).join(' ') !== WEIGHT_CELLS.map((c) => c.key).join(' ')) {
+  throw new Error(
+    'data/case-illustrations.ts: клетки страницы кейса «site-v3» идут в другом порядке ' +
+    'или несут другие ключи, чем клетки главной — рисунок перестал быть одним и тем же.',
+  );
+}
+
+/** Веса страниц-хозяев не «home», по ключу хозяина. Английской версии у
+ *  кейса нет (см. `pageWeight.ts`, комментарий рядом с `CASE_PAGE_WEIGHT_KB_EN`
+ *  об её отсутствии) — поэтому таблица ведёт по одному числу на хозяина, а
+ *  не по языку: вызывать её с `locale === 'en'` для страницы кейса не должно
+ *  быть возможности, и `weightIllustration()` ниже проверяет это явно, а не
+ *  молча читает `undefined`. */
+const CASE_HOST_WEIGHT_KB: Readonly<Record<Exclude<WeightIllustrationHost, 'home'>, number>> = {
+  'case-site-v3': CASE_PAGE_WEIGHT_KB,
+};
+
+const CASE_HOST_CELLS: Readonly<Record<Exclude<WeightIllustrationHost, 'home'>, readonly WeightCell[]>> = {
+  'case-site-v3': CASE_SITE_V3_WEIGHT_CELLS,
+};
+
+export function weightIllustration(locale: Locale, host: WeightIllustrationHost = 'home') {
+  if (host === 'home') {
+    return {
+      cells: WEIGHT_CELLS_BY_LOCALE[locale],
+      /* Кратность считается от веса СВОЕЙ страницы: английская версия легче
+         русской на 18 КБ (разбор — у `PAGE_WEIGHT_KB_EN`), и брать чужое
+         число значило бы печатать на рисунке вывод из чужого замера.
+         Сегодня обе версии дают «×5»; разойдись они — рисунки скажут разное,
+         и это будет правдой. */
+      multiplier: weightMultiplier(pageWeightKb(locale)),
+      multiplierPhrase: weightMultiplierPhrase(pageWeightKb(locale), locale),
+    };
+  }
+
+  if (locale !== 'ru') {
+    throw new Error(
+      `data/case-illustrations.ts: weightIllustration('${locale}', '${host}') — у страницы ` +
+      'кейса нет английской версии (`i18n/locales.ts`, BILINGUAL_PATHS не несёт `/cases/…`), ' +
+      'считать вес и время не из чего.',
+    );
+  }
+
+  const weightKb = CASE_HOST_WEIGHT_KB[host];
   return {
-    cells: WEIGHT_CELLS_BY_LOCALE[locale],
-    /* Кратность считается от веса СВОЕЙ страницы: английская версия легче
-       русской на 18 КБ (разбор — у `PAGE_WEIGHT_KB_EN`), и брать чужое число
-       значило бы печатать на рисунке вывод из чужого замера. Сегодня обе
-       версии дают «×6»; разойдись они — рисунки скажут разное, и это будет
-       правдой. */
-    multiplier: weightMultiplier(locale),
-    multiplierPhrase: weightMultiplierPhrase(locale),
+    cells: CASE_HOST_CELLS[host],
+    /* Кратность и слово выводятся из веса ХОЗЯИНА тем же расчётом, что и у
+       главной (правка 3 раздела 4.6) — не отдельной копией формулы. */
+    multiplier: weightMultiplier(weightKb),
+    multiplierPhrase: weightMultiplierPhrase(weightKb, locale),
   };
 }
 
@@ -283,20 +358,27 @@ if (!DIALOGUE_LINES[1].source?.trim()) {
    композиции владельца. Рисунок с тремя клетками или с перепутанными
    сторонами собираться не должен: раскладка держится на этом порядке
    (левая колонка — наша, правая — чужая), а не на ручной расстановке. */
-if (WEIGHT_CELLS.length !== 4) {
-  throw new Error('data/case-illustrations.ts: иллюстрация 1 несёт ровно четыре числа.');
-}
-if (WEIGHT_CELLS.map((c) => c.side).join(' ') !== 'ours typical ours typical') {
-  throw new Error(
-    'data/case-illustrations.ts: клетки иллюстрации 1 обязаны чередоваться ' +
-    '«наша / чужая» — на этом держится раскладка в две колонки.',
-  );
+/* Проверяются все три набора клеток иллюстрации 1: главная (ru/en) и
+   страница кейса `site-v3` — тот же инвариант, три хозяина, один рисунок. */
+const ALL_WEIGHT_CELL_SETS: ReadonlyArray<readonly WeightCell[]> = [
+  WEIGHT_CELLS, WEIGHT_CELLS_EN, CASE_SITE_V3_WEIGHT_CELLS,
+];
+for (const cells of ALL_WEIGHT_CELL_SETS) {
+  if (cells.length !== 4) {
+    throw new Error('data/case-illustrations.ts: иллюстрация 1 несёт ровно четыре числа.');
+  }
+  if (cells.map((c) => c.side).join(' ') !== 'ours typical ours typical') {
+    throw new Error(
+      'data/case-illustrations.ts: клетки иллюстрации 1 обязаны чередоваться ' +
+      '«наша / чужая» — на этом держится раскладка в две колонки.',
+    );
+  }
 }
 /* Точка в шаблоне ниже — английский разделитель дробной части («0.4 s»), а
-   не «любой символ»: класс `[\d.,]` перечисляет цифры, точку и запятую. Обе
+   не «любой символ»: класс `[\d.,]` перечисляет цифры, точку и запятую. Все
    версии рисунка обязаны укладываться в один шаблон, потому что читает его
    один и тот же счётчик на прокрутке (`CaseWeightIllustration.astro`). */
-if ([...WEIGHT_CELLS, ...WEIGHT_CELLS_EN].some((c) => !/^[\d.,]+\s\S/.test(c.value))) {
+if (ALL_WEIGHT_CELL_SETS.flat().some((c) => !/^[\d.,]+\s\S/.test(c.value))) {
   throw new Error(
     'data/case-illustrations.ts: значение клетки обязано начинаться с числа и нести ' +
     'единицу в той же строке — счётчик на прокрутке переписывает только цифры, ' +

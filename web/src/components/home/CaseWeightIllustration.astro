@@ -27,12 +27,22 @@
  * классы: класс принадлежит оформлению и переживёт не всякую перевёрстку.
  * Без этих атрибутов на главной гейт обязан упасть, а не пройти молча.
  */
-import { weightIllustration } from '../../data/case-illustrations';
+import { weightIllustration, type WeightIllustrationHost } from '../../data/case-illustrations';
 import { localeFromPath } from '../../i18n/locales';
+
+/* `host` — страница-хозяин рисунка (решение D-122, раздел 4.6 брифа страниц
+ * кейсов, правка 2): без него компонент всегда печатал бы числа главной,
+ * даже стоя на странице кейса. По умолчанию — «home», чтобы существующий
+ * вызов на главной (`Cases.astro` → `<Illustration />`, без пропа) остался
+ * рабочим без изменений. */
+export interface Props {
+  host?: WeightIllustrationHost;
+}
+const { host = 'home' } = Astro.props;
 
 const locale = localeFromPath(Astro.url.pathname);
 
-const { cells, multiplier, multiplierPhrase } = weightIllustration(locale);
+const { cells, multiplier, multiplierPhrase } = weightIllustration(locale, host);
 const [timeOurs, timeTypical, weightOurs, weightTypical] = cells;
 
 /* Клетки идут в раскладку парами со стрелкой между ними — порядок клеток
