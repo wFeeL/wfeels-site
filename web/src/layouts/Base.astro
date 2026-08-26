@@ -120,6 +120,14 @@ const structured = [
         сделанный переключателем, переписывает обе (ThemeToggle.astro). */}
     <meta name="theme-color" content={THEME_COLOR.light} media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content={THEME_COLOR.dark} media="(prefers-color-scheme: dark)" />
+    {/* Скрипт ниже красит полосу браузера РАЗМЕТКОЙ, до первого кадра. Две
+        записи `theme-color` выше отвечают на системную схему, а выбранная
+        вручную тема им противоречит: человек с тёмной темой на светлой
+        системе получил бы светлую полосу и её перекраску через кадр — ту же
+        вспышку, только в хроме браузера. Тот же расчёт делает ThemeToggle
+        при нажатии; здесь он нужен раньше, чем загрузится модуль. Комментарий
+        вынесен из тела `<script is:inline>` (2026-08-26): Astro отгружает
+        содержимое инлайнового скрипта дословно, включая комментарии. */}
     <script is:inline define:vars={{ THEME_COLOR }}>
       (function () {
         var t = null;
@@ -128,12 +136,6 @@ const structured = [
         } catch (e) {}
         if (t !== 'light' && t !== 'dark') return;
         document.documentElement.dataset.theme = t;
-        // Полосу браузера красит РАЗМЕТКА, до первого кадра. Две записи выше
-        // отвечают на системную схему, а выбранная вручную тема им противоречит:
-        // человек с тёмной темой на светлой системе получил бы светлую полосу и
-        // её перекраску через кадр — ту же вспышку, только в хроме браузера.
-        // Тот же расчёт делает ThemeToggle при нажатии; здесь он нужен раньше,
-        // чем загрузится модуль.
         var metas = document.querySelectorAll('meta[name="theme-color"]');
         for (var i = 0; i < metas.length; i++) {
           metas[i].setAttribute('content', THEME_COLOR[t]);
