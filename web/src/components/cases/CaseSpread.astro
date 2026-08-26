@@ -151,7 +151,12 @@ const isInset = spread.kind === 'weight' || spread.kind === 'checklist';
     padding-top: 32px;
     border-top: 1px solid var(--border);
   }
-  .spread + .spread { margin-top: 96px; }
+  /* `~`, не `+`: у каждого разворота свой `<noscript>` (ниже в разметке),
+     он встаёт МЕЖДУ соседними `.spread` в DOM и рвёт смежность — `+`
+     никогда не совпадал, ритм молчал (32px padding-top каждого разворота
+     оставался единственным зазором на всех трёх ширинах). Общий комбинатор
+     не зависит от того, что стоит между разворотами. */
+  .spread ~ .spread { margin-top: 96px; }
   .spread.mirror { grid-template-columns: 1fr 62%; }
   .spread.mirror .frame { order: 2; }
   .spread.mirror .caption { order: 1; }
@@ -263,12 +268,12 @@ const isInset = spread.kind === 'weight' || spread.kind === 'checklist';
   @media (max-width: 899px) {
     .spread, .spread.mirror { grid-template-columns: 1fr; }
     .spread.mirror .frame, .spread.mirror .caption { order: initial; }
-    .spread + .spread { margin-top: 64px; }
+    .spread ~ .spread { margin-top: 64px; }
     .caption { max-width: none; }
   }
 
   @media (max-width: 599px) {
-    .spread + .spread { margin-top: 48px; }
+    .spread ~ .spread { margin-top: 48px; }
     /* Раздел 3.3: многокадровый разворот на ≤599px становится горизонтальной
        полосой с привязкой — следующий кадр выглядывает краем, прокрутка
        видна без подсказки. `role="group"`/`aria-label`/`tabindex` — выше,
