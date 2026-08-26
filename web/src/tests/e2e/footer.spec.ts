@@ -1,60 +1,29 @@
 import { test, expect } from '@playwright/test';
 
 const TELEGRAM = 'https://t.me/wfeels';
-const SECTIONS_IN_FOOTER = 'footer nav[aria-labelledby="footer-sections"] a';
 
-/** Главный тест этого файла.
- *
- *  Список разделов у шапки и у подвала ОДИН (`lib/nav.ts`), поэтому разойтись
- *  им нечем — но именно это утверждение и проверяется. Тест переживёт правку, в
- *  которой кто-то вернёт подвалу свой перечень: сегодня он зелёный по строению
- *  кода, завтра — единственное, что об этом строении помнит. */
-test('список разделов подвала совпадает со списком навигации шапки',
-  async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto('/');
+/* Колонка «Разделы» снята вариантом Ф-Б (спека `09-footer-brief.md`, раздел 2):
+   те же пять якорей несёт липкая шапка, видимая в любой момент прокрутки —
+   нулевой прирост достижимости за 254 px и свой CSS-вес на каждой странице.
+   Вместе с колонкой сняты и оба теста, сверявшие список подвала со списком
+   шапки («список разделов подвала совпадает со списком навигации шапки» и
+   «на любой странице шапка и подвал показывают один и тот же непустой список
+   разделов»): предмет проверки (`nav[aria-labelledby="footer-sections"]`)
+   в разметке больше не существует, сверять нечего. */
 
-    const read = (selector: string) =>
-      page.locator(selector).evaluateAll((links) =>
-        links.map((l) => `${l.getAttribute('href')} — ${l.textContent?.trim()}`));
-
-    const header = await read('header nav.nav-wide a');
-    const footer = await read(SECTIONS_IN_FOOTER);
-
-    expect(header.length, 'в шапке не осталось разделов — тест ослеп')
-      .toBeGreaterThan(0);
-    expect(footer, 'подвал показывает не то, что шапка').toEqual(header);
-  });
-
-/* Группу сняли 2026-08-21 со словами «заполним ее позже». Теперь
- * все три страницы действуют, поэтому навигация обязана быть доступна
- * на каждой странице, а не только из подписи формы. */
+/* Юридический ряд остаётся единственной навигацией подвала (раздел 6, пункт 5
+   брифа): доступное имя несёт `aria-label` на самом `<nav>`, видимого узла с
+   `id` для него больше нет — прежний `#footer-legal`/`aria-labelledby`
+   снимается вместе со сняты́м `.group-title`. */
 test('в подвале доступны три действующих юридических документа', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('footer #footer-legal')).toHaveCount(1);
-  await expect(page.locator('footer nav[aria-labelledby="footer-legal"]'))
-    .toHaveCount(1);
+  const nav = page.locator('footer nav[aria-label]');
+  await expect(nav).toHaveCount(1);
+  await expect(nav).toHaveAttribute('aria-label', /.+/);
   await expect(page.locator('footer a[href="/privacy"]')).toBeVisible();
   await expect(page.locator('footer a[href="/terms"]')).toBeVisible();
   await expect(page.locator('footer a[href="/consent"]')).toBeVisible();
 });
-
-/* Раньше `/en` был исключением: список разделов (`lib/nav.ts`, `SECTIONS.en`)
-   стоял пустым, потому что вести пунктам было некуда. С возвратом английской
-   главной 2026-08-22 разделы у неё те же пять, и `/en` проверяется наравне со
-   всеми — это главная проверка того, что перевод не потерял навигацию на
-   одной из двух версий. */
-test('на любой странице шапка и подвал показывают один и тот же непустой список разделов',
-  async ({ page }) => {
-    for (const path of ['/', '/en', '/contact', '/privacy', '/terms', '/consent', '/thanks']) {
-      await page.goto(path);
-      const header = await page.locator('header nav.nav-wide a').count();
-      const footer = await page.locator(SECTIONS_IN_FOOTER).count();
-      expect(header, `${path}: в шапке нет разделов`).toBeGreaterThan(0);
-      expect(footer, `${path}: в подвале нет разделов`).toBe(header);
-      await expect(page.locator('footer #footer-sections')).toHaveCount(1);
-    }
-  });
 
 test('в подвале два значка — Telegram и почта, и оба остаются ссылками',
   async ({ page }) => {
