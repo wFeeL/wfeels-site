@@ -37,12 +37,13 @@ export default {
   themeDark: 'dark',
 
   /* ── Подвал ───────────────────────────────────────────────────────────── */
-  footerSections: 'Sections',
   /* Тэглайн ушёл из подвала (рычаг С-3) и переехал на `/404` — сегодня у
      английской `/404` нет, потребителя у строки на английском пока нет, но
      ключ остаётся ради парности словарей (спека `09-footer-brief.md`,
      раздел 7.5). Значение не тронуто ни на символ. */
   siteTagline: 'Websites, enquiry intake and automation for small businesses.',
+  footerCtaLabel: 'CONTACT',
+  footerCtaTitle: 'Tell me about your project',
   footerTelegram: 'Message me on Telegram',
   footerEmail: 'Send an email',
   /* Те же обязательства, что и в русском словаре, и ни одним больше. Часы

@@ -1,9 +1,10 @@
 ---
 import Container from './Container.astro';
+import Button from './Button.astro';
 import TelegramMark from './TelegramMark.astro';
 import { dict, type Locale } from '../i18n/locales';
 import { TELEGRAM_URL, emailIconLinkHtml } from '../lib/contacts';
-import { samePath, sections } from '../lib/nav';
+import { samePath, HEADER_CTA_HREF } from '../lib/nav';
 import { footerLineData } from '../lib/backgroundLine';
 import { LINE_PATHS } from '../lib/linePaths';
 
@@ -24,9 +25,7 @@ interface Props {
    *  способом, что уже пробрасывает `line`; страница сама этот проп не
    *  задаёт. Проп у `Footer.astro` остаётся опциональным и служит
    *  перекрытием на случай, когда адрес и содержание страницы разойдутся
-   *  намеренно — не умолчанием, которое страницы выставляют по одной.
-   *  Разметка, которую этот проп включает и выключает (раздел 4 брифа),
-   *  заводится следующим шагом; здесь только сам проп. */
+   *  намеренно — не умолчанием, которое страницы выставляют по одной. */
   cta?: boolean;
 }
 const { lang, line = false, cta = false } = Astro.props;
@@ -37,18 +36,9 @@ const t = dict(lang);
    стоит внутри условной ветки разметки, не здесь. */
 const year = 2026;
 
-/* Разделы приходят ровно оттуда же, откуда их берёт шапка. Своего списка у
-   подвала нет: два ручных перечня одних и тех же путей расходятся молча, и в
-   этом репозитории так уже случалось. */
-const SECTIONS = sections(lang);
-const here = Astro.url.pathname;
-
-/* Юридическую группу сняли 2026-08-21 ровно до заполнения документов. Теперь
-   все три страницы действуют, поэтому ссылки возвращены.
-   С 2026-08-26 английские страницы под `/en/…` существуют по-настоящему
-   (перевод с оговоркой о приоритете русской редакции, а не второй документ) —
-   ссылка подвала ведёт на СВОЮ языковую версию, `hreflang` больше не нужен:
-   он предупреждал именно о переходе на чужой язык, а его тут больше нет. */
+/* Юридический ряд — три ссылки, ведущие на СВОЮ языковую версию (правки от
+   2026-08-21/26 сохранены без изменений). `hreflang` не нужен: он
+   предупреждал именно о переходе на чужой язык, а его тут больше нет. */
 const legalPrefix = lang === 'en' ? '/en' : '';
 const LEGAL = [
   { href: `${legalPrefix}/privacy`, text: t.legalPolicy },
@@ -56,9 +46,11 @@ const LEGAL = [
   { href: `${legalPrefix}/consent`, text: t.legalConsent },
 ];
 
-/* К трем практическим обязательствам добавлено оформление сделки: договор и
-   чек НПД теперь не спрятаны только в юридических страницах. */
-const FACTS = [t.footerReply, t.footerCity, t.footerHours, t.footerContract];
+/* Обязательства «город» и «оформление сделки» объединены в одну строку
+   реквизитов (спека `09-footer-brief.md`, раздел 2: «Реквизиты» этой строкой
+   заменяют прежний список `.facts` с четырьмя пунктами). Слова каждого
+   обязательства не изменены — только склейка через ` · `. */
+const CITY_AND_CONTRACT = `${t.footerCity} · ${t.footerContract}`;
 const LEGAL_EMAIL = 'i@dsaburov.ru';
 
 const tail = line ? footerLineData() : null;
@@ -85,112 +77,78 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
     </>
   )}
   <Container>
-    <div class="groups">
-      <div class="brand-group">
-        <p class="wordmark">wfeels</p>
-        <p class="tagline">{t.footerTagline}</p>
+    {cta && (
+      <>
+        {/* Полоса действия — спека `09-footer-brief.md`, раздел 4. Единственное
+            место подвала, куда допущен акцент (кнопка). Метка и год несут
+            начертание ступени `label` (`base.css`, `.t-label`), но НЕ её цвет:
+            взятая как есть, `.t-label` красит текст в `--accent` и рядом с
+            кнопкой дала бы второй и третий акцент разом (раздел 5 брифа,
+            «ловушка ступени `label`»). */}
+        <div class="footer-cta">
+          <div class="cta-copy">
+            <p class="cta-label">{t.footerCtaLabel}</p>
+            <p class="cta-title">{t.footerCtaTitle}</p>
+            <p class="cta-sub">{t.footerReplyMode}</p>
+          </div>
+          <div class="cta-act">
+            <Button href={HEADER_CTA_HREF} variant="primary">{t.write}</Button>
+            <div class="icon-links">
+              <a class="icon-link" href={TELEGRAM_URL} rel="me" aria-label={t.footerTelegram}>
+                <TelegramMark size={20} />
+              </a>
+              <Fragment set:html={emailIconLinkHtml(t.footerEmail, 'icon-link')} />
+            </div>
+          </div>
+        </div>
+        <hr class="footer-divider" />
+      </>
+    )}
 
-        {/* Задача 17 (правка 2026-08-18): было кнопкой «Написать в Telegram»
-            — стало парой значков (Telegram и почта), решение владельца.
-            Прямой выход — по-прежнему единственное действие подвала, просто
-            без подписи: обе ссылки несут доступное имя через `aria-label`
-            (`t.footerTelegram`/`t.footerEmail`), а не текст внутри.
+    {/* Служебная полоса — на всех собранных страницах, с полосой действия или
+        без неё (раздел 4 брифа). Строка режима ответа выводится здесь ровно
+        тогда, когда полосы нет: иначе она повторилась бы дважды на одной
+        странице (раздел 4, «строка режима ответа выводится ровно один раз»).
+        Значки — здесь же, вторичным действием, там, где нет полосы (раздел 2:
+        «Д-4: они перестают быть единственным действием»). */}
+    <div class="footer-meta">
+      {!cta && <p class="reply">{t.footerReplyMode}</p>}
 
-            Новую вкладку ссылка на Telegram НЕ открывает, и это разобрано, а
-            не забыто. `https://t.me/…` — универсальная ссылка: на телефоне
-            её перехватывает приложение Telegram, и страница в браузере
-            вообще никуда не уходит; с `target="_blank"` рядом оставалась бы
-            пустая вкладка. На десктопе уход честный, а возврат — одна кнопка
-            «назад», с сохранением места прокрутки. Навязанное новое окно к
-            тому же нарушает WCAG 3.2.5 и ломает жест «назад» на телефоне.
-            Ссылка на почту (`mailto:`) новую вкладку не открывает по той же
-            логике — почтовый клиент тоже перехватывает переход сам.
+      <div class="requisites">
+        <p>{t.footerLegalName}</p>
+        <p>{t.footerLegalStatus}</p>
+        <p>{CITY_AND_CONTRACT}</p>
+        <p>
+          {t.footerLegalContact}:{' '}
+          <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>
+        </p>
+      </div>
 
-            `rel="me"` — заявление, что канал по ссылке принадлежит тому же
-            человеку, чей это сайт (registered link type «me»); на этом
-            держится проверка личности во внешних сервисах. `noopener`/
-            `noreferrer` не ставятся намеренно: без `target="_blank"`
-            окна-открывателя не возникает, защищать нечего, а `noreferrer`
-            только спрятал бы от нас же источник перехода.
-
-            Почтовая ссылка собрана целиком строкой (`emailIconLinkHtml`,
-            `lib/contacts.ts`) и выведена через `set:html` — та же причина,
-            что у `emailLinkHtml` в секции «Расскажите о задаче»
-            (`home/Contact.astro`): обычная интерполяция Astro дважды
-            экранировала бы числовые ссылки внутри `href` и ломала защиту
-            адреса от сборщиков. */}
+      {!cta && (
         <div class="icon-links">
           <a class="icon-link" href={TELEGRAM_URL} rel="me" aria-label={t.footerTelegram}>
             <TelegramMark size={20} />
           </a>
           <Fragment set:html={emailIconLinkHtml(t.footerEmail, 'icon-link')} />
         </div>
-
-        <ul class="facts">
-          {FACTS.map((fact) => <li>{fact}</li>)}
-        </ul>
-
-        <div class="requisites">
-          <p>{t.footerLegalName}</p>
-          <p>{t.footerLegalStatus}</p>
-          <p>
-            {t.footerLegalContact}:{' '}
-            <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>
-          </p>
-        </div>
-      </div>
-
-      {SECTIONS.length > 0 && (
-        <nav class="group" aria-labelledby="footer-sections">
-          {/* Находка 1 дизайн-ревью 2026-08-22: подпись навигационной колонки
-              стояла заголовком второго уровня — на странице с десятью `h2`
-              секций главной («Как обычно бывает» … «Расскажите о задаче»)
-              одиннадцатым в этой же последовательности шёл «РАЗДЕЛЫ», хотя
-              подвал не является одиннадцатой секцией страницы. Для читалки и
-              для поисковика оглавление документа — это и есть последовательность
-              заголовков; лишний узел в ней — ложь о структуре, а страница
-              существует ради поиска (`CLAUDE.md`, «static build»).
-
-              Подпись становится обычным элементом (`<p>`), не заголовком —
-              доступное имя навигации подвал несёт через `aria-label­ledby`,
-              указывающий на этот же узел по `id`; связь работает с любым
-              элементом, не только с заголовком, и здесь ничего не потеряно.
-              Класс `.group-title` и сам `id="footer-sections"` не менялись —
-              оформление и оба теста (`footer #footer-sections`, `footer
-              .group-title`) не зависят от тега. */}
-          <p class="group-title" id="footer-sections">{t.footerSections}</p>
-          <ul class="links">
-            {SECTIONS.map((i) => (
-              <li>
-                <a
-                  href={i.href}
-                  aria-current={samePath(i.href, here) ? 'page' : undefined}
-                ><span class="link-label">{i.text}</span></a>
-              </li>
-            ))}
-          </ul>
-        </nav>
       )}
 
-      <nav class="group" aria-labelledby="footer-legal">
-        <p class="group-title" id="footer-legal">{t.legal}</p>
+      {/* Доступное имя навигации несёт атрибут `aria-label`, а не спрятанный
+          узел с `id` (раздел 6, пункт 5 брифа): видимой подписи у ряда больше
+          нет — три ссылки называют себя сами. */}
+      <nav class="legal-row" aria-label={t.legal}>
         <ul class="links">
           {LEGAL.map((item) => (
             <li>
               <a
                 href={item.href}
-                aria-current={samePath(item.href, here) ? 'page' : undefined}
+                aria-current={samePath(item.href, Astro.url.pathname) ? 'page' : undefined}
               ><span class="link-label">{item.text}</span></a>
             </li>
           ))}
         </ul>
+        <p class="year">© {year}</p>
       </nav>
-
-    </div>
-
-    <div class="bottom">
-      <p class="ai">{t.footerAi}</p>
-      <p class="year">© {year} wfeels</p>
     </div>
   </Container>
 </footer>
@@ -206,32 +164,36 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
 
      Процент подобран РАЗНЫМ на двух ветках не на глаз, а посчитан по WCAG
      2.1, формула 1.4.3 (та же, что в `tokens.test.ts`): ссылки подвала
-     (`.links a`) набраны `--accent`, 16 px обычным текстом, порог AA 4,5:1.
-     В светлой теме у акцента и так мало запаса над исходным `--bg`
-     (4,78:1) — уже на 97 % смеси к чёрному запас падает до 4,49:1 (ниже
-     порога), на 98 % — 4,57:1 (проходит с небольшим, но настоящим
-     запасом), поэтому светлая ветка темнеет едва заметно. В тёмной теме
-     `--bg` и так близок к чёрному, и запас огромный (5,43:1 у акцента на
-     исходном фоне); даже при 80 % смеси к чёрному контраст акцента
-     РАСТЁТ (до 5,61:1), поэтому там темнее можно позволить куда заметнее
-     без риска для AA. */
+     (`.legal-row a`) набраны `--text-muted`/`--text`, а не акцентом — акцент в
+     подвале несёт только кнопка полосы. В светлой теме у акцента и так мало
+     запаса над исходным `--bg` (4,78:1) — уже на 97 % смеси к чёрному запас
+     падает до 4,49:1 (ниже порога), на 98 % — 4,57:1 (проходит с небольшим,
+     но настоящим запасом), поэтому светлая ветка темнеет едва заметно. В
+     тёмной теме `--bg` и так близок к чёрному, и запас огромный (5,43:1 у
+     акцента на исходном фоне); даже при 80 % смеси к чёрному контраст акцента
+     РАСТЁТ (до 5,61:1), поэтому там темнее можно позволить куда заметнее без
+     риска для AA. */
   footer {
     border-top: 1px solid var(--border);
     padding-block: 48px 32px;
     color: var(--text-muted);
+    /* У-1 (раздел 4.0 брифа): подвал ОБЪЯВЛЯЕТ интерлиньяж, а не наследует
+       его. Без этой строки `footer` берёт `body { line-height: 1.65 }`
+       (`base.css:33`), и `.requisites p` реально занимает 26,4 px вместо 24 —
+       все числа раздела 4 занижены на 10 %. Это ступень `small`
+       (`base.css:292`) целиком, взятая полностью, а не восьмая ступень и не
+       свободное значение. */
     font-size: 1rem;
+    line-height: 1.5;
     --footer-bg-mix: 98%;
     background: color-mix(in srgb, var(--bg) var(--footer-bg-mix), black);
     /* Хвост линии на фоне (`05-line.md`, раздел 10 шаг 2): бокс хвоста
        центрируется на ОКНЕ через `--line-canvas` (`BackgroundLine.astro`),
        не от кромок `<footer>` — общее правило одно на все боксы линии,
-       собственного переопределения `<footer>` больше не несёт (раньше
-       нёс, бриф `02-background-line.md`, раздел 3.5 — снято вместе со
-       старой геометрией «бокс = амплитуда»). `position: relative` остаётся:
-       даёт хвосту (`position: absolute; inset-block: 0`) точку отсчёта по
-       ВЕРТИКАЛИ, покрывающую полную высоту подвала, включая его собственный
-       `padding-block` — иначе мощение (раздел 3.5 брифа `02-background-line`)
-       оставило бы дыру между концом прогона `contact` и началом хвоста. */
+       собственного переопределения `<footer>` больше не несёт. `position:
+       relative` остаётся: даёт хвосту (`position: absolute; inset-block: 0`)
+       точку отсчёта по ВЕРТИКАЛИ, покрывающую полную высоту подвала, включая
+       его собственный `padding-block`. */
     position: relative;
   }
   @media (prefers-color-scheme: dark) {
@@ -239,57 +201,136 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
   }
   :global(:root[data-theme='dark']) footer { --footer-bg-mix: 80%; }
 
-  /* Столбик на телефоне; с 480 px две колонки, и бренд занимает свою строку
-     целиком — иначе кнопка и три обязательства ужимаются вдвое ради двух
-     коротких списков. С 900 px (та же точка, на которой разворачивается
-     навигация шапки) три группы встают в ряд, и брендовой отдана бо́льшая
-     доля: в ней кнопка и самая длинная строка. */
-  .groups { display: grid; gap: 32px; }
-  @media (min-width: 480px) {
-    .groups { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 40px; }
-    .brand-group { grid-column: 1 / -1; }
+  /* ── Полоса действия ─────────────────────────────────────────────────── */
+  /* Столбиком до 900 px, дальше — грид с прижатой к низу правой ячейкой
+     (раздел 4.1: «кнопка собственной высоты полосе не добавляет»). */
+  .footer-cta {
+    display: grid;
   }
-  /* Три действующие группы снова занимают три колонки: бренд получает больше
-     места под обязательства, две навигационные группы — равные доли. Когда
-     юридическую группу временно снимали, эта сетка законно сжималась до двух
-     колонок; после её возврата двухколоночная версия переносила третий узел на
-     новую строку и увеличивала подвал с 469 до 678 px. */
   @media (min-width: 900px) {
-    .groups {
-      grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr));
-      gap: 48px;
+    .footer-cta {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 32px;
     }
-    .brand-group { grid-column: auto; }
   }
 
-  /* Тот же знак, что в шапке (`Header.astro`, `.brand`) — 18 px, ступень
-     `body-lg`. Было 17 px, самовольный кегль вне шкалы (правка 2026-08-13,
-     свод к семи объявленным, [[02-redesign-options]], предусловие пункта 8). */
-  .wordmark {
-    margin: 0;
-    font: 800 1.375rem/1 var(--font-head);
+  /* Ступень `label` (`base.css`, `.t-label`), но со своим цветом: см.
+     комментарий в разметке выше про ловушку акцента. */
+  .cta-label {
+    margin: 0 0 12px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  /* Ступень `h3` (28×1.3), набрана тегом `<p>` — раздел 4: «ни одного
+     заголовка в подвале», подпись не имеет права стоять в оглавлении
+     страницы. */
+  .cta-title {
+    margin: 0 0 8px;
+    font: 700 1.75rem/1.3 var(--font-head);
     letter-spacing: -0.02em;
     color: var(--text);
   }
-  /* Мера строки: без неё описание тянется во всю ширину колонки на десктопе. */
-  .tagline { margin: 8px 0 0; max-width: 34ch; }
+  /* У-2 (раздел 4.0): ступень `body`, а не `small` — единственный ответ на
+     страх «получится дорого» не мельчает до колофонного текста. */
+  .cta-sub {
+    margin: 0;
+    max-width: 65ch;
+    font-size: 1.125rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+  }
 
-  /* Ряд значков вместо прежней кнопки. Тот же ящик 44×44 px и та же круглая
-     рамка, что у Telegram-значка шапки (`Header.astro`, `.telegram`) —
-     одинаковый вид у соседних органов управления читается как один язык
-     значков, а не как две разные вёрстки одного и того же приёма. */
-  .icon-links { display: flex; gap: 12px; margin: 24px 0 0; }
-  /* `:global` на самом значке — не небрежность, а единственный рабочий путь.
-     Почтовая ссылка выводится через `set:html` (`emailIconLinkHtml`,
-     `lib/contacts.ts`), потому что обычная интерполяция сломала бы защиту
-     адреса числовыми ссылками. Вставленной строке Astro НЕ проставляет
-     атрибут изоляции `data-astro-cid-…`, поэтому изолированное правило
-     `.icon-link` доставалось только ссылке Telegram: почтовый значок
-     оставался голой строчной ссылкой без коробки 44×44, без обвода и без
-     видимого фокуса. Дефект нашло e2e-ожидание цели нажатия 2026-08-18;
-     сборка и юнит-тесты его не видели. Область видимости несёт родитель
-     `.icon-links` — он свой атрибут получает, — а сам значок сопоставляется
-     глобально. */
+  .cta-act {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 24px;
+  }
+  @media (min-width: 480px) {
+    .cta-act { flex-direction: row; align-items: center; }
+  }
+  @media (min-width: 900px) {
+    /* На ≥900 правая ячейка — сосед левой по гриду, а не блок под ней. */
+    .cta-act { margin-top: 0; }
+  }
+  /* Кнопка во всю ширину контейнера ниже 480 px (раздел 4.3). */
+  .cta-act :global(.btn) {
+    width: 100%;
+    justify-content: center;
+  }
+  @media (min-width: 480px) {
+    .cta-act :global(.btn) { width: auto; }
+  }
+
+  .footer-divider {
+    margin: 24px 0;
+    height: 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Служебная полоса ────────────────────────────────────────────────── */
+  /* `gap: 16px` на прямых потомках даёт РОВНО те зазоры, которые требует
+     раздел 4.4 («оба шестнадцатипиксельных зазора обязательны»): между
+     `p.reply` и `.requisites`, между `.requisites` и `.icon-links` (когда
+     полосы нет) и между тем, что выше, и `.legal-row` — единое число во всех
+     трёх местах, поэтому единственное правило `gap` покрывает их разом, а не
+     три отдельных `margin-top`. */
+  /* Верхнего отступа у `.footer-meta` самого по себе нет: без полосы действия
+     зазор от верхнего края подвала уже даёт `padding-top` `<footer>` (48),
+     с полосой — верхний зазор в 24 несёт `margin` черты `.footer-divider`
+     (раздел 4.1: 24 после полосы, 1 черта, 24 до служебной полосы). */
+  .footer-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .reply {
+    margin: 0;
+    max-width: 65ch;
+  }
+
+  .requisites { max-width: 65ch; }
+  .requisites p { margin: 0; }
+  .requisites p + p { margin-top: 4px; }
+  /* Раздел 10, пункт 2 (Д-1): поля, а не `min-height` внутри абзаца.
+     `inline-flex`-коробка участвовала в строчном ритме и добавляла строке
+     лишние 44 px (`display: inline-flex; min-height: 44px` — снятое
+     оформление). `display: inline` не растит строчный бокс, но
+     `padding-block: 14px` растит коробку цели нажатия — оба фрагмента
+     переноса получают её одинаково (`box-decoration-break: clone`).
+     14, а не 12: высоту строчной коробки задаёт метрика шрифта (~21 px при
+     16 px кегля), и 12 + 21 + 12 = 45 px оставляет запас в один пиксель над
+     сторожем 44 px — его съедает любая смена начертания. 14 + 21 + 14 = 49 px,
+     запас пять пикселей. Число вне шкалы отступов раздела 5 намеренно: это
+     поправка цели нажатия, посчитанная из метрики шрифта, а не отбивка
+     макета. */
+  .requisites a {
+    display: inline;
+    padding-block: 14px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    color: var(--text-muted);
+    text-decoration-line: underline;
+    text-underline-offset: 2px;
+  }
+  .requisites a:hover,
+  .requisites a:focus-visible { color: var(--text); }
+
+  /* Ряд значков вторичного действия — тот же ящик 44×44 px, что у Telegram-
+     значка шапки (`Header.astro`, `.telegram`). Класс один и тот же в обоих
+     положениях (в `.cta-act` и здесь): область видимости для
+     `:global(.icon-link)` несёт именно родитель `.icon-links`, и второе имя
+     сломало бы почтовый значок, собираемый через `set:html` (комментарий у
+     разметки выше). */
+  .icon-links { display: flex; gap: 12px; margin: 0; }
   .icon-links :global(.icon-link) {
     display: inline-flex;
     align-items: center;
@@ -308,92 +349,49 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
     border-color: var(--text-faint);
   }
 
-  /* Обязательства набраны основным цветом, а не приглушённым: это не подпись к
-     кнопке, а то, ради чего человек её нажмёт. Чертёжная засечка слева заменяет
-     маркер списка — список фактов остаётся текстовым и без своих значков даже
-     после задачи 17 (значки появились только у прямых ссылок выше, `.icon-
-     link`, а не здесь), а голый столбик строк читался бы как продолжение
-     описания. */
-  .facts { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 8px; }
-  .facts li { position: relative; padding-left: 20px; color: var(--text); }
-  /* Засечка 2 px, а не 1: строки списка стоят с шагом 31,1 px, поэтому линия в
-     один пиксель попадает между пикселями экрана и размывается — на снимке
-     первые две засечки синие, а третья выходила серой. Два пикселя ложатся
-     ровно при любом сдвиге. */
-  .facts li::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0.75em;
-    width: 10px;
-    height: 2px;
-    background: var(--accent);
+  /* Юридический ряд: столбиком по 44 px до 900 px (раздел 4.5 — своя точка
+     перелома не заводится, действует уже объявленная), в ряд — с 900 px.
+     `flex-wrap`/`row-gap` — запас на случай, если у другого начертания
+     подписи станут шире (раздел 4.5, «798 px против контейнера 820, запас
+     22 px»): ряд переносится по 44 px, а не разъезжается. */
+  .legal-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  @media (min-width: 900px) {
+    .legal-row {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      row-gap: 8px;
+      column-gap: 24px;
+    }
+  }
+  .links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  @media (min-width: 900px) {
+    .links { flex-direction: row; flex-wrap: wrap; column-gap: 12px; row-gap: 8px; }
   }
 
-  /* Реквизиты стоят отдельным спокойным блоком: это факты об исполнителе, а
-     не еще один список преимуществ. Ссылка остается постоянно подчеркнутой,
-     потому что находится внутри прозы, а не в навигационном меню. */
-  .requisites { margin-top: 24px; max-width: 38ch; }
-  .requisites p { margin: 0; }
-  .requisites p + p { margin-top: 4px; }
-  .requisites a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    color: var(--text-muted);
-    text-decoration-line: underline;
-    text-underline-offset: 2px;
-  }
-  .requisites a:hover,
-  .requisites a:focus-visible { color: var(--text); }
-
-  /* Заголовок группы — моно-метка «Чертежа», но основным цветом, а не акцентом:
-     акцент в подвале уже занят ссылками, и одинаковый цвет у заголовка и у
-     пунктов под ним стирает между ними границу. Различают их ещё и капслок с
-     трекингом, и отсутствие подчёркивания. */
-  .group-title {
-    margin: 0 0 4px;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 500;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--text);
-  }
-
-  .links { list-style: none; margin: 0; padding: 0; }
-
-  /* Правка дизайн-ревью 2026-08-22 (находка 3): подвал и шапка несли ссылки
-     на «двух разных языках» — шапка `--text-muted` с плавным переходом,
-     подвал сплошным акцентным синим без объявленного `transition` (эффективно
-     `all 0s`, раз свойство не объявлено). Пять пунктов «РАЗДЕЛЫ» — тот же
-     список, что в шапке (`NavLinks.astro`), только вынесенный вниз страницы,
-     и он обязан вести себя как тот же компонент: `--text-muted` в покое,
-     `--text` под курсором/фокусом, переход только по `color` на токене
-     `--dur-micro` — тем же тремя строками, что и `.nav-link` там.
-
-     Прежнее оформление («акцент») здесь СНЯТО, а не ослаблено: роль ссылки
-     по-прежнему читается местом (список внутри `<nav>`, не абзац прозы) и
-     подчёркиванием на наведении/фокусе (`.link-label::after` ниже) — тем же
-     набором отличителей, что и в шапке, где акцента у пунктов меню нет
-     вовсе. Высота 44 px — цель нажатия пальцем, `inline-flex` ставит строку
-     по центру этой цели, а не по её верху.
-
-     Подчёркивания в покое здесь по-прежнему нет — правка дизайн-ревью
-     2026-08-19, ею не тронута. Постоянное подчёркивание остаётся только у
-     ссылки ВНУТРИ прозы (`.consent a` в `LeadForm.astro`, «обработку
-     персональных данных») — там оно единственный небуквенный отличитель
-     ссылки от текста абзаца. */
+  /* Правка дизайн-ревью 2026-08-22 (находка 3): подвал и шапка несут ссылки
+     на одном языке — `--text-muted` в покое, `--text` под курсором/фокусом,
+     переход только по `color` на токене `--dur-micro`, тем же тремя
+     строками, что и `.nav-link` в шапке. Акцент подвала занят кнопкой
+     полосы, второго и третьего акцента (заголовок группы, ссылки) быть не
+     должно (раздел 5 брифа). */
   .links a {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
-    /* Поля, а не только `min-height`. Пока высота набиралась одним минимумом,
-       ссылка в одну строку получала 21 px воздуха, а ссылка в две — ноль:
-       на ширинах 900…1030 px «Политика конфиденциальности» переносится, и три
-       юридические ссылки слипались в шесть строк подряд, между которыми не
-       было видно границы. Поля дают перенесённому пункту тот же воздух, что
-       и обычному, и держат его при любой длине заголовка. */
+    /* Поля, а не только `min-height`: ссылка в одну строку и перенесённая в
+       две получают одинаковый воздух (находка 2026-08-19). */
     padding-block: 10px;
     color: var(--text-muted);
     text-decoration: none;
@@ -405,11 +403,7 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
   }
   /* Черта под пунктом — тот же приём, что в шапке (`NavLinks.astro`,
      `.nav-label::after`): псевдоэлемент подписи, не `text-decoration` самой
-     ссылки (та растёт до 44 px `inline-flex`-коробки, и черта, отсчитанная от
-     края ЭТОЙ коробки, легла бы далеко под текстом, а не встык под ним).
-     `background: currentColor` — черта наследует цвет ссылки (`--text-muted`
-     в покое, `--text` под курсором/фокусом — она перекрашивается вместе с
-     текстом, второй константой не задаётся). */
+     ссылки. `background: currentColor` — черта наследует цвет ссылки. */
   .link-label {
     position: relative;
   }
@@ -435,38 +429,23 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
     transform: scaleX(1);
   }
   /* Отметка текущей страницы обязана быть видна глазу, а не только читалке.
-     Цвет — `--text` против `--text-muted` у остальных пунктов (тот же
-     токен, что несёт `:hover`/`:focus-visible` выше, только не временно, а
-     постоянно), насыщенность 600 — второй различитель на случай, когда цвет
-     не читается. Правило стоит ПОСЛЕ `:hover`/`:focus-visible` намеренно:
-     специфичность у атрибутного и псевдоклассового селектора одинаковая, и
-     при обратном порядке наведение на текущий пункт гасило бы его отметку
-     (то же рассуждение, что у `.nav-link[aria-current='page']` в
-     `NavLinks.astro`). Сегодня правило недостижимо на практике: все пункты
-     «РАЗДЕЛЫ» — якоря секций главной (`lib/nav.ts`), а `samePath` намеренно
-     не считает якорь совпадением ни на одной странице (см. комментарий там
-     же) — оно записано на случай, если в подвал вернётся группа с обычными
-     путями (например, юридические документы). */
+     Правило стоит ПОСЛЕ `:hover`/`:focus-visible` намеренно: специфичность у
+     атрибутного и псевдоклассового селектора одинаковая, и при обратном
+     порядке наведение на текущий пункт гасило бы его отметку. */
   .links a[aria-current='page'] {
     color: var(--text);
     font-weight: 600;
   }
 
-  /* Нижняя строка отбита чертой: строка про ИИ и копирайт относятся ко всему
-     подвалу, а не к третьей группе, под которой они стоят на телефоне. */
-  .bottom {
-    margin-top: 40px;
-    padding-top: 24px;
-    border-top: 1px solid var(--border);
-    display: grid;
-    gap: 12px;
+  /* Год — служебная моно-пометка, ступень `label` без акцентного цвета (та
+     же ловушка, что у `.cta-label`). */
+  .year {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
   }
-  @media (min-width: 900px) {
-    .bottom { grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: end; }
-  }
-  .ai { margin: 0; max-width: 62ch; }
-  /* Было 12 px — самовольный кегль, вне шкалы. Год — служебная моно-пометка,
-     та же роль, что у меток `label` (11 px), поэтому взял их ступень (правка
-     2026-08-13, свод к семи объявленным). */
-  .year { margin: 0; font-family: var(--font-mono); font-size: 0.6875rem; }
 </style>
