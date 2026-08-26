@@ -3,6 +3,14 @@ import Base from '../layouts/Base.astro';
 import Container from '../components/Container.astro';
 import Section from '../components/Section.astro';
 import Button from '../components/Button.astro';
+import { dict } from '../i18n/locales';
+
+/* Рычаг С-3 (`09-footer-brief.md`, раздел 7.5): `siteTagline` ушёл из
+ * подвала и выводится ровно на одной странице сайта — здесь. Строка берётся
+ * из общего словаря, а не дублируется литералом: у неё уже есть канонический
+ * источник (`i18n/ru.ts`), и второй текст-двойник здесь же снова развёл бы
+ * их при следующей правке. */
+const t = dict('ru');
 ---
 <Base title="Страница не найдена — wfeels"
       description="Такой страницы нет."
@@ -18,6 +26,7 @@ import Button from '../components/Button.astro';
         <Button href="/" variant="secondary">На главную</Button>
         <Button href="/contact" variant="secondary">Написать</Button>
       </div>
+      <p class="tagline t-body">{t.siteTagline}</p>
     </Section>
   </Container>
 </Base>
@@ -36,4 +45,8 @@ import Button from '../components/Button.astro';
      вид» нарушено. Обе кнопки тела теперь `secondary` — единственный
      акцентный призыв на экране остаётся в шапке. */
   .ways { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+  /* Рычаг С-3: та же строка, что раньше стояла в подвале, теперь единственный
+     раз — здесь, приглушённым тоном прозы, а не второй репликой призыва к
+     действию. 16px — тот же шаг отступа, что у `.lead` выше. */
+  .tagline { margin-top: 16px; color: var(--text-muted); }
 </style>
