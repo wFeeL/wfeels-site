@@ -16,19 +16,21 @@ const t = dict('ru');
       description="Такой страницы нет."
       noindex={true}
       nofollow={true}>
-  <Container>
-    <Section label="404">
-      <h1 class="t-h1">Такой страницы нет</h1>
-      <p class="lead t-body-lg">
-        Возможно, адрес набран с опечаткой или страница переехала.
-      </p>
-      <p class="tagline t-body">{t.siteTagline}</p>
-      <div class="ways">
-        <Button href="/" variant="secondary">На главную</Button>
-        <Button href="/contact" variant="secondary">Написать</Button>
-      </div>
-    </Section>
-  </Container>
+  <div class="short-page">
+    <Container>
+      <Section label="404">
+        <h1 class="t-h1">Такой страницы нет</h1>
+        <p class="lead t-body-lg">
+          Возможно, адрес набран с опечаткой или страница переехала.
+        </p>
+        <p class="tagline t-body">{t.siteTagline}</p>
+        <div class="ways">
+          <Button href="/" variant="secondary">На главную</Button>
+          <Button href="/contact" variant="secondary">Написать</Button>
+        </div>
+      </Section>
+    </Container>
+  </div>
 </Base>
 
 <style>
@@ -64,4 +66,34 @@ const t = dict('ru');
      `.tagline` выше; здесь стоит число, ранее принадлежавшее `.tagline`
      (12px) — снова тот же приём «сумма отступов не меняется». */
   .ways { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+
+  /* Б-3 (решение исполнителя, не пункт брифа — обоснование в отчёте о
+     работе, не в брифе). На высоких мониторах (1920×1400 замерено 560 px
+     пустоты до черты подвала) тело страницы стояло прижатым к верху окна, а
+     подвал — к низу: между ними голый фон. Причина — `main` в `base.css`
+     остаётся ОБЫЧНЫМ блоком (`display` не задан, растёт `flex: 1 0 auto`
+     внутри `body`), и единственный блочный потомок в нём ложится сверху, а
+     не в центр коробки.
+
+     `main` не трогается: `base.css` вне области этой правки (правишь только
+     код страниц 404/thanks, их стилей и тестов). Вместо этого — переключатель
+     ЧЕРЕЗ `:has()` (приём уже есть в проекте, `base.css:199`), адресный
+     ровно к страницам, несущим маркер `.short-page`: на всех остальных
+     страницах сайта этот селектор ни разу не совпадёт, `main` там как был
+     обычным блоком, так и остаётся.
+
+     `margin-block: auto` на самом `.short-page`, а не `justify-content:
+     center` на `main` — раздел «Границы правки» требует, чтобы на узких
+     экранах, где тело выше окна, центрирование ничего не меняло. Авто-поля
+     флекс-элемента по главной оси схлопываются в 0, когда свободного места
+     нет (сумма авто-полей не может стать отрицательной) — тело в этом
+     случае всё так же начинается от верхней кромки `main`, byte-в-byte как
+     раньше. `justify-content: center` этого свойства не имеет без ключевого
+     слова `safe` (переменная поддержка браузеров на 2026-08-26); авто-поля
+     дают тот же результат без риска браузерной поддержки. */
+  :global(main:has(.short-page)) {
+    display: flex;
+    flex-direction: column;
+  }
+  .short-page { margin-block: auto; }
 </style>
