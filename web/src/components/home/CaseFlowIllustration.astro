@@ -585,10 +585,29 @@ const ariaLabel =
   .lx { fill: var(--text); } /* подпись ЗАЯВКА — исключение раздела 4.3 */
 
   /* Запасное состояние — состояние ПО УМОЛЧАНИЮ: без блоков ниже рисунок и
-     так полностью виден. Анимация — только поверх статичного состояния. */
+     так полностью виден. Анимация — только поверх статичного состояния.
+
+     `single="b"` (панель разворота кейса `zayavka-hub`) этот блок НЕ
+     получает вовсе — селекторы ниже начинаются с `.flow:not([data-single=
+     "b"])`. Причина найдена замером, а не на глаз: `animation-timeline:
+     --case-flow` — это ПРИВЯЗКА к позиции прокрутки, а не разовый триггер.
+     На реальной прокрутке (вниз до конца страницы и обратно вверх)
+     `getComputedStyle` подтвердил, что все линии и подписи возвращаются в
+     исходное `opacity: 0` / `stroke-dashoffset: 1`, стоит прокрутке уйти
+     выше диапазона `entry 15% cover 65%` — единственная законная схема
+     кейса (П-2) гасла целиком при обычной прокрутке вверх, хотя сторож
+     10.1 (`case-spread-fill.spec.ts`) этого не ловит: `getBBox()` меряет
+     ГЕОМЕТРИЮ фигур, а не их текущую видимость по `opacity`/`dasharray`.
+     Тот же дефект, что раздел 9 брифа страниц кейсов требует лечить у
+     разворота целиком («один раз», не при каждом пересечении границы), —
+     здесь его лечит не JS-триггер, а снятие привязки к прокрутке: рисунок
+     остаётся в запасном состоянии («и так полностью виден»), пока не
+     появится собственный сценарий, которому нужна именно прогрессивная
+     прорисовка. Раскрой А (без `single="b"`, сегодня нигде не выводится)
+     эффект сохраняет как есть. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      .d, .f {
+      .flow:not([data-single="b"]) .d, .flow:not([data-single="b"]) .f {
         animation-timeline: --case-flow;
         animation-range: entry 15% cover 65%;
         /* Раздельные свойства, не сокращение `animation:` — сборка сводит
@@ -598,21 +617,21 @@ const ariaLabel =
         animation-timing-function: linear;
         animation-fill-mode: both;
       }
-      .d { stroke-dasharray: 1; stroke-dashoffset: 1; animation-name: fdraw; }
-      .f { opacity: 0; animation-name: ffade; }
+      .flow:not([data-single="b"]) .d { stroke-dasharray: 1; stroke-dashoffset: 1; animation-name: fdraw; }
+      .flow:not([data-single="b"]) .f { opacity: 0; animation-name: ffade; }
 
       /* Шесть фаз рисования: источники → узел → ствол → отводы и узлы →
          подписи каналов → возврат и его подпись. Возврат оживает последним
          намеренно — сначала видно, что заявка ушла, и только потом, что при
          сбое она уйдёт снова. */
-      .p1 { animation-duration: 1ms; }
-      .p2 { animation-duration: 70ms; }
-      .p3 { animation-duration: 150ms; }
-      .p4 { animation-duration: 220ms; }
-      .p5 { animation-duration: 280ms; }
-      .p6 { animation-duration: 340ms; }
+      .flow:not([data-single="b"]) .p1 { animation-duration: 1ms; }
+      .flow:not([data-single="b"]) .p2 { animation-duration: 70ms; }
+      .flow:not([data-single="b"]) .p3 { animation-duration: 150ms; }
+      .flow:not([data-single="b"]) .p4 { animation-duration: 220ms; }
+      .flow:not([data-single="b"]) .p5 { animation-duration: 280ms; }
+      .flow:not([data-single="b"]) .p6 { animation-duration: 340ms; }
       /* Группа пакета проявляется ПОЗЖЕ всех линий — см. разметку. */
-      .p7 { animation-duration: 420ms; }
+      .flow:not([data-single="b"]) .p7 { animation-duration: 420ms; }
     }
   }
 

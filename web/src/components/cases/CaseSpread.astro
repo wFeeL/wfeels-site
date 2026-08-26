@@ -29,7 +29,7 @@ const mirror = index % 2 === 1;
 const isTrio = spread.kind === 'photo-trio';
 const images = spread.images ?? [];
 ---
-<div class="spread" class:list={{ mirror }}>
+<div class="spread" data-case-spread class:list={{ mirror }}>
   <div class="frame" data-spread-frame>
     {spread.kind === 'schema' ? (
       <CaseFlowIllustration single="b" />
@@ -135,25 +135,65 @@ const images = spread.images ?? [];
     }
   }
 
-  /* Появление разворота при прокрутке — раздел 9 брифа: 320 мс, один раз,
-     родная CSS scroll-timeline (D-024, GSAP не ставится). Запасное
-     состояние — состояние по умолчанию: без поддержки/без предпочтения
-     движения разворот просто виден. */
-  @supports (animation-timeline: view()) {
-    @media (prefers-reduced-motion: no-preference) {
-      .spread {
-        opacity: 0;
-        transform: translateY(12px);
-        animation-name: spread-reveal;
-        animation-duration: var(--dur-reveal);
-        animation-timing-function: var(--ease);
-        animation-fill-mode: both;
-        animation-timeline: view();
-        animation-range: entry 0% cover 30%;
-      }
+  /* Появление разворота при прокрутке — раздел 9 брифа: opacity 0 → 1,
+     translateY(12px) → 0, 320 мс, один раз (не каждый раз при пересечении
+     границы).
+     Было — `animation-timeline: view()`: измерено на этом же файле, что
+     решение НЕ подходит для «одного раза» — это ПРИВЯЗКА к позиции
+     прокрутки, а не разовый триггер: при возврате прокрутки вверх мимо
+     диапазона `entry`/`cover` анимация СЪЕЗЖАЕТ назад к 0%, и уже показанный
+     разворот гаснет заново (замер: все четыре `.spread` держали
+     `opacity: 0` в застывшем виде после прокрутки вниз и обратно вверх —
+     `getComputedStyle` подтвердил `animation-timeline: view(); playState:
+     running`, а не «однократно сыграно»). Раздел 9 требует «один раз», и
+     держится это только явным одноразовым триггером — `IntersectionObserver`
+     с `unobserve` после первого пересечения, тот же приём, что уже несёт
+     затвор `CaseFlowIllustration.astro`. Запасное состояние — видимое: без
+     JavaScript и без поддержки набора`IntersectionObserver`разворот просто
+     стоит открытым (`<noscript>` ниже и ветка `else` в скрипте). */
+  .spread { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    [data-case-spread] {
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity var(--dur-reveal) var(--ease), transform var(--dur-reveal) var(--ease);
+    }
+    [data-case-spread].is-visible {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
-  @keyframes spread-reveal {
-    to { opacity: 1; transform: translateY(0); }
-  }
 </style>
+
+<noscript>
+  <style>[data-case-spread] { opacity: 1 !important; transform: none !important; }</style>
+</noscript>
+
+{/* Один скрипт на все развороты страницы: Astro дедуплицирует одинаковый
+    неинлайновый `<script>` при повторном использовании компонента, поэтому
+    четыре вызова `CaseSpread` дают один блок в собранном JS, а не четыре
+    независимых наблюдателя. Обычный (не `is:inline`) `<script>` здесь
+    безопасен — компонент рендерится в дереве страницы напрямую, а не через
+    слот `CaseIllustrationField` (ловушка 1, `50-code/CLAUDE.md`: там
+    поднимаемый `<script>` до сборки не доезжает; здесь этого пути нет). */}
+<script>
+  (function () {
+    if (window.__caseSpreadRevealInit) return;
+    window.__caseSpreadRevealInit = true;
+
+    var els = document.querySelectorAll('[data-case-spread]');
+    if (!('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('is-visible'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0, rootMargin: '0px 0px -10% 0px' });
+    els.forEach(function (el) { io.observe(el); });
+  })();
+</script>
