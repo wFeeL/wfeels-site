@@ -114,9 +114,18 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
     // была секция кейсов главной; имя переменной сохранено, чтобы правка не
     // трогала два десятка проверок ниже.
     const casesHtml = FLOW_PAGE ?? '';
-    it('оба раскроя SVG присутствуют в разметке', () => {
-      expect(casesHtml).toContain('class="svg ra"');
+    /* С 2026-08-26 (`70-workshop/specs/site-v3/12-case-pages-brief.md`,
+     * раздел 2, П-3) компонент умеет режим ОДНОЙ копии разметки —
+     * `single="b"`, обязательный для панели разворота: два `<svg>` под
+     * разные ширины запрещены. Сегодня единственный вывод рисунка на сайте —
+     * ровно этот режим (`/cases/zayavka-hub`, разворот 4), поэтому проверки
+     * ниже ветвятся по фактическому атрибуту `data-single="b"` на странице,
+     * а не предполагают дуальный раскрой как единственный. */
+    const isSingleB = /data-single="b"/.test(casesHtml);
+
+    it('раскрой Б присутствует всегда; раскрой А — только вне режима одной копии', () => {
       expect(casesHtml).toContain('class="svg rb"');
+      expect(casesHtml.includes('class="svg ra"')).toBe(!isSingleB);
     });
 
     it('четыре канала доставки и подпись возврата — дословно из данных', () => {
@@ -143,16 +152,21 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
       expect(casesHtml).toContain(`>${FLOW_RETRY_LABEL}<`);
     });
 
-    const flowStart = casesHtml.indexOf('class="svg ra"');
+    // В режиме одной копии срез начинается с единственного `class="svg rb"`,
+    // а не с отсутствующего `class="svg ra"` — иначе `indexOf` даёт `-1`, и
+    // `slice(-1, …)` читает мусор с конца строки (ровно так покраснел этот
+    // файл при первом включении `single="b"`, 2026-08-26).
+    const flowStart = casesHtml.indexOf(isSingleB ? 'class="svg rb"' : 'class="svg ra"');
     const flowEnd = casesHtml.indexOf('</svg>', casesHtml.indexOf('class="svg rb"')) + 6;
     const flowSvgs = casesHtml.slice(flowStart, flowEnd);
+    const expectedSvgCount = isSingleB ? 1 : 2;
 
-    it('оба раскроя дают одно и то же описание в role="img"/aria-label', () => {
-      // Срез только двух SVG «Одной трубы» — секция кейсов несёт третий
+    it('раскрой(ы) дают одно и то же описание в role="img"/aria-label', () => {
+      // Срез только SVG «Одной трубы» — секция кейсов несёт третий
       // `role="img"` (ядро фабрики, `FactoryCore.astro`), он не в счёте.
       const labels = [...flowSvgs.matchAll(/role="img" aria-label="([^"]+)"/g)].map((m) => m[1]);
-      expect(labels.length).toBe(2);
-      expect(labels[0]).toBe(labels[1]);
+      expect(labels.length).toBe(expectedSvgCount);
+      if (labels.length > 1) expect(labels[0]).toBe(labels[1]);
       for (const s of FLOW_SOURCES) expect(labels[0].toLowerCase()).toContain(s.label.toLowerCase());
       for (const c of DELIVERY_CHANNELS) expect(labels[0].toLowerCase()).toContain(c.label.toLowerCase());
     });
@@ -165,15 +179,17 @@ describe('dist/index.html — иллюстрации «Одна труба» и 
       const pathData = [...flowSvgs.matchAll(/\sd="([^"]+)"/g)].map((m) => m[1]);
       expect(pathData.length).toBeGreaterThan(0);
       const routes = [...flowSvgs.matchAll(/offset-path:path\('([^']+)'\)/g)].map((m) => m[1]);
-      expect(routes.length, 'маршрутов пакета в разметке нет — offset-path потерялся').toBe(2);
+      expect(routes.length, 'маршрутов пакета в разметке нет — offset-path потерялся').toBe(expectedSvgCount);
       for (const d of [...pathData, ...routes]) {
         expect(d, d).not.toMatch(/[CSQT]/);
       }
     });
 
-    it('ни одной цифры ни в одной подписи обоих раскроев (бриф 07, критерий 13)', () => {
+    it('ни одной цифры ни в одной подписи раскроя(ев) (бриф 07, критерий 13)', () => {
       const texts = [...flowSvgs.matchAll(/<text\b[^>]*>([\s\S]*?)<\/text>/g)].map((m) => m[1]);
-      expect(texts.length, 'подписей в раскроях не нашлось — селектор устарел').toBeGreaterThan(8);
+      // Раскрой Б один несёт 7 текстовых узлов (источники одной строкой,
+      // «ЗАЯВКА», четыре канала, подпись возврата); оба раскроя вместе — 16.
+      expect(texts.length, 'подписей в раскроях не нашлось — селектор устарел').toBeGreaterThan(isSingleB ? 4 : 8);
       for (const t of texts) {
         expect(/[0-9]/.test(t), `подпись «${t}» несёт цифру`).toBe(false);
       }

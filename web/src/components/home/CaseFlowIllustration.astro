@@ -36,6 +36,24 @@
  */
 import { FLOW_SOURCES, DELIVERY_CHANNELS, FLOW_RETRY_LABEL } from '../../data/case-illustrations';
 
+interface Props {
+  /** Только один раскрой в разметке — `70-workshop/specs/site-v3/
+   *  12-case-pages-brief.md`, раздел 2, П-3: «схема обязана иметь ОДНУ
+   *  копию разметки». По умолчанию (проп не передан) рисунок несёт ОБА
+   *  раскроя (А/Б) и переключает их CSS-медиа-запросом по ширине окна — то
+   *  устройство, ради которого раскрой Б вообще существует (разные поля в
+   *  разных местах сайта, бриф `07-flow-motion-brief.md`). В развороте
+   *  кейса `zayavka-hub` поле — фиксированная доля контейнера, и там нужна
+   *  ровно одна копия `<svg>`, иначе сторож `case-spread-fill.spec.ts`
+   *  считает оба узла независимо от того, какой из них скрыт (раздел 10.1.1
+   *  брифа: «схема обязана иметь ОДНУ копию разметки»). Раскрой «Б»
+   *  (320×272) выбран не произвольно: высоты панели раздела 3.6 брифа
+   *  посчитаны именно от его холста, растянутого в поле
+   *  (`638 × 272 / 320 = 542`, `326 × 272 / 320 = 277`). */
+  single?: 'b';
+}
+const { single } = Astro.props;
+
 // =====================================================================
 // Маршрут пакета — общая механика обоих раскроев (бриф 07, раздел 6).
 //
@@ -374,45 +392,47 @@ const ariaLabel =
   `расходятся по ${DELIVERY_CHANNELS.length} каналам: ${channelWords}. ` +
   `При сбое доставки: ${FLOW_RETRY_LABEL.toLowerCase()}.`;
 ---
-<div class="flow" data-case-flow>
-  <svg class="svg ra" viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`} width={VIEWBOX_W} height={VIEWBOX_H} role="img" aria-label={ariaLabel} focusable="false">
-    {/* 1. Линии — все до пакета. */}
-    <path class="h d p1" d={aPathSources} pathLength="1" />
-    <path class="l d p1" d={aPathTrunkIn} pathLength="1" />
-    <path class="l d p3" d={aPathTrunkOut} pathLength="1" />
-    <path class="l d p4" d={aPathBranches} pathLength="1" />
-    <path class="h d p6" d={aPathReturn} pathLength="1" />
+<div class="flow" data-case-flow data-single={single}>
+  {single !== 'b' && (
+    <svg class="svg ra" viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`} width={VIEWBOX_W} height={VIEWBOX_H} role="img" aria-label={ariaLabel} focusable="false">
+      {/* 1. Линии — все до пакета. */}
+      <path class="h d p1" d={aPathSources} pathLength="1" />
+      <path class="l d p1" d={aPathTrunkIn} pathLength="1" />
+      <path class="l d p3" d={aPathTrunkOut} pathLength="1" />
+      <path class="l d p4" d={aPathBranches} pathLength="1" />
+      <path class="h d p6" d={aPathReturn} pathLength="1" />
 
-    {/* 2. Пакет. Появляется по прокрутке ПОЗЖЕ всех линий (вес `.p7` больше
-        любого веса рисования) — на недорисованной схеме его физически не
-        бывает, и затвору не нужно угадывать порог. Едет по ВРЕМЕНИ, не по
-        прокрутке: два клока не спорят, потому что висят на разных объектах. */}
-    <g class="pkts f p7" aria-hidden="true">
-      <circle class="pkt" r="4" style={aPacketStyle} />
-    </g>
+      {/* 2. Пакет. Появляется по прокрутке ПОЗЖЕ всех линий (вес `.p7` больше
+          любого веса рисования) — на недорисованной схеме его физически не
+          бывает, и затвору не нужно угадывать порог. Едет по ВРЕМЕНИ, не по
+          прокрутке: два клока не спорят, потому что висят на разных объектах. */}
+      <g class="pkts f p7" aria-hidden="true">
+        <circle class="pkt" r="4" style={aPacketStyle} />
+      </g>
 
-    {/* 3. Плашки узлов — непрозрачные, поверх пакета: пакет, дошедший до
-        центра квадрата, исчезает под ним. Это и есть «доставлено». */}
-    {/* Обёртка `.f p2` нужна из-за заливки: `.d` рисует обводку, но заливка
-        `--bg` не подчиняется `stroke-dashoffset` и без общего проявления
-        плашка вспыхивала бы прямоугольником фона раньше своей рамки. */}
-    <g class="f p2">
-      <rect class="b n d p2" x={NODE_X} y={NODE_Y} width={NODE_W} height={NODE_H} pathLength="1" />
-    </g>
-    <path class="n f p4" d={aPathChannelNodes} />
+      {/* 3. Плашки узлов — непрозрачные, поверх пакета: пакет, дошедший до
+          центра квадрата, исчезает под ним. Это и есть «доставлено». */}
+      {/* Обёртка `.f p2` нужна из-за заливки: `.d` рисует обводку, но заливка
+          `--bg` не подчиняется `stroke-dashoffset` и без общего проявления
+          плашка вспыхивала бы прямоугольником фона раньше своей рамки. */}
+      <g class="f p2">
+        <rect class="b n d p2" x={NODE_X} y={NODE_Y} width={NODE_W} height={NODE_H} pathLength="1" />
+      </g>
+      <path class="n f p4" d={aPathChannelNodes} />
 
-    {/* 4. Все подписи — последними: пакет никогда не рисуется поверх текста. */}
-    <g class="lm f p1" text-anchor="end">
-      {FLOW_SOURCES.map((s, i) => <text x={SOURCE_LABEL_X} y={SOURCE_Y[i] + 5}>{s.label}</text>)}
-    </g>
-    <text class="lx f p2" x={NODE_X + NODE_W / 2} y={NODE_CY + 5} text-anchor="middle">ЗАЯВКА</text>
-    <g class="lm f p5" text-anchor="middle">
-      {DELIVERY_CHANNELS.map((c, i) => (
-        <text x={CHANNEL_XS[i]} y={CHANNEL_LABEL_Y}>{c.label}</text>
-      ))}
-    </g>
-    <text class="lm f p6" x={RETURN_LABEL_X} y={RETURN_LABEL_Y} text-anchor="middle">{FLOW_RETRY_LABEL}</text>
-  </svg>
+      {/* 4. Все подписи — последними: пакет никогда не рисуется поверх текста. */}
+      <g class="lm f p1" text-anchor="end">
+        {FLOW_SOURCES.map((s, i) => <text x={SOURCE_LABEL_X} y={SOURCE_Y[i] + 5}>{s.label}</text>)}
+      </g>
+      <text class="lx f p2" x={NODE_X + NODE_W / 2} y={NODE_CY + 5} text-anchor="middle">ЗАЯВКА</text>
+      <g class="lm f p5" text-anchor="middle">
+        {DELIVERY_CHANNELS.map((c, i) => (
+          <text x={CHANNEL_XS[i]} y={CHANNEL_LABEL_Y}>{c.label}</text>
+        ))}
+      </g>
+      <text class="lm f p6" x={RETURN_LABEL_X} y={RETURN_LABEL_Y} text-anchor="middle">{FLOW_RETRY_LABEL}</text>
+    </svg>
+  )}
 
   <svg class="svg rb" viewBox={`0 0 ${B_VIEWBOX_W} ${B_VIEWBOX_H}`} width={B_VIEWBOX_W} height={B_VIEWBOX_H} role="img" aria-label={ariaLabel} focusable="false">
     <path class="l d p1" d={bPathEntry} pathLength="1" />
@@ -541,6 +561,15 @@ const ariaLabel =
     .ra { display: none; }
     .rb { display: block; }
   }
+
+  /* Режим одной копии (`single="b"`, П-3 брифа страниц кейсов) — раскрой А
+     не рендерится вовсе (см. разметку), и раскрой Б обязан быть виден на
+     ЛЮБОЙ ширине, а не только ниже 1180 px, и растянут на всю ширину поля
+     (`width: 100%`, не только `max-width`) — раздел 2 брифа: «рисунок
+     тянется в оставшееся поле». Атрибутный селектор специфичнее `.rb {
+     display: none }` и `.ra`/`.rb` внутри `@media` выше, поэтому выигрывает
+     независимо от ширины окна. */
+  .flow[data-single="b"] .rb { display: block; width: 100%; }
 
   /* Три ширины обводки: главное / несущее / вспомогательное. */
   .h, .l, .b, .n { fill: none; stroke: var(--text); stroke-width: var(--stroke-line); }

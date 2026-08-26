@@ -152,7 +152,18 @@ describe.skipIf(FLOW_PAGE === null)('сборка — порядок отрис�
   if (!existsSync(DIST_INDEX)) return;
   const html = FLOW_PAGE ?? '';
 
-  for (const layout of ['ra', 'rb'] as const) {
+  /* С режима одной копии (`single="b"`, `70-workshop/specs/site-v3/
+   * 12-case-pages-brief.md`, раздел 2, П-3) страница может нести только
+   * раскрой «Б» — цикл проверяет РЕАЛЬНО присутствующие раскрои, а не оба
+   * безусловно: до правки этот файл искал `.ra` даже там, где компонент
+   * сам решил его не рисовать, и получал `-1`. */
+  const layoutsPresent = (['ra', 'rb'] as const).filter((l) => html.includes(`class="svg ${l}"`));
+
+  it('на странице с data-case-flow найден хотя бы один раскрой', () => {
+    expect(layoutsPresent.length).toBeGreaterThan(0);
+  });
+
+  for (const layout of layoutsPresent) {
     const open = html.indexOf(`class="svg ${layout}"`);
     const svg = html.slice(open, html.indexOf('</svg>', open));
 
