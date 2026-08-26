@@ -133,7 +133,28 @@ for (const [name, items] of Object.entries(REGALIA_BY_LOCALE)) {
 </ul>
 
 <div class="cta">
-  <Button href="#contact" variant="primary">{t.write}</Button>
+  {/* Линия-рассказчик (раздел 3 П2 брифа `11-line-narrator-brief.md`):
+      кнопка серая до прихода линии, синеет ступенькой (замена анимации,
+      см. `BackgroundLine.astro`, раздел о стоимости отрисовки) —
+      `background-color`/`color` не композитятся, и анимация напрямую на
+      кнопке перекрашивала весь кадр 60 раз за прокрутку (диагноз: 880–1046
+      событий `Paint` за 60 тиков колеса против 218 без неё, порог сторожа
+      `about-photo-scroll-cost.spec.ts` — 320). Приём тот же, что несёт вся
+      линия целиком (`.line-curtain`): не перекрашивать содержимое, а
+      накрывать его композитным слоем. `.cta-primary-wrap` — точка отсчёта
+      для абсолютно спозиционированного слоя; сама кнопка ВСЕГДА остаётся
+      серой (`BackgroundLine.astro`, статическое правило, без анимации),
+      поверх неё лежит декоративный слой-дубликат `.cta-ignite-overlay` с
+      тем же текстом, акцентным фоном и текстом на акценте — его `opacity`
+      идёт 0→1 той же ступенькой (`steps(1,jump-end)`, та же `animation-
+      range`), а `opacity` — композитное свойство, лишней перерисовки не
+      стоит. Слой decorative: `aria-hidden`, `pointer-events: none` — клик и
+      фокус всегда достаются настоящей кнопке под ним, второй цели
+      табуляции не появляется. */}
+  <span class="cta-primary-wrap">
+    <Button href="#contact" variant="primary">{t.write}</Button>
+    <span class="cta-ignite-overlay" aria-hidden="true">{t.write}</span>
+  </span>
   <Button href="#pricing" variant="secondary">{t.heroSecondary}</Button>
 </div>
 
@@ -255,6 +276,42 @@ for (const [name, items] of Object.entries(REGALIA_BY_LOCALE)) {
     flex-wrap: wrap;
     gap: 12px;
     margin: 32px 0 0;
+  }
+
+  /* Обёртка для слоя-дубликата кнопки (см. комментарий у разметки выше,
+     диагноз стоимости отрисовки): точка отсчёта абсолютного
+     позиционирования — сама обёртка
+     `inline-flex`, чтобы схлопнуться до размера кнопки, второй ребёнок
+     (`.cta-ignite-overlay`) вынут из потока и её размер не увеличивает. */
+  .cta-primary-wrap {
+    position: relative;
+    display: inline-flex;
+  }
+
+  /* Декоративный слой-дубликат — та же коробка, что у `.btn.primary`
+     (`Button.astro`): те же паддинг/кегль/радиус, чтобы текст обоих слоёв
+     стоял на одном месте пиксель в пиксель. `inset: 0` — размер берётся из
+     обёртки, которая сама схлопнута до размера настоящей кнопки. По
+     умолчанию `opacity: 0` — без поддержки `animation-timeline`/`view()`,
+     при `reduce`, ниже 900px и в печати слой попросту невидим, а настоящая
+     кнопка уже показывает конечное состояние сама (обычный `.primary`,
+     раздел 7.5: «конечное состояние — состояние по умолчанию»). Анимация
+     `opacity` назначается только внутри `@supports`/`@media` в
+     `BackgroundLine.astro`. */
+  .cta-ignite-overlay {
+    position: absolute;
+    inset: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: var(--radius-pill);
+    padding: 10px 20px;
+    font: 600 1.125rem/1 var(--font-text);
+    background: var(--accent);
+    color: var(--text-on-accent);
+    pointer-events: none;
+    opacity: 0;
   }
 
   /* Мельче и приглушённее, чем метка-эйбраузер над заголовком: та (`Label`,

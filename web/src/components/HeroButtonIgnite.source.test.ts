@@ -28,34 +28,60 @@ describe('BackgroundLine.astro — кнопка первого экрана (р�
     expect(lastMediaOpen, 'правило кнопки не найдено внутри @media (min-width:900px)').toBeGreaterThan(-1);
   });
 
-  it('базовое состояние — --border/--text, не результат кадра `from` (fill-mode: forwards, не both)', () => {
+  it('базовое состояние — --border/--text, статическое, БЕЗ анимации (диагноз стоимости отрисовки: перекраска самой кнопки стоила 880–1046 `Paint` за 60 тиков колеса, порог сторожа 320)', () => {
     const idx = SOURCE.indexOf('#hero .cta .btn.primary{');
     const block = SOURCE.slice(idx, SOURCE.indexOf('}', idx));
     expect(block).toContain('background-color:var(--border)');
     expect(block).toContain('color:var(--text)');
+    expect(block, 'кнопка не обязана нести ни одного anim-свойства — ступеньку рисует слой .cta-ignite-overlay').not.toContain('animation');
+  });
+
+  it('правило адресное — #hero .cta .cta-ignite-overlay, декоративный слой-дубликат, а не сама кнопка', () => {
+    expect(SOURCE).toContain('#hero .cta .cta-ignite-overlay{');
+  });
+
+  it('слой живёт в той же @media (min-width:900px), сразу после блока кнопки', () => {
+    const btnIdx = SOURCE.indexOf('#hero .cta .btn.primary{');
+    const overlayIdx = SOURCE.indexOf('#hero .cta .cta-ignite-overlay{');
+    expect(overlayIdx, 'блок слоя обязан идти после блока кнопки').toBeGreaterThan(btnIdx);
+    const between = SOURCE.slice(SOURCE.indexOf('}', btnIdx) + 1, overlayIdx);
+    expect(between, 'между блоком кнопки и блоком слоя не должно быть закрытия @media').not.toContain('}');
+  });
+
+  it('fill-mode: forwards, не both — ступеньку несёт слой, не сама кнопка', () => {
+    const idx = SOURCE.indexOf('#hero .cta .cta-ignite-overlay{');
+    const block = SOURCE.slice(idx, SOURCE.indexOf('}', idx));
     expect(block).toContain('animation-fill-mode:forwards');
     expect(block).not.toContain('animation-fill-mode:both');
   });
 
   it('ступенька, не плавный переход: steps(1,jump-end), не linear и не var(--ease)', () => {
-    const idx = SOURCE.indexOf('#hero .cta .btn.primary{');
+    const idx = SOURCE.indexOf('#hero .cta .cta-ignite-overlay{');
     const block = SOURCE.slice(idx, SOURCE.indexOf('}', idx));
     expect(block).toContain('animation-timing-function:steps(1,jump-end)');
   });
 
-  it('шкала — своя (безымянная view()) на самой кнопке, не именованная --line-progress секции', () => {
-    const idx = SOURCE.indexOf('#hero .cta .btn.primary{');
+  it('шкала — своя (безымянная view()) на коробке слоя, не именованная --line-progress секции', () => {
+    const idx = SOURCE.indexOf('#hero .cta .cta-ignite-overlay{');
     const block = SOURCE.slice(idx, SOURCE.indexOf('}', idx));
     expect(block).toContain('animation-timeline:view()');
     expect(block).not.toContain('--line-progress');
   });
 
   it('диапазон — то же единственное правило, что у шторки (--line-lead/--line-trail)', () => {
-    const idx = SOURCE.indexOf('#hero .cta .btn.primary{');
+    const idx = SOURCE.indexOf('#hero .cta .cta-ignite-overlay{');
     const block = SOURCE.slice(idx, SOURCE.indexOf('}', idx));
     expect(block).toContain(
       'animation-range:cover var(--line-lead) cover calc(100% - var(--line-trail))',
     );
+  });
+
+  it('кадры ступеньки — opacity 0→1 (композитное свойство), не background-color/color', () => {
+    const idx = SOURCE.indexOf('@keyframes hero-cta-ignite');
+    const block = SOURCE.slice(idx, SOURCE.indexOf('}\n  }', idx) + 1);
+    expect(block).toContain('opacity: 0');
+    expect(block).toContain('opacity: 1');
+    expect(block, 'некомпозитные background-color/color не должны вернуться в кадры').not.toContain('background-color');
   });
 
   it('@keyframes hero-cta-ignite объявлен статически и не назначает himself вне @supports', () => {

@@ -167,9 +167,25 @@ test.describe('линия-рассказчик — П2: кнопка перво�
   const ON_ACCENT_LIGHT = 'rgb(255, 255, 255)';
   const ON_ACCENT_DARK = 'rgb(14, 20, 32)';
 
+  /* ПРАВКА (диагноз стоимости отрисовки, `BackgroundLine.astro`; бриф
+   * `11-line-narrator-brief.md`, раздел 3, П2): сама кнопка
+   * (`#hero .cta .btn.primary`) больше не перекрашивается —
+   * она статически серая, а ступеньку рисует накрывающий её декоративный
+   * слой (`Hero.astro`, `.cta-ignite-overlay`), чей `opacity` идёт 0→1 той
+   * же самой шкалой. Видимый пользователю цвет — это цвет слоя, когда его
+   * `opacity` близок к 1 (ступенька мгновенная, полутонов не бывает —
+   * проверка №3 ниже это и охраняет), иначе цвет самой кнопки под ним.
+   * Функция читает то же самое: ЭФФЕКТИВНЫЙ видимый цвет, а не то, какой
+   * конкретно элемент его несёт — весь остальной сценарий теста (приёмка
+   * П-5, П-6…) написан в терминах видимого цвета кнопки и не должен знать
+   * о наличии слоя. */
   async function buttonColors(page: import('@playwright/test').Page) {
-    return page.locator('#hero .cta .btn.primary').evaluate((el) => {
-      const s = getComputedStyle(el);
+    return page.evaluate(() => {
+      const btn = document.querySelector('#hero .cta .btn.primary')!;
+      const overlay = document.querySelector('#hero .cta .cta-ignite-overlay');
+      const overlayOpacity = overlay ? parseFloat(getComputedStyle(overlay).opacity) : 0;
+      const visible = overlayOpacity > 0.5 ? overlay! : btn;
+      const s = getComputedStyle(visible);
       return { backgroundColor: s.backgroundColor, color: s.color };
     });
   }
@@ -223,6 +239,14 @@ test.describe('линия-рассказчик — П2: кнопка перво�
 
       // 4) Одна анимация, ступенька, fill forwards (П-6.5).
       //
+      // Диагноз стоимости отрисовки (`BackgroundLine.astro`, раздел о
+      // некомпозитных свойствах): сама кнопка (`#hero .cta .btn.primary`)
+      // больше не несёт анимации вовсе — она статически серая. Ступеньку
+      // несёт накрывающий её декоративный слой (`Hero.astro`,
+      // `.cta-ignite-overlay`), и именно на нём проверяется факт «ровно одна
+      // анимация, ступенька, fill forwards» — у самой кнопки анимаций теперь
+      // 0, и это ожидаемо, а не потеря покрытия.
+      //
       // РАСХОЖДЕНИЕ С БРИФОМ (измерено, не вкус): брифом заявлено
       // `effect.getTiming().easing === 'steps(1, jump-end)'`, но Chromium
       // при ДВУХ явных стопах (0%/100%, `from`/`to`) вешает
@@ -234,7 +258,7 @@ test.describe('линия-рассказчик — П2: кнопка перво�
       // `getKeyframes()[0].easing` дают `'steps(1)'`, не `'steps(1, jump-end)'`.
       // Проверяется то же самое утверждение («ступенька, не плавный переход»)
       // тем сигналом, который браузер фактически подтверждает.
-      const animInfo = await page.locator('#hero .cta .btn.primary').evaluate((el) => {
+      const animInfo = await page.locator('#hero .cta .cta-ignite-overlay').evaluate((el) => {
         const anims = (el as HTMLElement).getAnimations();
         const s = getComputedStyle(el);
         return anims.map((a) => ({
@@ -243,8 +267,13 @@ test.describe('линия-рассказчик — П2: кнопка перво�
           keyframeEasings: (a.effect as KeyframeEffect | null)?.getKeyframes().map((k) => k.easing),
         }));
       });
-      expect(animInfo.length, 'кнопка обязана нести ровно одну анимацию рассказа').toBe(1);
+      expect(animInfo.length, 'слой-дубликат обязан нести ровно одну анимацию рассказа').toBe(1);
       expect(animInfo[0].effectFill).toBe('forwards');
+
+      const btnAnimsCount = await page
+        .locator('#hero .cta .btn.primary')
+        .evaluate((el) => (el as HTMLElement).getAnimations().length);
+      expect(btnAnimsCount, 'сама кнопка обязана остаться без анимации — перекраску несёт слой').toBe(0);
       expect(animInfo[0].computedTimingFunction).toBe('steps(1)');
       expect(animInfo[0].keyframeEasings).toEqual(['steps(1)', 'steps(1)']);
 
