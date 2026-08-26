@@ -6,7 +6,6 @@ import Container from '../../components/Container.astro';
 import Button from '../../components/Button.astro';
 import CaseGallery from '../../components/cases/CaseGallery.astro';
 import CaseSpread from '../../components/cases/CaseSpread.astro';
-import CaseWeightIllustration from '../../components/home/CaseWeightIllustration.astro';
 import {
   caseGallerySlides,
   caseNarrative,
@@ -38,10 +37,10 @@ const structuredData = caseStudySchema({
 });
 
 /* Развороты — 70-workshop/specs/site-v3/12-case-pages-brief.md, раздел 2
-   (правило разворота) и раздел 4.3 (устройство «Заявки-Хаба»). Первая
-   правка несёт только `zayavka-hub`; у остальных четырёх кейсов
-   `caseSpreads()` возвращает пустой массив, и страница остаётся в нынешнем
-   устройстве — перенос отдельной задачей (раздел 5/12 брифа). */
+   (правило разворота) и раздел 4 (устройство каждого кейса). Перенесены
+   `zayavka-hub`, `websites`, `storefront` и `site-v3`; `ai-consultant`
+   остаётся в нынешнем устройстве — у него нет кадров (раздел 4.4/5 брифа),
+   `caseSpreads()` возвращает для него пустой массив. */
 const spreads = caseSpreads(item.slug);
 const hasSpreads = spreads.length > 0;
 
@@ -168,23 +167,6 @@ const nextCase = allCases[(currentIndex + 1) % allCases.length];
             <section aria-labelledby="case-gallery-heading">
               <h2 id="case-gallery-heading" class="t-h2">Экраны</h2>
               <CaseGallery slides={slides} galleryKey={`${item.slug}-ru`} />
-            </section>
-          )}
-
-          {/* Иллюстрация «Замер» на самой странице кейса — решение D-122
-              (`70-workshop/specs/site-v3/12-case-pages-brief.md`, раздел 4.6):
-              страница показывает вес и время СЕБЯ, а не главной. Проп `host`
-              обязателен здесь — без него компонент печатал бы числа главной
-              под заголовком, который называет эту страницу.
-
-              Это подключение, а не разворот раздела 4.5: полноценная витрина
-              из двух панелей («Замер» + «Проверка на месте») — отдельная,
-              следующая задача; здесь только доказано, что рисунок способен
-              стоять на чужой странице и говорить правду о ней. */}
-          {item.slug === 'site-v3' && (
-            <section aria-labelledby="case-weight-heading">
-              <h2 id="case-weight-heading" class="t-h2">Столько весит эта страница</h2>
-              <CaseWeightIllustration host="case-site-v3" />
             </section>
           )}
 

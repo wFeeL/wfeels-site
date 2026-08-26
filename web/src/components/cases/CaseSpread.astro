@@ -13,8 +13,24 @@
  * запрещены две копии разметки под разные ширины (раздел 2, П-3): компонент
  * сам решает раскрой А/Б через `@media` внутри одного `<svg>`-дерева,
  * поэтому здесь достаточно вызвать его один раз.
+ *
+ * `kind: 'weight'` (кейс `site-v3`, раздел 4.5 брифа) ставит сюда вторую и
+ * последнюю законную схему брифа — `CaseWeightIllustration.astro`, проп
+ * `host="case-site-v3"` (решение D-122): без него компонент печатал бы числа
+ * ГЛАВНОЙ страницы под заголовком, который называет страницу кейса. Прежний
+ * контейнер этого рисунка — `CaseIllustrationField` с фиксированной высотой
+ * 384px — обрезал заполнение до 52% (раздел 10.1.5 брифа, находка, не
+ * изъян сторожа); здесь высота панели по содержимому (П-3), и рисунок
+ * получает то же обязательное `is:inline` у своего счётчика (ловушка 1,
+ * `50-code/CLAUDE.md`) — CaseSpread рендерится в дереве страницы напрямую,
+ * не через тот слот, где обычный `<script>` терялся.
+ *
+ * `kind: 'checklist'` (тот же кейс, второй разворот «Проверка на месте») —
+ * не кадр и не схема: три строки-проверки со ссылками на маршруты, которые
+ * их подтверждают (раздел 4.5 брифа).
  */
 import CaseFlowIllustration from '../home/CaseFlowIllustration.astro';
+import CaseWeightIllustration from '../home/CaseWeightIllustration.astro';
 import type { CaseSpread as CaseSpreadData } from '../../data/case-spreads';
 import { CASE_GALLERIES_URL } from '../../data/case-galleries';
 
@@ -48,13 +64,31 @@ const mirror = index % 2 === 1;
 const isTrio = spread.kind === 'photo-trio' || spread.kind === 'photo-row-3';
 const isRow3 = spread.kind === 'photo-row-3';
 const images = spread.images ?? [];
+const checks = spread.checks ?? [];
 const frameWidth = String(spread.frameWidth ?? 1586);
 const frameHeight = String(spread.frameHeight ?? 992);
+/* Панель без кадра у КЕЙСА `site-v3` («Замер», «Проверка на месте») несёт
+ * внутренний отступ (П-3: «внутренний отступ панели 32 px на 1440 и 768,
+ * 16 px на 390») — панель с настоящим кадром отступа не несёт (кадр — это и
+ * есть панель). Схема `zayavka-hub` (`kind: 'schema'`) сюда НЕ входит: эта
+ * задача переносит только `site-v3` (границы задачи), а её раскладка уже
+ * сдана и не трогается — `isInset` ограничен новыми двумя видами. */
+const isInset = spread.kind === 'weight' || spread.kind === 'checklist';
 ---
 <div class="spread" data-case-spread class:list={{ mirror }}>
-  <div class="frame" data-spread-frame>
+  <div class="frame" data-spread-frame class:list={{ inset: isInset }}>
     {spread.kind === 'schema' ? (
       <CaseFlowIllustration single="b" />
+    ) : spread.kind === 'weight' ? (
+      <CaseWeightIllustration host="case-site-v3" />
+    ) : spread.kind === 'checklist' ? (
+      <ul class="checks">
+        {checks.map((check) => (
+          <li class="check t-body">
+            {check.lead} <a href={check.href}>{check.linkText}</a>
+          </li>
+        ))}
+      </ul>
     ) : (
       <div
         class="shots"
@@ -126,6 +160,52 @@ const frameHeight = String(spread.frameHeight ?? 992);
      панели = высота содержимого. Ни `height`, ни `min-height` здесь нет. */
   .frame { min-width: 0; }
   .caption { min-width: 0; align-self: start; max-width: 36em; }
+
+  /* Панель без настоящего кадра — схема (`CaseFlowIllustration`,
+     `CaseWeightIllustration`) или список проверок (раздел 2/4.5 брифа,
+     П-3): внутренний отступ 32px на 1440/768, 16px на ≤599, паспарту и
+     рамка — тот же язык, что уже несёт `CaseIllustrationField.astro` на
+     главной. `display: flex; flex-direction: column` даёт схемам
+     (`.flow`/`.weight`, `flex: 1; min-height: 0`) рабочий флекс-родитель —
+     без него это объявление ничего не значит вне контейнера-флекса. */
+  .frame.inset {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    padding: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: clip;
+  }
+  @media (max-width: 599px) {
+    .frame.inset { padding: 16px; }
+  }
+
+  /* «Проверка на месте» (раздел 4.5 брифа) — три строки `.t-body` с
+     разделителями 1px, без маркеров списка. Ссылка внутри — прозаическая,
+     подчёркнута всегда (D-055/D-098), тот же приём, что у `.action-link a`
+     страницы кейса. */
+  .checks {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .check {
+    margin: 0;
+    padding: 16px 0;
+    color: var(--text-muted);
+  }
+  .check + .check { border-top: 1px solid var(--border); }
+  .checks .check:first-child { padding-top: 0; }
+  .checks .check:last-child { padding-bottom: 0; }
+  .check a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 
   .spread-label {
     margin: 0 0 12px;

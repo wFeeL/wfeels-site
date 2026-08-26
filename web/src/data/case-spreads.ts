@@ -1,8 +1,8 @@
 // Развороты страниц кейсов — `70-workshop/specs/site-v3/12-case-pages-brief.md`,
 // раздел 2 (правило разворота) и раздел 4 (чем заполняется разворот у каждого
-// кейса). Эта правка несёт `zayavka-hub` (раздел 4.3 брифа) и `websites`
-// (раздел 4.2); перенос оставшихся трёх кейсов — отдельные задачи (раздел
-// брифа 5 и границы задачи).
+// кейса). Перенесены `zayavka-hub` (раздел 4.3), `websites` (раздел 4.2),
+// `storefront` (раздел 4.1) и `site-v3` (раздел 4.5); `ai-consultant` не
+// переносится — у него нет кадров (раздел 4.4/5 брифа).
 //
 // Правило раздела 5: «пустого разворота не существует по устройству, а не по
 // договорённости» — модуль падает на сборке, если у кейса объявлен разворот
@@ -25,7 +25,25 @@ export interface CaseSpreadImage {
   caption?: string;
 }
 
-export type CaseSpreadKind = 'photo' | 'photo-trio' | 'photo-row-3' | 'schema';
+export type CaseSpreadKind =
+  | 'photo'
+  | 'photo-trio'
+  | 'photo-row-3'
+  | 'schema'
+  | 'weight'
+  | 'checklist';
+
+export interface CaseSpreadCheck {
+  /** Текст перед ссылкой — прозаическое вступление к проверке. */
+  lead: string;
+  /** Текст самой ссылки — прозаическая, значит подчёркнута всегда (D-055). */
+  linkText: string;
+  /** Маршрут, который подтверждает проверку (раздел 4.5 брифа: «каждая со
+   *  ссылкой на маршрут, который её подтверждает»). Для тёмной темы —
+   *  переключатель в шапке этой же страницы (`#theme-toggle`), для
+   *  остального — реальный маршрут сайта. */
+  href: string;
+}
 
 export interface CaseSpread {
   /** Метка панели — моно, акцент, как «ЗАДАЧА/ПОДХОД/РЕЗУЛЬТАТ» выше по
@@ -41,8 +59,15 @@ export interface CaseSpread {
    *  три равных кадра в ряд, без крупного (раздел 4.1: раскрой `storefront`
    *  «три витрины в Telegram», портрет 780×1688); `schema` — кадров нет,
    *  панель занимает `CaseFlowIllustration.astro` (П-2, единственная
-   *  законная схема кейса). */
+   *  законная схема кейса `zayavka-hub`); `weight` — кадров нет, панель
+   *  занимает `CaseWeightIllustration.astro` (П-2, единственная законная
+   *  схема кейса `site-v3`, раздел 4.5); `checklist` — кадров и схемы нет,
+   *  панель несёт три строки-проверки (`checks`, раздел 4.5: «не кадр и не
+   *  схема, а список из трёх проверок»). */
   images?: readonly CaseSpreadImage[];
+  /** Ровно три строки-проверки — только у `kind: 'checklist'` (раздел 4.5
+   *  брифа: «Проверка на месте»). */
+  checks?: readonly CaseSpreadCheck[];
   /** Внутренний размер кадра для атрибутов `width`/`height` (резервирует
    *  раскладку, раздел 8 брифа: «поле кадра зарезервировано точной
    *  пропорцией»). По умолчанию — ландшафт 1586×992 (раздел 3.5), у
@@ -285,8 +310,49 @@ const STOREFRONT_SPREADS: readonly CaseSpread[] = [
   },
 ];
 
+/** Раздел 4.5 брифа: «этот сайт», два разворота, ни одного снимка —
+ *  намеренно. Снимок страницы, на которой читатель прямо сейчас стоит,
+ *  ничего не добавляет к тому, что он уже видит, поэтому кейс показывает то,
+ *  чего на экране не видно (вес и время открытия — «Замер», единственная
+ *  законная схема кейса, П-2), и то, что читатель может проверить сам, не
+ *  уходя со страницы («Проверка на месте»). */
+const SITE_V3_SPREADS: readonly CaseSpread[] = [
+  {
+    label: 'ЗАМЕР',
+    heading: 'Столько весит эта страница, и вот во что это превращается',
+    body:
+      'Вес и время открытия не видны на экране никогда — здесь они посчитаны ' +
+      'для страницы, на которой вы сейчас находитесь, а не для главной.',
+    kind: 'weight',
+  },
+  {
+    label: 'ПРОВЕРКА НА МЕСТЕ',
+    heading: 'Это и есть тот самый сайт',
+    body: 'Три вещи из кейса можно проверить прямо сейчас, не уходя с этой страницы.',
+    kind: 'checklist',
+    checks: [
+      {
+        lead: 'Темная тема — переключите ее',
+        linkText: 'в шапке этой же страницы',
+        href: '#theme-toggle',
+      },
+      {
+        lead: 'Английская версия сайта работает —',
+        linkText: 'откройте /en',
+        href: '/en',
+      },
+      {
+        lead: 'Форма заявки принимает сообщения по-настоящему —',
+        linkText: 'попробуйте на /contact',
+        href: '/contact',
+      },
+    ],
+  },
+];
+
 const SPREADS_BY_SLUG: Readonly<Record<string, readonly CaseSpread[]>> = {
   'zayavka-hub': ZAYAVKA_HUB_SPREADS,
+  'site-v3': SITE_V3_SPREADS,
   websites: WEBSITES_SPREADS,
   storefront: STOREFRONT_SPREADS,
 };
@@ -316,10 +382,27 @@ for (const [slug, spreads] of Object.entries(SPREADS_BY_SLUG)) {
     if (!spread.label.trim() || !spread.heading.trim() || !spread.body.trim()) {
       throw new Error(`${where} несёт пустую метку, заголовок или подпись.`);
     }
-    if (spread.kind === 'schema') {
+    if (spread.kind === 'schema' || spread.kind === 'weight') {
       if (spread.images && spread.images.length > 0) {
-        throw new Error(`${where} объявлен как «schema», но несёт кадры — выбери один способ.`);
+        throw new Error(`${where} объявлен как «${spread.kind}», но несёт кадры — выбери один способ.`);
       }
+      return;
+    }
+    if (spread.kind === 'checklist') {
+      if (spread.images && spread.images.length > 0) {
+        throw new Error(`${where} объявлен как «checklist», но несёт кадры — выбери один способ.`);
+      }
+      if (!spread.checks || spread.checks.length !== 3) {
+        throw new Error(
+          `${where}: у панели «checklist» ${spread.checks?.length ?? 0} проверок, ожидалось ровно 3 ` +
+          '(раздел 4.5 брифа: «список из трёх проверок»).',
+        );
+      }
+      spread.checks.forEach((check, j) => {
+        if (!check.lead.trim() || !check.linkText.trim() || !check.href.trim()) {
+          throw new Error(`${where}, проверка ${j + 1}: пустой lead, linkText или href.`);
+        }
+      });
       return;
     }
     if (!spread.images || spread.images.length === 0) {
