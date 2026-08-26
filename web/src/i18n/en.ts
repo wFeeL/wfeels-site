@@ -38,20 +38,25 @@ export default {
 
   /* ── Подвал ───────────────────────────────────────────────────────────── */
   footerSections: 'Sections',
-  footerTagline: 'Websites, enquiry intake and automation for small businesses.',
+  /* Тэглайн ушёл из подвала (рычаг С-3) и переехал на `/404` — сегодня у
+     английской `/404` нет, потребителя у строки на английском пока нет, но
+     ключ остаётся ради парности словарей (спека `09-footer-brief.md`,
+     раздел 7.5). Значение не тронуто ни на символ. */
+  siteTagline: 'Websites, enquiry intake and automation for small businesses.',
   footerTelegram: 'Message me on Telegram',
   footerEmail: 'Send an email',
-  /* Те же три обязательства, что и в русском словаре, и ни одним больше. Часы
+  /* Те же обязательства, что и в русском словаре, и ни одним больше. Часы
      названы с поясом: без него окно ничего не говорит читателю из другой
-     страны — а английская версия существует именно для него. */
-  footerReply: 'I reply within a day',
+     страны — а английская версия существует именно для него.
+     `footerReplyMode` — рычаг С-2, та же склейка, что в русском словаре;
+     тире внутри `9:00–24:00` — длинное (U+2013), как в прежнем
+     `footerHours`, а не дефис. */
+  footerReplyMode: 'I reply within a day, available 9:00–24:00 Moscow time',
   footerCity: 'Saint Petersburg, working remotely',
-  footerHours: 'Available 9:00–24:00 Moscow time',
   footerContract: 'I work under a contract as a self-employed taxpayer and issue a receipt through the My Tax app.',
   footerLegalName: 'Сабуров Даниил Денисович · Tax ID 183700967882',
   footerLegalStatus: 'Professional income tax payer, not registered as an individual entrepreneur',
   footerLegalContact: 'Contracts and personal data',
-  footerAi: 'I write the code and part of the design together with AI. Architecture, security, design decisions and the palette are mine, and I review everything that comes out.',
 
   /* ── Заголовок страницы ───────────────────────────────────────────────── */
   metaTitle: 'Websites, Telegram bots and automation — wfeels',
