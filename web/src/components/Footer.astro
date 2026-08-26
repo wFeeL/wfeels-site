@@ -87,12 +87,13 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
   <Container>
     {cta && (
       <>
-        {/* Полоса действия — спека `09-footer-brief.md`, раздел 4. Единственное
-            место подвала, куда допущен акцент (кнопка). Метка и год несут
-            начертание ступени `label` (`base.css`, `.t-label`), но НЕ её цвет:
-            взятая как есть, `.t-label` красит текст в `--accent` и рядом с
-            кнопкой дала бы второй и третий акцент разом (раздел 5 брифа,
-            «ловушка ступени `label`»). */}
+        {/* Полоса действия — спека `09-footer-brief.md`, раздел 4. Решение З-2
+            (раздел 15.2) понизило кнопку полосы до `variant="secondary"`:
+            акцент в подвале не встречается вовсе — акцент принадлежит шапке и
+            формам (D-057, ноль, а не один). Метка несёт начертание ступени
+            `label` (`base.css`, `.t-label`), но НЕ её цвет: взятая как есть,
+            `.t-label` красит текст в `--accent`, а в подвале акцента больше
+            нет ни у одного узла (раздел 5 брифа, «ловушка ступени `label`»). */}
         <div class="footer-cta">
           <div class="cta-copy">
             <p class="cta-label">{t.footerCtaLabel}</p>
@@ -100,7 +101,7 @@ const tailPath = line ? LINE_PATHS.footer : undefined;
             <p class="cta-sub">{t.footerReplyMode}</p>
           </div>
           <div class="cta-act">
-            <Button href={ctaHref} variant="primary">{t.write}</Button>
+            <Button href={ctaHref} variant="secondary">{t.write}</Button>
             <div class="icon-links">
               <a class="icon-link" href={TELEGRAM_URL} rel="me" aria-label={t.footerTelegram}>
                 <TelegramMark size={20} />
