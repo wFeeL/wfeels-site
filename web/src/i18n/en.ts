@@ -54,8 +54,16 @@ export default {
      `footerHours`, а не дефис. */
   footerReplyMode: 'I reply within a day, available 9:00–24:00 Moscow time',
   footerCity: 'Saint Petersburg, working remotely',
-  footerContract: 'I work under a contract as a self-employed taxpayer and issue a receipt through the My Tax app.',
-  footerLegalName: 'Сабуров Даниил Денисович · Tax ID 183700967882',
+  /* П-7 (2026-08-26): «My Tax» — имя приложения (рус. «Мой налог»), два
+     слова, разрыв которых читался бы как «Tax app» само по себе, отдельно
+     от «My» сверху. Неразрывный пробел — тот же приём, что у `footerLegalName`
+     ниже. */
+  footerContract: 'I work under a contract as a self-employed taxpayer and issue a receipt through the My Tax app.',
+  /* «Tax ID» — неразрывный пробел между двумя словами термина: на 390 px
+     строка рвалась ровно между ними («…Денисович · Tax» / «ID 183700967882»),
+     термин выглядел опечаткой. В русском словаре тот же факт — «ИНН» одним
+     словом, разрывать нечего. */
+  footerLegalName: 'Сабуров Даниил Денисович · Tax ID 183700967882',
   footerLegalStatus: 'Professional income tax payer, not registered as an individual entrepreneur',
   footerLegalContact: 'Contracts and personal data',
 
@@ -95,7 +103,11 @@ export default {
   pricingLabel: 'WHAT IT COSTS',
   pricingHeading: 'Development pricing',
   pricingIntro: 'Prices are starting points. After a short discussion, I’ll send you an estimate with a timeline and put it into the contract. Payment is usually 50% once the estimate is agreed and 50% before launch.',
-  pricingFootnote: 'I work under a contract as a self-employed taxpayer and issue a receipt through the My Tax app. The prices shown are indicative and do not constitute a public offer under Article 437 of the Civil Code of the Russian Federation.',
+  /* П-7 (2026-08-26), тот же приём, что у `footerLegalName`/`footerContract`
+     выше: «My Tax» (имя приложения), «Article 437», «Civil Code» и «Russian
+     Federation» — четыре двусловных термина этого предложения, разрыв любого
+     из которых читается как опечатка, а не как перенос строки. */
+  pricingFootnote: 'I work under a contract as a self-employed taxpayer and issue a receipt through the My Tax app. The prices shown are indicative and do not constitute a public offer under Article 437 of the Civil Code of the Russian Federation.',
 
   /* ── Секция 5, кейс ───────────────────────────────────────────────────── */
   casesLabel: 'ALREADY BUILT',
