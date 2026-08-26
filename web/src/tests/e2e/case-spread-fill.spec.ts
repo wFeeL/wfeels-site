@@ -262,6 +262,31 @@ const CASE_PAGES = distExists() ? distCasePages() : [];
 const TRIO_RIBBON_IMG_WIDTH_MIN = 0.77;
 const TRIO_RIBBON_IMG_WIDTH_MAX = 0.79;
 
+/** Раскрой «три равных кадра в ряд» (`photo-row-3`, раздел 4.1 брифа,
+ *  `storefront`) на ≥600px: правило 95% из 10.1.3 не годится (первый кадр —
+ *  ≈31.0% панели по устройству раскроя, не дефект), проверяемая величина —
+ *  та, что назвал сам раздел: «сумма ширин кадров и зазоров равна ширине
+ *  панели». CSS Grid (`repeat(3, 1fr)`, `gap: 24px`) по определению
+ *  распределяет свободное место между `fr`-треками ТАК, что три трека плюс
+ *  два зазора в точности заполняют контейнер — отклонение возможно только от
+ *  дефекта (потерянный `gap`, кадр не в сетке, сломанная колонка), не от
+ *  штатной раскладки. Отсюда узкое окно **98…101%**: нижняя граница даёт
+ *  запас на субпиксельное округление трёх независимо округляемых треков
+ *  (максимум ожидаемого дрейфа — единицы CSS-пикселей на панели шириной
+ *  ~700px, то есть доли процента, 98% оставляет более чем десятикратный
+ *  запас); верхняя граница — та же `PAINT_FILL_MAX_RATIO` (1.01), что уже
+ *  действует для габарита краски (раздел 10.1.3, комментарий у
+ *  `PAINT_FILL_MAX_RATIO` в `paintFill.ts`): выше неё сумма может дать
+ *  только содержимое, вылезающее за раму без клипующего предка, — тот же
+ *  род дефекта, что там уже ловится. Ослаблением проверки это не является:
+ *  правило 95% для этого раскроя попросту неприменимо (доказано красным —
+ *  без этой ветки прогон даёт `Received: 0.3098652859237537` на 1440px,
+ *  раздел отчёта задачи), а новое правило продолжает падать на реальном
+ *  дефекте раскладки, только измеряет другую, применимую к раскрою
+ *  величину. */
+const ROW3_FRAME_COVERAGE_MIN_RATIO = 0.98;
+const ROW3_FRAME_COVERAGE_MAX_RATIO = PAINT_FILL_MAX_RATIO;
+
 for (const url of CASE_PAGES) {
   test(`панели разворота заполнены — ${url}`, async ({ page }) => {
     for (const width of [1440, 390]) {
@@ -308,16 +333,52 @@ for (const url of CASE_PAGES) {
           // панель; для ленты он бы требовал ИМЕННО дефект, который здесь
           // чинится, поэтому для неё действует отдельная, узкая полоса
           // вокруг 78% (`flex: 0 0 78%` в `CaseSpread.astro`), а не 95%.
-          const isRibbon = await frame.evaluate((el) => {
+          //
+          // Второе исключение из тех же 10.1.3 — раскрой «три равных кадра
+          // в ряд» (`photo-row-3`, раздел 4.1 брифа, `storefront`). Первый
+          // кадр там НЕ идёт во всю ширину панели: на 1440 это `(702 − 2×24)
+          // / 3 ≈ 218px`, то есть ≈31.0% — правило 95% красит его в красный
+          // ЗАКОНОМЕРНО (проверено: без этой ветки прогон даёт `Received:
+          // 0.3098652859237537`, см. отчёт задачи). Опознаётся тем же
+          // способом, что и лента — вычисленным стилем узла `.shots.trio`, а
+          // не шириной окна и не именем кейса: раскрой «крупный + два
+          // подкадра» (`photo-trio`) держит именованные grid-области (`big`/
+          // `s1`/`s2`), раскрой «три в ряд» — нет (`grid-template-areas:
+          // none` в `CaseSpread.astro`). Проверяемая величина — та, что
+          // назвал сам раздел 10.1.3: «сумма ширин кадров и зазоров равна
+          // ширине панели» — единственная величина, которая ДЕЙСТВИТЕЛЬНО
+          // меняется при дефекте (перетекание, потерянный `gap`, сломанная
+          // сетка), тогда как ширина одного первого кадра для этого раскроя
+          // не является дефектом сама по себе.
+          const shotsGeometry = await frame.evaluate((el) => {
             const trio = el.querySelector('.shots.trio');
-            return trio ? getComputedStyle(trio).display === 'flex' : false;
+            if (!trio) return { isRibbon: false, isRow3: false, rowSum: null as null | { totalImgWidth: number; gapsTotal: number } };
+            const style = getComputedStyle(trio);
+            const isRibbon = style.display === 'flex';
+            const isRow3 = !isRibbon && style.gridTemplateAreas === 'none';
+            let rowSum: { totalImgWidth: number; gapsTotal: number } | null = null;
+            if (isRow3) {
+              const imgs = Array.from(trio.querySelectorAll('img'));
+              const totalImgWidth = imgs.reduce((sum, img) => sum + img.getBoundingClientRect().width, 0);
+              const gap = parseFloat(getComputedStyle(trio).columnGap || '0') || 0;
+              const gapsTotal = gap * Math.max(imgs.length - 1, 0);
+              rowSum = { totalImgWidth, gapsTotal };
+            }
+            return { isRibbon, isRow3, rowSum };
           });
-          if (isRibbon) {
+          if (shotsGeometry.isRibbon) {
             const ratio = imgWidth / panelBox.width;
             expect(ratio, `${label}: кадр трио-ленты ${(ratio * 100).toFixed(1)}% — ниже проектной полосы ${TRIO_RIBBON_IMG_WIDTH_MIN * 100}…${TRIO_RIBBON_IMG_WIDTH_MAX * 100}% (78% ± допуск)`)
               .toBeGreaterThanOrEqual(TRIO_RIBBON_IMG_WIDTH_MIN);
             expect(ratio, `${label}: кадр трио-ленты ${(ratio * 100).toFixed(1)}% — выше проектной полосы ${TRIO_RIBBON_IMG_WIDTH_MIN * 100}…${TRIO_RIBBON_IMG_WIDTH_MAX * 100}% (78% ± допуск)`)
               .toBeLessThanOrEqual(TRIO_RIBBON_IMG_WIDTH_MAX);
+          } else if (shotsGeometry.isRow3 && shotsGeometry.rowSum) {
+            const coverage = (shotsGeometry.rowSum.totalImgWidth + shotsGeometry.rowSum.gapsTotal) / panelBox.width;
+            console.log(`[case-spread-fill] ${label} — раскрой «три в ряд», сумма кадров+зазоров ${(coverage * 100).toFixed(1)}% ширины панели`);
+            expect(coverage, `${label}: сумма кадров и зазоров ряда ${(coverage * 100).toFixed(1)}% — ниже ${ROW3_FRAME_COVERAGE_MIN_RATIO * 100}% ширины панели`)
+              .toBeGreaterThanOrEqual(ROW3_FRAME_COVERAGE_MIN_RATIO);
+            expect(coverage, `${label}: сумма кадров и зазоров ряда ${(coverage * 100).toFixed(1)}% — выше ${ROW3_FRAME_COVERAGE_MAX_RATIO * 100}% ширины панели`)
+              .toBeLessThanOrEqual(ROW3_FRAME_COVERAGE_MAX_RATIO);
           } else {
             expect(imgWidth / panelBox.width, `${label}: ширина <img> ниже ${PHOTO_MIN_IMG_WIDTH_RATIO * 100}% ширины панели`)
               .toBeGreaterThanOrEqual(PHOTO_MIN_IMG_WIDTH_RATIO);
