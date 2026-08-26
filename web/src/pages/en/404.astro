@@ -32,8 +32,10 @@ const t = dict('en');
 </Base>
 
 <style>
-  /* Тот же ритм, что у русской страницы (`pages/404.astro`). */
+  /* Тот же ритм, что у русской страницы (`pages/404.astro`), включая правку
+     П-8 (2026-08-26): `.ways`/`.tagline` на ступень вниз по шкале отступов,
+     переполнение при 1440×900 то же самое (текст и разметка идентичны). */
   .lead { margin-top: 16px; }
-  .ways { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
-  .tagline { margin-top: 16px; color: var(--text-muted); }
+  .ways { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+  .tagline { margin-top: 12px; color: var(--text-muted); }
 </style>
