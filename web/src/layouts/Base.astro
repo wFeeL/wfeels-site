@@ -6,6 +6,7 @@ import Footer from '../components/Footer.astro';
 import Rail from '../components/Rail.astro';
 import BackgroundLine from '../components/BackgroundLine.astro';
 import { dict, localeFromPath, type Locale } from '../i18n/locales';
+import { showFooterCta } from '../lib/nav';
 import { buildMeta, productionSite } from '../lib/seo';
 import { pageSchema, serializeSchema, type SchemaKind } from '../lib/schema';
 import { THEME_COLOR } from '../lib/theme';
@@ -53,6 +54,14 @@ interface Props {
    *  плана), и там подключается своим значением этого же пропа, а не вторым
    *  компонентом. */
   line?: boolean;
+  /** Полоса действия подвала (`.footer-cta`) — спека `09-footer-brief.md`,
+   *  раздел 3.1. По умолчанию ВЫВОДИТСЯ ИЗ АДРЕСА (`showFooterCta`), тем же
+   *  приёмом, что уже даёт умолчание `lang` из `localeFromPath` выше:
+   *  страница сама этот проп не задаёт, а решение о том, есть ли у неё
+   *  собственная форма внизу, принимает одна чистая функция на весь сайт.
+   *  Проп остаётся как перекрытие для случая, когда адрес и содержание
+   *  страницы разойдутся намеренно. */
+  cta?: boolean;
   /** Структурированная разметка страницы, если она у страницы есть. */
   schema?: SchemaKind;
   /** Дополнительные подтверждённые сущности страницы: Service,
@@ -62,7 +71,8 @@ interface Props {
 }
 const {
   title, description, lang = localeFromPath(Astro.url.pathname), noindex = false,
-  nofollow = false, progress = true, rail = false, line = false, schema, structuredData,
+  nofollow = false, progress = true, rail = false, line = false,
+  cta = showFooterCta(Astro.url.pathname), schema, structuredData,
 } = Astro.props;
 const t = dict(lang);
 
@@ -173,7 +183,7 @@ const structured = [
     <main id="main" tabindex="-1">
       <slot />
     </main>
-    <Footer lang={lang} line={line} />
+    <Footer lang={lang} line={line} cta={cta} />
     {rail && <Rail />}
 
     {/* Плавная прокрутка колесом на весь сайт (правка владельца 2026-08-20).
