@@ -126,31 +126,11 @@ test('в подвале указаны реквизиты самозанятог
  * сравнивать боксы столбцов друг с другом больше не с чем: предмет проверки
  * (`footer .groups > *`, ровно три группы) в разметке не существует. */
 
-/* Последняя видимая колонка — юридическая навигация. Её правый край обязан
- * совпадать с полноширинной `.bottom`: это проверяет, что три группы заняли
- * всю сетку и после возврата документов не осталось пустой колонки. */
-test('на десктопе справа от последней колонки подвала нет пустого поля',
-  async ({ page }) => {
-    for (const width of [900, 1180, 1440, 1920]) {
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto('/');
-
-      const gap = await page.evaluate(() => {
-        const last = document.querySelector(
-          'footer nav[aria-labelledby="footer-legal"]',
-        );
-        const bottom = document.querySelector('footer .bottom');
-        if (!last || !bottom) return null;
-        return bottom.getBoundingClientRect().right
-          - last.getBoundingClientRect().right;
-      });
-
-      expect(gap, `${width}px: последняя колонка подвала не отрисована`)
-        .not.toBeNull();
-      expect(gap, `${width}px: пустое поле справа от юридической группы — ${gap}px`)
-        .toBeLessThanOrEqual(1);
-    }
-  });
+/* Сторож «пустое поле справа от последней колонки» проверял, что три группы
+ * колоночной сетки (`.groups`/`.bottom`) занимают всю ширину подвала —
+ * вариант Ф-Б этой сетки не несёт (см. комментарий выше), сравнивать нечего.
+ * Его место со следующей частью работы займёт сторож высоты подвала из
+ * раздела 11 брифа — не здесь. */
 
 test('в подвале каждая цель нажатия держит 44 px', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
