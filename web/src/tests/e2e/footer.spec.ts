@@ -75,18 +75,42 @@ test('прямой канал на странице один и тот же ве
   expect(hrefs[0]).toBe(TELEGRAM);
 });
 
-test('четыре обязательства подвала стоят рядом со значками', async ({ page }) => {
-  await page.goto('/');
-  const facts = page.locator('footer .facts li');
-  await expect(facts).toHaveCount(4);
-  // Слова проверяются по смыслу: срок ответа, город, окно доступности
-  // и оформление работы.
-  await expect(facts.nth(0)).toContainText('в течение дня');
-  await expect(facts.nth(1)).toContainText('Санкт-Петербург');
-  await expect(facts.nth(2)).toContainText('24:00');
-  await expect(facts.nth(3)).toContainText('по договору');
-  await expect(facts.nth(3)).toContainText('«Мой налог»');
-});
+/* Рычаг С-2 (спека `09-footer-brief.md`, раздел 7.3): прежний список `.facts`
+ * с четырьмя пунктами (срок ответа, город, часы, оформление сделки) снят.
+ * Срок ответа и часы слиты в одну строку режима ответа (`footerReplyMode`) —
+ * она стоит в подвале РОВНО ОДИН раз (в `.cta-sub`, если есть полоса, иначе
+ * в `.reply`); город и оформление сделки — тоже одной строкой внутри
+ * `.requisites`, четвёртым абзацем после почты по договорам. */
+test('режим ответа стоит в подвале один раз, город и оформление — в реквизитах',
+  async ({ page }) => {
+    await page.goto('/'); // на «/» полосы нет — режим ответа несёт `.reply`
+    const reply = page.locator('footer .reply');
+    await expect(reply).toHaveCount(1);
+    await expect(reply).toContainText('в течение дня');
+    await expect(reply).toContainText('24:00');
+    // Полосы (`.cta-sub`) на этой странице нет — иначе строка повторилась бы.
+    await expect(page.locator('footer .cta-sub')).toHaveCount(0);
+
+    const requisites = page.locator('footer .requisites p');
+    await expect(requisites.filter({ hasText: 'Санкт-Петербург' }))
+      .toContainText('по договору');
+    await expect(requisites.filter({ hasText: 'Санкт-Петербург' }))
+      .toContainText('«Мой налог»');
+  });
+
+/* Та же строка режима ответа на странице с полосой действия — теперь она
+ * несётся `.cta-sub`, а не `.reply` (раздел 4 брифа: «строка выводится ровно
+ * один раз — в полосе, если полоса есть, и первой строкой служебной полосы,
+ * если полосы нет»). */
+test('на странице с полосой действия режим ответа несёт .cta-sub, а не .reply',
+  async ({ page }) => {
+    await page.goto('/cases'); // каталог кейсов — полоса включена (раздел 3.2)
+    const sub = page.locator('footer .cta-sub');
+    await expect(sub).toHaveCount(1);
+    await expect(sub).toContainText('в течение дня');
+    await expect(sub).toContainText('24:00');
+    await expect(page.locator('footer .reply')).toHaveCount(0);
+  });
 
 test('в подвале указаны реквизиты самозанятого и юридический email', async ({ page }) => {
   await page.goto('/');
