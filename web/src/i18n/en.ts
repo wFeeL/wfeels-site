@@ -94,6 +94,7 @@ export default {
   /* ── Секция 5, кейс ───────────────────────────────────────────────────── */
   casesLabel: 'ALREADY BUILT',
   casesHeading: 'Case studies',
+  casesAll: 'All case studies',
 
   /* ── Секция 6, как я работаю ──────────────────────────────────────────── */
   processLabel: 'HOW IT WILL GO',
