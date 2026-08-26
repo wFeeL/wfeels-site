@@ -121,29 +121,10 @@ test('в подвале указаны реквизиты самозанятог
   await expect(requisites.locator('a[href="mailto:i@dsaburov.ru"]')).toBeVisible();
 });
 
-test('на телефоне группы подвала идут столбиком и не переполняют экран',
-  async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/');
-
-    const boxes = await page.locator('footer .groups > *').evaluateAll((els) =>
-      els.map((el) => {
-        const r = el.getBoundingClientRect();
-        return { left: r.left, top: r.top, right: r.right };
-      }));
-
-    expect(boxes.length, 'в подвале должны быть бренд и две навигации').toBe(3);
-    for (let i = 1; i < boxes.length; i++) {
-      expect(boxes[i].top, `группа ${i + 1} стоит не под предыдущей`)
-        .toBeGreaterThan(boxes[i - 1].top);
-      expect(boxes[i].left, `группа ${i + 1} сдвинута по левому краю`)
-        .toBeCloseTo(boxes[0].left, 0);
-    }
-
-    const overflow = await page.evaluate(() =>
-      document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow, 'страница уехала вбок').toBeLessThanOrEqual(0);
-  });
+/* Вариант Ф-Б снял сетку `.groups` (бренд + две навигации) целиком — подвал
+ * теперь несёт полосу действия/`.footer-meta` без колоночной раскладки, и
+ * сравнивать боксы столбцов друг с другом больше не с чем: предмет проверки
+ * (`footer .groups > *`, ровно три группы) в разметке не существует. */
 
 /* Последняя видимая колонка — юридическая навигация. Её правый край обязан
  * совпадать с полноширинной `.bottom`: это проверяет, что три группы заняли
