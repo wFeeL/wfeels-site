@@ -22,20 +22,22 @@ const t = dict('en');
       <p class="lead t-body-lg">
         The address may be mistyped, or the page may have moved.
       </p>
+      <p class="tagline t-body">{t.siteTagline}</p>
       <div class="ways">
         <Button href="/en" variant="secondary">Home</Button>
         <Button href="/en#contact" variant="secondary">Get in touch</Button>
       </div>
-      <p class="tagline t-body">{t.siteTagline}</p>
     </Section>
   </Container>
 </Base>
 
 <style>
   /* Тот же ритм, что у русской страницы (`pages/404.astro`), включая правку
-     П-8 (2026-08-26): `.ways`/`.tagline` на ступень вниз по шкале отступов,
-     переполнение при 1440×900 то же самое (текст и разметка идентичны). */
+     П-8 (2026-08-26) и перестановку узла З-1 (2026-08-26, `09-footer-brief.md`,
+     раздел 15.1): `.tagline` — под `.lead`, до `.ways`, с тем же обменом чисел
+     16px/12px (сумма отступов не меняется), переполнение при 1440×900 то же
+     самое (текст и разметка идентичны). */
   .lead { margin-top: 16px; }
-  .ways { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
-  .tagline { margin-top: 12px; color: var(--text-muted); }
+  .tagline { margin-top: 16px; color: var(--text-muted); }
+  .ways { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
 </style>
