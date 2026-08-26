@@ -90,11 +90,21 @@ describe('dist/index.html — секции 9, 10 и 11', () => {
     expect(html).toContain('https://t.me/wfeels');
   });
 
-  it('секция 11: почта кликабельна, но в исходнике нет буквального адреса', () => {
-    expect(html).toContain('mailto:githubwfeel&#64;gmail&#46;com');
-    // Простой сборщик почты ищет в сыром HTML подстроку вида «адрес@домен» —
-    // такой подстроки в разметке нет вовсе, есть только числовая ссылка.
-    expect(html).not.toContain(EMAIL);
+  it('секция 11: почта кликабельна, а сама кнопка не несёт буквального адреса', () => {
+    expect(html).toContain('mailto:i&#64;dsaburov&#46;ru');
+    // Простой сборщик почты ищет в сыром HTML подстроку вида «адрес@домен».
+    // Проверка сужена до самой кнопки (`contact-action`), а не всей страницы:
+    // с 2026-08-26 адрес подвала (`Footer.astro`, `LEGAL_EMAIL`, юридические
+    // реквизиты) и адрес кнопки — один и тот же `i@dsaburov.ru` (решение
+    // владельца, единый контактный адрес). Подвал показывает его открытым
+    // текстом намеренно — так того требует раскрытие оператора персональных
+    // данных, — и это не тот канал, который защищается от сборщика здесь.
+    const actions = [...html.matchAll(
+      /<a[^>]*class="contact-action"[^>]*>([\s\S]*?)<\/a>/g,
+    )];
+    const emailButton = actions.find((m) => m[1].includes('Написать на почту'));
+    expect(emailButton, 'кнопка почты найдена').toBeDefined();
+    expect(emailButton![0]).not.toContain(EMAIL);
     // Двойного экранирования нет: `&amp;#64;` значило бы, что ссылка
     // разворачивается не в «@», а в буквальный текст «&#64;».
     expect(html).not.toContain('&amp;#64;');
@@ -148,7 +158,7 @@ describe('dist/index.html — секции 9, 10 и 11', () => {
       html.lastIndexOf('<a', email!.index),
       email!.index! + email![0].length,
     );
-    expect(fullEmailTag).toContain('href="mailto:githubwfeel&#64;gmail&#46;com"');
+    expect(fullEmailTag).toContain('href="mailto:i&#64;dsaburov&#46;ru"');
   });
 
   it('секция 11: выпадающий список услуг ровно из каталога `data/services.ts`', () => {

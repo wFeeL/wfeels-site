@@ -24,7 +24,7 @@ export function telegramHandle(): string {
  *  `emailMarkup` считают его из `EMAIL` при каждом вызове, так что адрес
  *  физически не может разойтись сам с собой между ссылкой и подписью.
  */
-export const EMAIL = 'githubwfeel@gmail.com';
+export const EMAIL = 'i@dsaburov.ru';
 
 /** «@» и «.» — числовыми ссылками (`&#64;`, `&#46;`), а не буквами. Простой
  *  сборщик почты читает СЫРОЙ HTML регуляркой вида `\S+@\S+\.\S+` и в этом
