@@ -32,9 +32,15 @@ describe('casePages.ts — опубликованные кейсы и честн
     }
   });
 
-  it('detail-выборки есть только у двух кейсов и не повторяют тяжелый manifest целиком', () => {
-    expect(caseGallerySlides('storefront')).toHaveLength(3);
-    expect(caseGallerySlides('websites')).toHaveLength(2);
+  it('detail-галереи есть только у двух кейсов и несут полный набор из девяти кадров', () => {
+    // Подводка `/cases` обещает читателю все экраны каждой галереи
+    // («каталог, карточку товара, корзину и оформление заказа»; «в каждом
+    // показаны главная страница, ключевой раздел и целевое действие») —
+    // detail-страница не имеет права показывать меньше. Это и есть сторож
+    // числа кадров: жёсткий список из трёх/двух индексов красит именно эту
+    // проверку (было `toHaveLength(3)` / `toHaveLength(2)`).
+    expect(caseGallerySlides('storefront')).toHaveLength(9);
+    expect(caseGallerySlides('websites')).toHaveLength(9);
     for (const slug of ['site-v3', 'ai-consultant', 'zayavka-hub']) {
       expect(caseGallerySlides(slug), slug).toEqual([]);
     }

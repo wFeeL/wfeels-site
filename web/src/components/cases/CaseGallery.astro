@@ -1,24 +1,45 @@
 ---
+/* Приём — тот же, что уже работает на главной (`components/home/
+ * WebsiteGallery.astro`), применён к статичной сетке вместо карусели:
+ * `<img>` без `src` не входит в вес первой загрузки — гейт
+ * `check-budget.mjs` считает картинку по литеральному атрибуту `src`/
+ * `srcset` независимо от `loading="lazy"`. Только первый кадр галереи несёт
+ * настоящий `src` (страница не пустая без JavaScript); остальные восемь
+ * несут `data-gallery-index` и подставляются скриптом из общего манифеста
+ * `/case-galleries.json`, как только галерея появляется в области видимости.
+ * Подписи (`figcaption`) остаются в статической разметке для всех девяти —
+ * это текст, который должен быть в HTML независимо от JavaScript. */
 import type { CaseGallerySlide } from '../../data/case-galleries';
+import { CASE_GALLERIES_URL } from '../../data/case-galleries';
 
 interface Props {
   slides: readonly CaseGallerySlide[];
+  /** Ключ в `/case-galleries.json`, например `storefront-ru`. */
+  galleryKey: string;
 }
 
-const { slides } = Astro.props;
+const { slides, galleryKey } = Astro.props;
 ---
-<div class="case-gallery">
-  {slides.map((slide) => {
+<div
+  class="case-gallery"
+  data-case-gallery
+  data-defer="true"
+  data-gallery-key={galleryKey}
+  data-slides-src={CASE_GALLERIES_URL}
+>
+  {slides.map((slide, index) => {
     const portrait = slide.subject === 'магазина' || slide.subject === 'shop';
     return (
       <figure class:list={{ portrait }}>
         <img
-          src={slide.src}
+          src={index === 0 ? slide.src : undefined}
           alt={slide.alt}
           width={portrait ? 780 : 1586}
           height={portrait ? 1688 : 992}
           loading="lazy"
           decoding="async"
+          data-gallery-screen
+          data-gallery-index={index}
         />
         <figcaption>
           <strong>{slide.project}</strong>
@@ -63,3 +84,62 @@ const { slides } = Astro.props;
 
   figcaption strong { color: var(--text); font-weight: 600; }
 </style>
+
+{/* Обычный компонент, не слот `CaseIllustrationField` — скрипт собирается
+    Astro штатно (ловушка 1 в `50-code/CLAUDE.md` здесь не действует). */}
+<script>
+  (function () {
+    var init = function () {
+      document.querySelectorAll('[data-case-gallery][data-defer="true"]').forEach(function (root) {
+        if (!(root instanceof HTMLElement) || root.dataset.ready === 'true') return;
+        root.dataset.ready = 'true';
+
+        var slidesUrl = root.dataset.slidesSrc;
+        var galleryKey = root.dataset.galleryKey;
+        var images = Array.from(root.querySelectorAll('[data-gallery-screen]'));
+        if (!slidesUrl || !galleryKey || images.length === 0) return;
+
+        var revealed = false;
+        var reveal = function () {
+          if (revealed) return;
+          revealed = true;
+          fetch(slidesUrl)
+            .then(function (response) {
+              if (!response.ok) throw new Error('Gallery manifest unavailable');
+              return response.json();
+            })
+            .then(function (manifest) {
+              var slides = manifest[galleryKey];
+              if (!Array.isArray(slides)) throw new Error('Gallery data unavailable');
+              images.forEach(function (img) {
+                if (!(img instanceof HTMLImageElement) || img.hasAttribute('src')) return;
+                var index = Number(img.dataset.galleryIndex);
+                var slide = slides[index];
+                if (slide && slide.src) img.src = slide.src;
+              });
+            })
+            .catch(function () {
+              root.dataset.error = 'true';
+            });
+        };
+
+        if ('IntersectionObserver' in window) {
+          var observer = new IntersectionObserver(function (entries) {
+            if (!entries.some(function (entry) { return entry.isIntersecting; })) return;
+            observer.disconnect();
+            reveal();
+          }, { rootMargin: '400px 0px' });
+          observer.observe(root);
+        } else {
+          reveal();
+        }
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init, { once: true });
+    } else {
+      init();
+    }
+  })();
+</script>

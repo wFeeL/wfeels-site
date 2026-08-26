@@ -78,7 +78,7 @@ const structuredData = caseStudySchema({
       {slides.length > 0 && (
         <section aria-labelledby="case-gallery-heading">
           <h2 id="case-gallery-heading" class="t-h2">Экраны</h2>
-          <CaseGallery slides={slides} />
+          <CaseGallery slides={slides} galleryKey={`${item.slug}-ru`} />
         </section>
       )}
 
