@@ -144,6 +144,52 @@ test('в подвале каждая цель нажатия держит 44 px'
   }
 });
 
+/* Раздел 4.4 брифа, продолжение Д-1 (`Footer.astro`, комментарий у
+ * `.requisites`): `padding-block: 14px` у последней ссылки реквизитов
+ * (почта по договорам) растит её цель нажатия за пределы «сухой» строки —
+ * измерением найдено, что зазор до следующей цели нажатия (значков или
+ * юридического ряда, смотря что идёт следом) садился с номинальных 16 до
+ * 4 px. `.requisites` несёт `margin-bottom`, а не поле ссылки — раздел 10
+ * пункт 2 запрещает трогать 14 (посчитано из метрики шрифта под сторож
+ * 44 px). Три ширины — не подряд идущий охват «одна цифра», а конкретные
+ * контрольные точки брифа: 390 (мобильный столбик), 768 и 1440 (где дефект
+ * измерен впервые). */
+for (const width of [390, 768, 1440] as const) {
+  test(`зазор между реквизитами и следующей целью нажатия ≥ 16 px на ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/'); // на «/» полосы нет — следом идут значки (`.icon-links`)
+
+    const lastLink = page.locator('footer .requisites a').last();
+    const nextTarget = page.locator('footer .icon-links a').first();
+    const lastBox = await lastLink.boundingBox();
+    const nextBox = await nextTarget.boundingBox();
+    expect(lastBox, 'последняя ссылка реквизитов не отрисована').not.toBeNull();
+    expect(nextBox, 'ряд значков не отрисован').not.toBeNull();
+
+    const gap = nextBox!.y - (lastBox!.y + lastBox!.height);
+    expect(gap, `зазор реквизиты → значки на ${width}px`).toBeGreaterThanOrEqual(16);
+  });
+}
+
+test('зазор между реквизитами и юридическим рядом ≥ 16 px на странице с полосой действия', async ({ page }) => {
+  // На странице с полосой (`/cases`) значков в служебной полосе нет — за
+  // реквизитами сразу следует юридический ряд, тот же стык нужно проверить
+  // и здесь (раздел 4.4 требует зазор до СЛЕДУЮЩЕЙ цели нажатия, какой бы
+  // она ни была).
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/cases');
+
+  const lastLink = page.locator('footer .requisites a').last();
+  const nextTarget = page.locator('footer .legal-row a').first();
+  const lastBox = await lastLink.boundingBox();
+  const nextBox = await nextTarget.boundingBox();
+  expect(lastBox, 'последняя ссылка реквизитов не отрисована').not.toBeNull();
+  expect(nextBox, 'юридический ряд не отрисован').not.toBeNull();
+
+  const gap = nextBox!.y - (lastBox!.y + lastBox!.height);
+  expect(gap, 'зазор реквизиты → юридический ряд').toBeGreaterThanOrEqual(16);
+});
+
 for (const scheme of ['light', 'dark'] as const) {
   test(`в ${scheme === 'light' ? 'светлой' : 'тёмной'} теме подвал читается`,
     async ({ page }) => {
