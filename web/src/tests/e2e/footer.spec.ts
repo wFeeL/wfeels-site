@@ -236,9 +236,13 @@ test('подчёркивание живёт по месту ссылки: спи
         };
       });
 
+    // Колонка «Разделы» (`nav[aria-labelledby="footer-sections"]`) снята
+    // вариантом Ф-Б — юридический ряд остался единственной навигацией
+    // подвала, и его доступное имя несёт `aria-label` на самом `<nav>`, а не
+    // `aria-labelledby` на видимом заголовке (заголовков в подвале больше
+    // нет вовсе).
     const menuLinks = [
-      'footer nav[aria-labelledby="footer-sections"] a',
-      'footer nav[aria-labelledby="footer-legal"] a',
+      'footer nav[aria-label] a',
     ];
 
     /* Прямые каналы секции контакта — не пункты меню, а КНОПКИ со значками
