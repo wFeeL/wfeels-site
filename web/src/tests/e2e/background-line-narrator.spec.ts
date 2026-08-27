@@ -228,28 +228,42 @@ test.describe('линия-рассказчик — П2: кнопка перво�
     }, N_STEPS);
   }
 
-  /** Сканирует scrollY от `fromY` до `toY` (шаг 1px) ВНУТРИ браузера (один
-   *  round-trip на слой, не один на пиксель) и возвращает первый scrollY,
-   *  на котором `opacity` слоя `data-step="step"` переходит выше 0,5, или
-   *  -1, если порог не найден в диапазоне. */
+  /** Сканирует scrollY от `fromY` до `toY` (шаг 1px) и возвращает первый
+   *  scrollY, на котором `opacity` слоя `data-step="step"` переходит выше
+   *  0,5, или -1, если порог не найден в диапазоне.
+   *
+   *  ДВА ОТДЕЛЬНЫХ `page.evaluate()` НА КАЖДЫЙ `y` — `scrollTo`, ЗАТЕМ
+   *  (второй самостоятельный round-trip) чтение `opacity`. Было опробовано
+   *  и отброшено ДВАЖДЫ: (1) цикл `scrollTo` внутри ОДНОГО `evaluate` —
+   *  все пять слоёв «нашли» один и тот же порог (`Received: 1` вместо
+   *  `5`); (2) `scrollTo` и чтение в ОДНОМ `evaluate`, но по отдельному
+   *  вызову на каждый `y`, — снова один и тот же порог для всех пяти
+   *  слоёв, ОТЛИЧНЫЙ от предыдущего замера тем же кодом на тех же
+   *  координатах (`stillGrey`/`nowAccent` выше в этом же тесте, где
+   *  `scrollTo` и чтение стиля — уже ДВЕ раздельные команды). Прогресс
+   *  `animation-timeline: view()` пересчитывается браузером на шаге
+   *  рендеринга между двумя ПОСТУПИВШИМИ от клиента командами, а не
+   *  синхронно внутри одной JS-функции, которой они переданы разом одним
+   *  вызовом `evaluate` — сама функция целиком выполняется как один
+   *  JS-таск, кадра рендеринга между её собственными строками нет, сколько
+   *  бы отдельных вызовов `evaluate()` ни делал внешний код. Родство с
+   *  ловушками 6/7 (`50-code/CLAUDE.md`): scroll-driven CSS не измеряется
+   *  синхронным JS без реального кадра между `scrollTo` и чтением. */
   async function findStepThreshold(
     page: import('@playwright/test').Page,
     step: number,
     fromY: number,
     toY: number,
   ): Promise<number> {
-    return page.evaluate(
-      ({ step, fromY, toY }: { step: number; fromY: number; toY: number }) => {
-        for (let y = fromY; y <= toY; y += 1) {
-          window.scrollTo(0, y);
-          const layer = document.querySelector(`#hero .cta .cta-ignite-step[data-step="${step}"]`);
-          const op = layer ? parseFloat(getComputedStyle(layer).opacity) : NaN;
-          if (op > 0.5) return y;
-        }
-        return -1;
-      },
-      { step, fromY, toY },
-    );
+    for (let y = fromY; y <= toY; y += 1) {
+      await page.evaluate((yy: number) => window.scrollTo(0, yy), y);
+      const op = await page.evaluate((s: number) => {
+        const layer = document.querySelector(`#hero .cta .cta-ignite-step[data-step="${s}"]`);
+        return layer ? parseFloat(getComputedStyle(layer).opacity) : NaN;
+      }, step);
+      if (op > 0.5) return y;
+    }
+    return -1;
   }
 
   for (const [themeLabel, colorScheme, border, text, accent, onAccent] of [
@@ -327,7 +341,17 @@ test.describe('линия-рассказчик — П2: кнопка перво�
       // (кнопка не двигается сама по себе) — берём её заново под текущим
       // scrollY, а не переиспользуем btnBox.top, снятый на другом scrollY.
       const btnTopNow = await page.locator('#hero .cta .btn.primary').evaluate((el) => el.getBoundingClientRect().top);
-      const bandY = btnTopNow + btnBox.height / 2;
+      // НЕ вертикальный центр (`btnBox.height / 2`) — там стоит подпись
+      // кнопки (`Button.astro`: `padding: 10px 20px`, текст между
+      // паддингами), и первая редакция этого замера споткнулась именно об
+      // это: пиксель на пороге читался как «смесь» (rgb(137,162,255) при
+      // ожидаемом чистом акценте) — не смесь заливки, а сглаживание края
+      // ГЛИФА текста поверх плоского фона. `--radius-pill` кнопки закруглён
+      // только у левого/правого торца (радиус = половина высоты), а
+      // `bandCenterX(3)`/`bandCenterX(4)` стоят у середины ширины — там
+      // верхняя кромка на 6px от края уже плоская (не скруглённая) и без
+      // текста (текст начинается заметно ниже верхнего паддинга).
+      const bandY = btnTopNow + 6;
       const litBand = await readPixelAtViewport(page, bandCenterX(3), bandY);
       const unlitBand = await readPixelAtViewport(page, bandCenterX(4), bandY);
       const accentRgb = accent.match(/\d+/g)!.map(Number);
@@ -392,16 +416,29 @@ test.describe('линия-рассказчик — П2: кнопка перво�
   // для 881, даёт vh = 881 / 0,67 ≈ 1314,9, а не 1249 (1249 — это
   // 837 / 0,67, ВЕРХНЯЯ кромка кнопки, начало диапазона, другая строка той
   // же таблицы). Прямой замер подтверждает формулу, а не число 1249: на
-  // высоте 1314px кнопка ещё серая, на 1315px — уже акцентная (проверено
-  // `astro preview`, окно 1440×высота, `getComputedStyle`). Порог не
-  // затронут лестницей — это порог ПЯТОГО (последнего) слоя, тот же самый,
-  // что нёс единственный слой до неё.
-  test('окно ≥1315px (граница по формуле брифа 0,67·vh ≥ 881, не 1249 — см. комментарий): кнопка акцентная уже при загрузке (раздел 3, П2(г) — законное исключение из П-5)', async ({ browser }) => {
+  // высоте 1315px кнопка уже полностью акцентная (проверено `astro
+  // preview`, окно 1440×высота, `getComputedStyle`). Порог не затронут
+  // лестницей — это порог ПЯТОГО (последнего, самого широкого) слоя, тот
+  // же самый, что нёс единственный слой до неё.
+  //
+  // ПОБОЧНОЕ СЛЕДСТВИЕ ЛЕСТНИЦЫ (раздел 10.6, Р-3), которого не было у
+  // единственного слоя: у слоя `data-step="1"` (самого узкого, 1/5
+  // ширины) порог сдвинут РАНЬШЕ на 35,2px прокрутки — на высоте окна
+  // между ~1262px (порог первого слоя) и 1315px (порог пятого) кнопка при
+  // scrollY=0 уже ЧАСТИЧНО акцентная (левые 20% ширины), а не полностью
+  // серая. Прежний бинарный тест «1314 ещё серая / 1315 уже акцентная»
+  // ловил ровно эту границу единственного слоя и на лестнице закономерно
+  // перестал быть верным для 1314 (при 1314 первый слой уже загорелся).
+  // Здесь проверяются оба КРАЯ диапазона, а не прежняя тесная пара:
+  // заведомо малая высота (900px, тот же VIEWPORT_1440_900, на которой
+  // «серая при scrollY=0» уже проверена выше по всем пяти слоям) —
+  // кнопка обязана быть ПОЛНОСТЬЮ серой; 1315px — ПОЛНОСТЬЮ акцентной.
+  test('окно 900px: кнопка ещё полностью серая при загрузке; окно ≥1315px (граница по формуле брифа 0,67·vh ≥ 881, не 1249 — см. комментарий): кнопка уже полностью акцентная (раздел 3, П2(г) — законное исключение из П-5)', async ({ browser }) => {
     const heightsAndExpected: [number, string][] = [
-      [1314, 'ещё-серая'],
+      [900, 'ещё-серая'],
       [1315, 'уже-акцентная'],
     ];
-    for (const [height] of heightsAndExpected) {
+    for (const [height, expected] of heightsAndExpected) {
       const ctx = await browser.newContext({
         reducedMotion: 'no-preference',
         viewport: { width: 1440, height },
@@ -410,10 +447,10 @@ test.describe('линия-рассказчик — П2: кнопка перво�
       await page.goto('/');
       await page.waitForTimeout(1600);
       const c = await buttonColors(page);
-      if (height < 1315) {
-        expect(c.backgroundColor, `при высоте ${height}px кнопка обязана быть ещё серой`).toBe(BORDER_LIGHT);
+      if (expected === 'ещё-серая') {
+        expect(c.backgroundColor, `при высоте ${height}px кнопка обязана быть полностью серой`).toBe(BORDER_LIGHT);
       } else {
-        expect(c.backgroundColor, `при высоте ${height}px кнопка обязана быть уже акцентной`).toBe(ACCENT_LIGHT);
+        expect(c.backgroundColor, `при высоте ${height}px кнопка обязана быть полностью акцентной`).toBe(ACCENT_LIGHT);
       }
       await ctx.close();
     }
