@@ -949,6 +949,18 @@ test.describe('линия-рассказчик — зажигание цифр �
     for (const c of afterContents) {
       expect(c, 'печать: .num::after обязан не порождаться (content: none)').toBe('none');
     }
+    // Ожидание ниже — не подгонка под красный прогон, а инструментальный
+    // артефакт, найденный этим заходом: `.num` цвет уходит из-под гейта
+    // `screen and (...)` на `var(--accent)` РОВНО в момент `emulateMedia`,
+    // но глобальный переход `*, *::before, *::after { transition: color
+    // var(--dur-micro) ... }` (`base.css`, `--dur-micro: 160ms`, заведён для
+    // плавной смены темы) начинает интерполировать цвет от `--text-muted` к
+    // `--accent` тем же кадром — измерение сразу после `emulateMedia` ловит
+    // цвет В ПОЛЁТЕ (замер этим заходом: 0мс → rgb(76,98,163), 150мс → ровно
+    // акцент). `content: none` выше не задет тем же эффектом — это НЕ
+    // custom-property, а литеральное значение, интерполяции не подлежит.
+    // Ждём дольше `--dur-micro`, чтобы переход гарантированно завершился.
+    await page.waitForTimeout(200);
     const colors = await page.evaluate(() =>
       Array.from(document.querySelectorAll('#process .step .num')).map((el) => getComputedStyle(el as HTMLElement).color),
     );
