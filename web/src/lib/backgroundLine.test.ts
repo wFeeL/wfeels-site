@@ -164,13 +164,19 @@ describe('линия на фоне — preserveAspectRatio на каждом SVG
     }
   });
 
-  it('Footer.astro пишет preserveAspectRatio="none" на хвосте', () => {
+  /* ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/11-line-narrator-
+   *  brief.md`, раздел 12.1 В-4): подвал БОЛЬШЕ НЕ РИСУЕТ `.line` — линия
+   *  уходит за левую кромку холста внутри своей собственной коробки
+   *  (`contact`) и в подвал не заходит. Проверка «Footer.astro пишет
+   *  preserveAspectRatio на хвосте» переписана на обратную: у подвала не
+   *  остаётся ни одного `<svg>` вовсе, а не «свой SVG с правильным
+   *  атрибутом» — падает, если кто-нибудь вернёт разметку линии в подвал
+   *  без такого же внимательного `preserveAspectRatio`, каким уже покрыт
+   *  `Section.astro` выше. */
+  it('Footer.astro не рисует ни одного <svg> — линия в подвал не заходит (В-4)', () => {
     const url = new URL('../components/Footer.astro', import.meta.url);
     const svgTags = markupSvgTags(readFileSync(url, 'utf8'));
-    expect(svgTags.length).toBeGreaterThan(0);
-    for (const tag of svgTags) {
-      expect(tag, tag).toContain('preserveAspectRatio="none"');
-    }
+    expect(svgTags, 'в Footer.astro появился <svg> — В-4 отменяется молча').toHaveLength(0);
   });
 });
 
