@@ -606,7 +606,30 @@ header .brand { view-transition-name: --site-brand; }
   border: 1.5px solid color-mix(in srgb, var(--accent) 45%, var(--bg));
   border-radius: inherit;
   pointer-events: none;
+  /* Базовое состояние — скрыт. Ниже 900px обвод не заводится вовсе (раздел
+     6.4 брифа, П-М1: «клина, ветви, отводов, обводов нет» на узкой
+     раскладке) — этот `opacity: 0` без медиа-условий и держит инвариант на
+     узких ширинах, где ветвь ниже тоже не активирует видимость. */
   opacity: 0;
+}
+/* ПРАВКА (найдено этим прогоном): дословная формула раздела 5.2 брифа
+   `15-…` (тот же блок ниже, `opacity: 0` базой и реветл только внутри
+   `@supports`/`@media(no-preference)`) на деле нарушала П-Р1 — «все обводы
+   и подчёркивания в конечном состоянии» при `reduce`, без поддержки
+   `animation-timeline` и в печати: обвод карточки-акцента и остальных
+   целей оставался НЕВИДИМ навсегда, вместо того чтобы показать конечный,
+   уже прогоревший вид. Ровно тот же класс дефекта уже был найден и
+   зафиксирован для кнопки первого экрана (см. комментарий у
+   `#hero .cta .btn.primary` в `BackgroundLine.astro`, «конечное состояние —
+   состояние по умолчанию», раздел 7.5): по умолчанию элемент обязан
+   показывать РЕЗУЛЬТАТ, а скрытое «до события» состояние заводится только
+   внутри контура `@supports (animation-timeline: view()) { @media
+   (prefers-reduced-motion: no-preference) { … } }`. Здесь тот же контур,
+   только с добавленной шириной — обвод виден с 900px и по умолчанию (то
+   есть при `reduce`/без поддержки), а в анимированной ветви прячется до
+   события. */
+@media (min-width: 900px) {
+  .line-trace { opacity: 1; }
 }
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
@@ -615,7 +638,12 @@ header .brand { view-transition-name: --site-brand; }
         animation-name: line-trace-in;
         animation-duration: 1ms;
         animation-timing-function: linear;
-        animation-fill-mode: forwards;
+        /* `both`, не только `forwards`: без `backwards` в фазе ДО начала
+           диапазона анимация не применяется вовсе, и обвод падает назад к
+           `opacity: 1` из правила `@media (min-width: 900px)` выше —
+           «загорается» ещё до того, как перо ушло из коробки. `backwards`
+           удерживает кадр `from` (0) весь период ДО диапазона. */
+        animation-fill-mode: both;
         animation-timeline: view();
         /* окно — хвост пересечения: обвод загорается, когда перо УХОДИТ
            из коробки, а не когда входит (раздел 5.2 брифа). */
