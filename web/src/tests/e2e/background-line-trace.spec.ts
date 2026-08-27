@@ -37,8 +37,6 @@ test.describe('П-Ц2 — калька снята из сборки целико
 
 /* ─────────── П-Ц1: цели несут обвод, а не просвет линии на лице ───────── */
 
-const VIEWPORT = { width: 1440, height: 900 };
-
 async function readLineHeadPx(page: import('@playwright/test').Page): Promise<number> {
   return page.evaluate(() => {
     const probe = document.createElement('div');
@@ -110,35 +108,49 @@ async function assertTraceFiresOnExit(page: import('@playwright/test').Page, sel
 }
 
 test.describe('П-Ц1 — обвод .line-trace загорается на выходе пера из целевой коробки', () => {
-  test('1440×900: #pricing .card--accent, #cases .field:not(.bare), измеренные #services .grid > .card', async ({ browser }) => {
-    test.setTimeout(120_000);
-    const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: VIEWPORT });
-    const page = await ctx.newPage();
-    await page.goto('/');
-    await page.waitForTimeout(1600); // line-load героя, раздел 2.6 брифа
+  // Раздел 7 брифа требует «обе темы, 1180 и 1440» для этого пункта.
+  // Тема здесь намеренно не задваивается: сама геометрия открытия
+  // (`animation-range`, привязанный к прокрутке) от `--bg`/`--accent`
+  // не зависит — тема влияет только на ЦВЕТ обвода и лица карточки, а это
+  // отдельный, уже покрытый пиксельный замер (`pricing-accent-fill.spec.ts`,
+  // светлая и тёмная тема отдельными прогонами). Ширина — 1180 и 1440, как
+  // и требует раздел 7, потому что от неё зависит геометрия траверса
+  // (какие карточки services вообще задеты).
+  for (const width of [1180, 1440] as const) {
+    test(`${width}×900: #pricing .card--accent, #cases .field:not(.bare), измеренные #services .grid > .card`, async ({ browser }) => {
+      test.setTimeout(120_000);
+      const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width, height: 900 } });
+      const page = await ctx.newPage();
+      await page.goto('/');
+      await page.waitForTimeout(1600); // line-load героя, раздел 2.6 брифа
 
-    // Три из четырёх карточек services — измерено геометрически (раздел 0
-    // брифа, `getScreenCTM`/`getPointAtLength`): «Сайты», «Автоматизация и
-    // интеграции», «Telegram». «ИИ» траверс не пересекает — трогать нечего,
-    // проверка обвода на ней была бы проверкой несуществующего события.
-    const serviceTargets = await page.evaluate(() => {
-      const cards = Array.from(document.querySelectorAll('#services .grid > .card'));
-      return cards
-        .map((c, i) => ({ i, hasTrace: !!c.querySelector('.line-trace') }))
-        .filter((c) => c.hasTrace)
-        .map((c) => c.i);
+      // Три из четырёх карточек services — измерено геометрически (раздел 0
+      // брифа, `getScreenCTM`/`getPointAtLength`): «Сайты», «Автоматизация и
+      // интеграции», «Telegram». «ИИ» траверс не пересекает — трогать нечего,
+      // проверка обвода на ней была бы проверкой несуществующего события.
+      // Разметка не зависит от ширины (`trace` ставится в Astro на сборке),
+      // поэтому список целей на 1180 и 1440 совпадает — но геометрия
+      // пересечения (что и проверяет этот тест) от ширины зависит, и именно
+      // её здесь и гоняют дважды.
+      const serviceTargets = await page.evaluate(() => {
+        const cards = Array.from(document.querySelectorAll('#services .grid > .card'));
+        return cards
+          .map((c, i) => ({ i, hasTrace: !!c.querySelector('.line-trace') }))
+          .filter((c) => c.hasTrace)
+          .map((c) => c.i);
+      });
+      expect(serviceTargets, 'ровно три из четырёх карточек services несут .line-trace').toHaveLength(3);
+
+      for (const i of serviceTargets) {
+        await assertTraceFiresOnExit(page, `#services .grid > .card:nth-child(${i + 1})`, `services карточка #${i + 1} @${width}px`);
+      }
+
+      await assertTraceFiresOnExit(page, '#pricing .top-grid > .card--accent', `pricing карточка-акцент @${width}px`);
+      await assertTraceFiresOnExit(page, '#cases .field:not(.bare)', `cases «Замер» @${width}px`);
+
+      await ctx.close();
     });
-    expect(serviceTargets, 'ровно три из четырёх карточек services несут .line-trace').toHaveLength(3);
-
-    for (const i of serviceTargets) {
-      await assertTraceFiresOnExit(page, `#services .grid > .card:nth-child(${i + 1})`, `services карточка #${i + 1}`);
-    }
-
-    await assertTraceFiresOnExit(page, '#pricing .top-grid > .card--accent', 'pricing карточка-акцент');
-    await assertTraceFiresOnExit(page, '#cases .field:not(.bare)', 'cases «Замер»');
-
-    await ctx.close();
-  });
+  }
 
   test('#faq .panel не несёт .line-trace — путь faq панель не пересекает', async ({ page }) => {
     await page.goto('/');
