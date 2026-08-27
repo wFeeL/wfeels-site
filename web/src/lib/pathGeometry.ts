@@ -196,3 +196,44 @@ export function overhang(points: readonly Point[], vbH: number): { start: number
   const last = points[points.length - 1].y;
   return { start: 0 - first, end: last - vbH };
 }
+
+/** Длина ломаной, ОБРЕЗАННОЙ по `y ∈ [0, vbH]` — Г-3, поправка Г-3 (`70-
+ *  workshop/specs/site-v3/11-line-narrator-brief.md`, раздел 12.2, П-Б).
+ *  Порог `1,6 · vbH` выведен в `05-line` из диагонали ВНУТРИ коробки секции;
+ *  `polylineLength` мерил ломаную целиком, вместе с двумя обязательными
+ *  выносами по 60 vb за пределы бокса — для прямых путей это тонет в
+ *  округлении, а для диагонали во всю ширину короткой секции превращает
+ *  «проходит» в «падает» безосновательно (пример из брифа: `hero` целиком
+ *  1384 против предела 1293, внутри бокса — 1252).
+ *
+ *  Обрезка — сегментами, а не отбрасыванием целых точек, вышедших за край
+ *  (12.2, П-Б: «обрезка сегментов, а не выбрасывание тех, чей конец вышел за
+ *  край»): для каждой пары соседних точек ломаной ищется параметр `t ∈ [0,1]`,
+ *  на котором `y(t)` остаётся в `[0, vbH]`, и в сумму идёт длина только этой
+ *  части отрезка. Горизонтальный отрезок (`dy = 0`) либо целиком внутри
+ *  бокса, либо целиком снаружи — второй случай не добавляет ничего. */
+export function clippedLength(points: readonly Point[], vbH: number): number {
+  let len = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const dy = b.y - a.y;
+    let t0 = 0;
+    let t1 = 1;
+    if (dy !== 0) {
+      const tLow = (0 - a.y) / dy;
+      const tHigh = (vbH - a.y) / dy;
+      t0 = Math.max(t0, Math.min(tLow, tHigh));
+      t1 = Math.min(t1, Math.max(tLow, tHigh));
+    } else if (a.y < 0 || a.y > vbH) {
+      continue;
+    }
+    if (t0 >= t1) continue;
+    const ax = a.x + (b.x - a.x) * t0;
+    const ay = a.y + dy * t0;
+    const bx = a.x + (b.x - a.x) * t1;
+    const by = a.y + dy * t1;
+    len += Math.hypot(bx - ax, by - ay);
+  }
+  return len;
+}

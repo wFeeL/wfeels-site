@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { LINE_PATHS, LINE_STROKE_WIDTH_VB, type LinePathEntry } from './linePaths';
 import {
+  clippedLength,
   flattenPath,
   lateralPercent,
   minRadius,
   overhang,
-  polylineLength,
   resampleByLength,
   verticalRunLength,
 } from './pathGeometry';
@@ -46,11 +46,44 @@ import {
  *  выход ≥ 96 px») — тогда все три свойства станут зелёными одновременно,
  *  не по одному. */
 
+/** ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/11-line-narrator-brief.md`,
+ *  раздел 12.2) — две поправки к сторожу, обе ослабляют проверку РОВНО там,
+ *  где её собственное обоснование не работает, а не молча смягчённым
+ *  порогом.
+ *
+ *  **П-А (Г-2).** Обоснование Г-2 — «круглый торец прячется под соседа»,
+ *  «кривизна на стыке равна нулю по построению» и (третья причина, раздел
+ *  12.2) «`preserveAspectRatio="none"` растягивает каждый бокс по СВОЕЙ
+ *  высоте — вертикаль единственное направление, инвариантное к этому
+ *  растяжению». На самом СТЫКЕ двух несущих линию секций Г-2 не ослабляется
+ *  НИКОГДА. Исключения — ТОЛЬКО там, где стыка нет вовсе, и их ровно два,
+ *  поимённо:
+ *   1. `hero`, НАЧАЛО — соседа сверху нет, торец уходит выше первой секции
+ *      и накрывается шторкой (`CAP_OVERHANG_HERO`, `linePaths.ts`).
+ *   2. `contact`, КОНЕЦ — после В-4 подвал линии не несёт, соседа снизу нет;
+ *      конец пути лежит за ЛЕВОЙ кромкой холста (`x = −200`) и обрезан
+ *      `#contact .line { overflow: hidden }` — торца на экране не
+ *      существует ни в один момент.
+ *  Список исключений — здесь и только здесь; смягчения порога `VERTICAL_END_
+ *  MIN` для всех остальных записей эта правка не касается.
+ *
+ *  **П-Б (Г-3).** Порог `1,6 · vbH` выведен в `05-line` из диагонали ВНУТРИ
+ *  коробки секции. Мера ДО этой правки (`polylineLength` на ломаной целиком)
+ *  считала вместе с двумя обязательными выносами по 60 vb за пределы бокса —
+ *  для прямых путей незаметно, для диагонали во всю ширину короткой секции
+ *  превращает «проходит» в «падает» безосновательно (пример брифа: `hero`
+ *  целиком 1384 при пределе 1293, внутри бокса — 1252 — с запасом). Мера
+ *  теперь — `clippedLength` (`pathGeometry.ts`): та же ломаная, обрезанная
+ *  сегментами по `y ∈ [0, vbH]`, а не байтовая замена. Ни одна прежняя
+ *  запись от поправки не портится — мера строго меньше при том же пороге. */
+const NAMED_VERTICAL_START_EXCEPTIONS = new Set(['hero']);
+const NAMED_VERTICAL_END_EXCEPTIONS = new Set(['contact']);
+
 const SAMPLE_COUNT = 200;
 const R_MIN_FACTOR = 8; // Г-1: R_min ≥ 8·w
 const VERTICAL_END_MIN = 96; // Г-2: вертикальный отрезок ≥ 96 px (единиц viewBox)
 const OVERHANG_MIN = 60; // Г-2: вынос за viewBox ≥ 60 единиц
-const LENGTH_FACTOR = 1.6; // Г-3: длина пути ≤ 1,6 · vbH
+const LENGTH_FACTOR = 1.6; // Г-3: длина ВНУТРИ КОРОБКИ ≤ 1,6 · vbH (12.2, П-Б)
 const LATERAL_STRAIGHT_MAX = 2; // Г-4: «прямая» — боковой ход ≤ 2 %
 const LATERAL_EVENT_MIN = 25; // Г-4: «событие» — боковой ход ≥ 25 %
 
@@ -83,6 +116,7 @@ describe('реестр линии — Г-1: минимальный радиус 
 
 describe('реестр линии — Г-2: вертикальные концы ≥ 96 px и вынос ≥ 60 (раздел 3 брифа `05-line`)', () => {
   it.each(Object.keys(LINE_PATHS))('%s: начало — прямой вертикальный участок ≥ 96', (id) => {
+    if (NAMED_VERTICAL_START_EXCEPTIONS.has(id)) return; // 12.2, П-А1 — hero: соседа сверху нет
     const entry = LINE_PATHS[id];
     const { flat } = sampled(entry);
     const vStart = verticalRunLength(flat, true);
@@ -92,6 +126,7 @@ describe('реестр линии — Г-2: вертикальные концы 
   });
 
   it.each(Object.keys(LINE_PATHS))('%s: конец — прямой вертикальный участок ≥ 96', (id) => {
+    if (NAMED_VERTICAL_END_EXCEPTIONS.has(id)) return; // 12.2, П-А2 — contact: соседа снизу нет после В-4
     const entry = LINE_PATHS[id];
     const { flat } = sampled(entry);
     const vEnd = verticalRunLength(flat, false);
@@ -109,13 +144,13 @@ describe('реестр линии — Г-2: вертикальные концы 
   });
 });
 
-describe('реестр линии — Г-3: длина пути ≤ 1,6 · vbH (раздел 3 брифа `05-line`)', () => {
-  it.each(Object.keys(LINE_PATHS))('%s: длина ≤ 1,6·vbH', (id) => {
+describe('реестр линии — Г-3: длина ВНУТРИ КОРОБКИ ≤ 1,6 · vbH (раздел 3 брифа `05-line`, поправка 12.2 П-Б)', () => {
+  it.each(Object.keys(LINE_PATHS))('%s: длина в боксе ≤ 1,6·vbH', (id) => {
     const entry = LINE_PATHS[id];
     const { flat } = sampled(entry);
-    const length = polylineLength(flat);
+    const length = clippedLength(flat, entry.vbH);
     const limit = LENGTH_FACTOR * entry.vbH;
-    expect(length, `${id}: длина=${length.toFixed(1)}, предел=${limit.toFixed(1)} (vbH=${entry.vbH})`).toBeLessThanOrEqual(
+    expect(length, `${id}: длина в боксе=${length.toFixed(1)}, предел=${limit.toFixed(1)} (vbH=${entry.vbH})`).toBeLessThanOrEqual(
       limit,
     );
   });

@@ -59,18 +59,22 @@ describe('линия на фоне — таблица шторки воспро�
   });
 
   it('прямые пути (без событий) сводятся к двум стопам — упрощение не плодит лишний CSS', () => {
-    // Правка 2026-08-27 (`70-workshop/specs/site-v3/11-line-narrator-brief.md`,
-    // раздел 10.4, Р-2): траверс переехал из `services` в `pricing` —
-    // `services` стал прямой, `pricing` стал S-кривой, списки ниже поменялись
-    // местами ровно на эту пару.
-    const straightIds = ['hero', 'pain', 'services', 'cases', 'guarantees', 'about', 'faq', 'footer'];
+    // Правка 2026-08-27, второй заход (`70-workshop/specs/site-v3/
+    // 11-line-narrator-brief.md`, раздел 12.5): реестр переписан заново по
+    // размеченному референсу, независимо от Р-2 (раздел 12.1: «откатывать
+    // нечего», та ветка никогда не вливалась в `main`). Событие теперь несут
+    // ОБЕ `services` и `pricing`, `hero` — пологая диагональ (событие «кнопка
+    // загорается»), `cases` — S-образный подъём к «Замеру», `contact` —
+    // уход с дока влево. Прямые (без события) — только те пять записей, чья
+    // `wide` в `linePaths.ts` строится `straightPath`.
+    const straightIds = ['pain', 'process', 'guarantees', 'about', 'faq'];
     for (const id of straightIds) {
       expect(LINE_PATHS[id].reveal.length, `${id}: ожидалось 2 стопа (прямая)`).toBe(2);
     }
   });
 
-  it('траверсы (S-кривая) дают больше двух стопов — кривизна не сглаживается до прямой', () => {
-    for (const id of ['pricing', 'process', 'contact']) {
+  it('траверсы/диагонали дают больше двух стопов — кривизна не сглаживается до прямой', () => {
+    for (const id of ['hero', 'services', 'pricing', 'cases', 'contact']) {
       expect(LINE_PATHS[id].reveal.length, `${id}: ожидалась не-прямая раскладка`).toBeGreaterThan(2);
     }
   });
@@ -81,10 +85,27 @@ describe('линия на фоне — таблица шторки воспро�
     // накрывать не только координату конца пути (`OVERHANG`), но и
     // закрашенный `round`-полукруг вокруг неё (`w/2`) — иначе он торчит
     // из-под шторки соседней секции, которая красится позже в DOM.
+    //
+    // ИСКЛЮЧЕНИЕ — `hero` (раздел 12.4 брифа `11-line-narrator-brief.md`):
+    // клин первого экрана поднимается выше, чем накрывает голый
+    // `CAP_OVERHANG`, и её вынос считается от полуширины ГОЛОВЫ
+    // (`CAP_OVERHANG_HERO = OVERHANG + HEAD_WIDTH_VB / 2 = 110,5`), не
+    // штриха — проверено отдельно, ниже.
     const CAP_OVERHANG = 60 + LINE_STROKE_WIDTH_VB / 2;
     for (const [id, entry] of Object.entries(LINE_PATHS)) {
+      if (id === 'hero') continue;
       const expected = (CAP_OVERHANG / entry.vbH) * 100;
       expect(entry.overhangPercent, id).toBeCloseTo(expected, 1);
     }
+  });
+
+  it('hero: overhangPercent считается от полуширины головы (CAP_OVERHANG_HERO = 110,5), не штриха', () => {
+    const CAP_OVERHANG_HERO = 60 + 101 / 2; // OVERHANG + HEAD_WIDTH_VB / 2, раздел 12.4
+    const hero = LINE_PATHS.hero;
+    const expected = (CAP_OVERHANG_HERO / hero.vbH) * 100;
+    expect(hero.overhangPercent).toBeCloseTo(expected, 1);
+    // Габарит клина уходит до vbY = −84,1 (раздел 12.4) — шторка обязана
+    // накрыть эту координату целиком, иначе клин виден до раскрытия.
+    expect((hero.overhangPercent * hero.vbH) / 100).toBeGreaterThanOrEqual(84.1);
   });
 });
