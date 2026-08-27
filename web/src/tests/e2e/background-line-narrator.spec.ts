@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { LINE_PATHS } from '../../lib/linePaths';
+import { parsePath } from '../../lib/pathGeometry';
 
 /** Линия-рассказчик — `70-workshop/specs/site-v3/11-line-narrator-brief.md`.
  *
@@ -660,14 +662,45 @@ test.describe('линия-рассказчик — П21: карточка «Ко
   });
 });
 
-test.describe('линия-рассказчик — П4: спина шагов и подчёркивания цифр 01…05 (раздел 3 П4; приёмка П-8, П-15)', () => {
-  async function underlineScaleX(page: import('@playwright/test').Page, nth: number) {
-    return page.locator('#process .step .num').nth(nth).evaluate((el) => {
-      const m = getComputedStyle(el, '::after').transform.match(/matrix\(([^)]+)\)/);
-      if (!m) return NaN;
-      return parseFloat(m[1].split(',')[0]); // scaleX — первый компонент matrix
-    });
+test.describe('линия-рассказчик — П4: спина шагов и подчёркивания цифр 01…05 (раздел 3 П4; приёмка П-8, П-15; переписано разделом 6 брифа `15-line-through-scale-brief.md`, задача 4 — П-Т2)', () => {
+  /** ПРАВКА (раздел 6.2 брифа `15-line-through-scale-brief.md`): `.num::after`
+   *  как отдельная плашка снят — третий инструмент/оттенок/вес на странице
+   *  не остаётся (П-Я1). Подчёркивание цифры теперь несёт САМ отвод
+   *  (`.line-branch`, запись `LINE_PATHS.process.branch`) — раскрывается
+   *  той же сквозной шторкой, что и вся линия (`BackgroundLine.astro`), без
+   *  собственной анимации. «Дорисовано» здесь значит «конец отвода данной
+   *  цифры уже выше линии головы (`--line-head`) — шторка его больше не
+   *  закрывает», а не «scaleX дошёл до 1»: сравнивается экранная позиция
+   *  КОНЦА отвода (та же точка, что несёт подчёркивание, `x=112` реестра)
+   *  с экранной позицией шторки, обе — геометрией страницы, не второй
+   *  копией чисел реестра (координаты читаются из `LINE_PATHS.process.
+   *  branch` через `parsePath`, не переписаны в тесте руками). */
+  const branchSegments = parsePath(LINE_PATHS.process.branch!);
+  // Пять подпутей `M L`: конец (`L`) каждого — точка, которую подчёркивает
+  // отвод (11 vb внутри коробки цифры, раздел 6.3 п.1 брифа — не тронуто).
+  const digitEndpoints = Array.from({ length: 5 }, (_, i) => {
+    const seg = branchSegments[i * 2 + 1];
+    if (seg.type !== 'L') throw new Error('порядок сегментов process.branch разошёлся с ожидаемым M L ×5');
+    return seg.to;
+  });
+
+  async function digitUnderlineScreenY(page: import('@playwright/test').Page, index: number): Promise<number> {
+    const { x, y } = digitEndpoints[index];
+    return page.evaluate(
+      ({ x, y }) => {
+        const svg = document.querySelector('#process svg.line') as SVGSVGElement;
+        const ctm = svg.getScreenCTM()!;
+        return new DOMPoint(x, y).matrixTransform(ctm).y;
+      },
+      { x, y },
+    );
   }
+
+  test('.num::after как отдельная плашка отсутствует в разметке (раздел 6.2/П-Т2 брифа)', async ({ page }) => {
+    await page.goto('/');
+    const content = await page.locator('#process .step .num').first().evaluate((el) => getComputedStyle(el, '::after').content);
+    expect(content, '.num::after обязан не нести content — плашка снята').toBe('none');
+  });
 
   test('1440×900: подчёркивания приходят по очереди — первая цифра раньше последней, а не все разом', async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: VIEWPORT_1440_900 });
@@ -675,29 +708,30 @@ test.describe('линия-рассказчик — П4: спина шагов и
     await page.goto('/');
     await page.waitForTimeout(1600);
 
-    // scrollY=0 — ни одно подчёркивание не начато.
+    const curtainTop = await readLineHeadPx(page);
+
+    // scrollY=0 — голова стоит высоко на первом экране, а `process` идёт
+    // намного ниже по документу: конец отвода каждой из пяти цифр обязан
+    // быть ЭКРАННО НИЖЕ головы (закрыт шторкой, не дорисован).
     for (let i = 0; i < 5; i++) {
-      const sx = await underlineScaleX(page, i);
-      expect(sx, `при scrollY=0 подчёркивание цифры №${i + 1} обязано быть на scaleX(0)`).toBeLessThan(0.02);
+      const y = await digitUnderlineScreenY(page, i);
+      expect(y, `при scrollY=0 отвод цифры №${i + 1} обязан быть ниже головы (y=${y.toFixed(1)}, голова=${curtainTop.toFixed(1)})`).toBeGreaterThan(curtainTop);
     }
 
-    // Прокрутка до конца окна первой цифры (01) — она дорисована, а
-    // последняя (05), стоящая заметно ниже по документу, ещё нет.
-    const firstBottom = await page.locator('#process .step .num').first().evaluate((el) => el.getBoundingClientRect().bottom + window.scrollY);
-    // Раздел 4.3 брифа `15-line-through-scale-brief.md`: та же механическая
-    // замена `0,67·vh` → `--line-head`, что и у лестницы кнопки выше.
-    const lineHead = await readLineHeadPx(page);
-    const scrollYAfterFirst = Math.ceil(firstBottom - lineHead) + 8;
+    // Прокрутка до конца отвода первой цифры (01) — он дорисован, а
+    // последний (05), стоящий заметно ниже по документу, ещё нет.
+    const firstEndDocY = await digitUnderlineScreenY(page, 0); // scrollY=0 ⇒ screen === doc
+    const scrollYAfterFirst = Math.ceil(firstEndDocY - curtainTop) + 8;
     await page.evaluate((y) => window.scrollTo(0, y), scrollYAfterFirst);
-    const firstScaleX = await underlineScaleX(page, 0);
-    const lastScaleX = await underlineScaleX(page, 4);
-    expect(firstScaleX, 'подчёркивание первой цифры обязано быть дорисовано раньше последней').toBeGreaterThan(0.9);
-    expect(lastScaleX, 'подчёркивание последней цифры ещё не должно начаться, когда первая уже дорисована').toBeLessThan(0.9);
+    const firstY = await digitUnderlineScreenY(page, 0);
+    const lastY = await digitUnderlineScreenY(page, 4);
+    expect(firstY, 'отвод первой цифры обязан быть дорисован (выше головы) раньше последней').toBeLessThan(curtainTop);
+    expect(lastY, 'отвод последней цифры ещё не должен быть дорисован, когда первый уже выше головы').toBeGreaterThan(curtainTop);
 
-    // Реверс — вернулись на scrollY=0, подчёркивание первой цифры гаснет (П6).
+    // Реверс — вернулись на scrollY=0, отвод первой цифры снова закрыт (П6).
     await page.evaluate(() => window.scrollTo(0, 0));
-    const backToTop = await underlineScaleX(page, 0);
-    expect(backToTop, 'после возврата на scrollY=0 подчёркивание обязано погаснуть').toBeLessThan(0.02);
+    const backToTopY = await digitUnderlineScreenY(page, 0);
+    expect(backToTopY, 'после возврата на scrollY=0 отвод первой цифры обязан снова оказаться ниже головы').toBeGreaterThan(curtainTop);
 
     await ctx.close();
   });
