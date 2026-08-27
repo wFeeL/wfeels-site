@@ -185,10 +185,27 @@ test.describe('линия на фоне — финал страницы дори
   }
 });
 
-test.describe('линия на фоне — краски в подвале нет (П-Ф3, D-126 правка раздела 2.4 брифа)', () => {
+/** ПЕРЕПИСАН ЦЕЛИКОМ `2026-08-27` (`70-workshop/specs/site-v3/
+ *  16-line-digits-and-finale-brief.md`, раздел 3.3, вариант Б «Разгон»,
+ *  выбран владельцем). Предмет этого блока «в подвале нет краски линии»
+ *  (`П-Ф3` брифа `15-…») отменяется вариантом Б дословно (раздел 3.3, п. 5
+ *  списка «чем жертвует») и заменяется ПРОТИВОПОЛОЖНЫМ по смыслу пунктом:
+ *  подвал ОБЯЗАН нести `.line` (уход переехал сюда с `contact`), но не
+ *  обязан и не должен нести ни одного акцентного пикселя (`П-Ф-Б6`, `D-128`
+ *  — «в подвале нуль акцента» держится нулём совпадений с вычисленным
+ *  `--accent`, а не отсутствием линии как таковой: краска ствола лежит на
+ *  плотности 13%/17%, той же, что несёт полотно на главной, и это не тот
+ *  же цвет, что чистый `--accent`).
+ *
+ *  Порядок слоёв (`П-Ф-Б5`) не отменяется, а РАСШИРЯЕТСЯ: `footer::before`
+ *  остаётся на `−2` (D-126, раздел 2.4 брифа `15-…», не тронуто), сама
+ *  линия подвала и её местная шторка (`.line-curtain-local`) стоят на `−1`
+ *  — выше фона подвала, ниже содержимого, `footer` собственного
+ *  `z-index` по-прежнему не заводит. */
+test.describe('линия на фоне — подвал несёт линию без акцента (П-Ф-Б5/П-Ф-Б6, вариант Б брифа `16-…`)', () => {
   for (const path of PAGES) {
     for (const colorScheme of ['light', 'dark'] as const) {
-      test(`${path}, тема ${colorScheme}: footer::before на z-index:-2, свой z-index не заведён, краски линии в подвале нет`, async ({ browser }) => {
+      test(`${path}, тема ${colorScheme}: порядок слоёв верен, линия в подвале есть, акцента в подвале нет`, async ({ browser }) => {
         const ctx = await browser.newContext({ reducedMotion: 'no-preference', colorScheme, viewport: { width: WIDTH, height: 900 } });
         const page = await ctx.newPage();
         await page.goto(path);
@@ -197,17 +214,73 @@ test.describe('линия на фоне — краски в подвале не�
         await page.evaluate((y) => window.scrollTo(0, y), maxScroll);
         await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
-        const footerStyle = await page.locator('footer').evaluate((el) => {
-          const before = getComputedStyle(el, '::before');
-          return { ownZIndex: getComputedStyle(el).zIndex, beforeZIndex: before.zIndex };
+        // П-Ф-Б5 — порядок слоёв: footer::before на -2 (не тронуто), footer
+        // своего z-index не завёл, .line/.line-curtain-local подвала — на -1.
+        const layers = await page.evaluate(() => {
+          const footer = document.querySelector('footer');
+          if (!footer) return null;
+          const before = getComputedStyle(footer, '::before');
+          const line = footer.querySelector(':scope > svg.line') as HTMLElement | null;
+          const curtainLocal = footer.querySelector(':scope > .line-curtain-local') as HTMLElement | null;
+          return {
+            ownZIndex: getComputedStyle(footer).zIndex,
+            beforeZIndex: before.zIndex,
+            lineZIndex: line ? getComputedStyle(line).zIndex : null,
+            curtainLocalZIndex: curtainLocal ? getComputedStyle(curtainLocal).zIndex : null,
+            hasLine: Boolean(line),
+          };
         });
-        expect(footerStyle.ownZIndex, 'footer завёл собственный z-index — уронил бы -2 в чужой локальный стек').toBe('auto');
-        expect(footerStyle.beforeZIndex, 'footer::before обязан стоять на z-index:-2 (раздел 2.4 брифа 15-…)').toBe('-2');
+        expect(layers, 'в подвале нет <footer> вовсе').not.toBeNull();
+        if (!layers) return;
+        expect(layers.ownZIndex, 'footer завёл собственный z-index — уронил бы -2 в чужой локальный стек').toBe('auto');
+        expect(layers.beforeZIndex, 'footer::before обязан стоять на z-index:-2 (раздел 2.4 брифа 15-…)').toBe('-2');
+        expect(layers.hasLine, 'у подвала нет .line — вариант Б ожидает уход, переехавший с contact (раздел 3.3 брифа 16-…)').toBe(true);
+        expect(layers.lineZIndex, 'линия подвала обязана стоять на z-index:-1, выше footer::before').toBe('-1');
+        if (layers.curtainLocalZIndex !== null) {
+          expect(layers.curtainLocalZIndex, 'местная шторка подвала обязана стоять на z-index:-1').toBe('-1');
+        }
 
-        const noLineInFooter = await page.evaluate(
-          () => document.querySelector('footer')?.querySelector('.line, .line-curtain') === null,
-        );
-        expect(noLineInFooter, 'в подвале остался .line/.line-curtain').toBe(true);
+        // П-Ф-Б6 — D-128, нуль акцента в подвале: вычисленный --accent не
+        // совпадает НИ С ОДНИМ цветовым свойством ни одного узла <footer>.
+        // Приём тот же, что уже держит D-128 на остальной странице —
+        // сопоставление вычисленного значения, а не визуальная оценка.
+        const accentMatches = await page.evaluate(() => {
+          const footer = document.querySelector('footer');
+          if (!footer) return [];
+          const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+          const probe = document.createElement('div');
+          probe.style.color = accent;
+          document.body.appendChild(probe);
+          const accentRgb = getComputedStyle(probe).color;
+          probe.remove();
+
+          const PROPS = [
+            'color',
+            'backgroundColor',
+            'borderTopColor',
+            'borderRightColor',
+            'borderBottomColor',
+            'borderLeftColor',
+            'outlineColor',
+            'textDecorationColor',
+            'fill',
+            'stroke',
+          ] as const;
+          const matches: string[] = [];
+          const nodes = [footer, ...Array.from(footer.querySelectorAll('*'))];
+          for (const node of nodes) {
+            const cs = getComputedStyle(node as Element);
+            for (const prop of PROPS) {
+              const value = cs[prop as keyof CSSStyleDeclaration] as unknown as string;
+              if (value && value === accentRgb) {
+                const el = node as Element;
+                matches.push(`${el.tagName.toLowerCase()}${el.className ? '.' + String(el.className).replace(/\s+/g, '.') : ''}: ${prop}`);
+              }
+            }
+          }
+          return matches;
+        });
+        expect(accentMatches, `D-128 нарушен: акцентный цвет найден в подвале на: ${accentMatches.join(', ')}`).toEqual([]);
 
         await ctx.close();
       });
