@@ -1,59 +1,37 @@
 import { test, expect } from '@playwright/test';
 
 /** Линия на фоне главной — бриф `70-workshop/specs/site-v3/05-line.md`,
- *  раздел 10 шаг 6. Механика — инлайновые `<svg class="line"><path/></svg>`
- *  плюс сосед `<div class="line-curtain">` внутри каждой `<section data-
- *  line-side>`/`<footer data-line-side>` — ОДИН класс `.line` на бокс, ОДИН
- *  путь на секцию: прогон, траверс и событие уже слиты реестром (`lib/
- *  linePaths.ts`) в один `d`. Элемента `.line-turn` больше нет (раздел 7.1
- *  брифа `05-line`: «отдельного бокса ему не нужно»).
+ *  раздел 10 шаг 6, поверх `70-workshop/specs/site-v3/
+ *  15-line-through-scale-brief.md` (раздел 2 — механика раскрытия).
  *
- *  ПРАВКА 2026-08-21 (D-080, «пролагивает при листании»): раскрытие пути
- *  больше не несёт `stroke-dashoffset` (не композитится Chromium — каждый
- *  кадр перекрашивает весь бокс). Путь теперь рисуется ЦЕЛИКОМ и статично,
- *  а раскрывает его шторка (`.line-curtain`) через `transform: scaleY(...)`
- *  на том же `view()`-таймлайне — композитное свойство, перекраски нет.
- *  ПРАВКА (тот же день, второй проход D-080): первая версия двигала шторку
- *  через `translate` — заменена на `scaleY`, потому что `translate` в
- *  процентах не композитится (величина зависит от высоты бокса, каждый
- *  кадр уходит на главный поток; замер `headed.mjs` — 38 пропущенных кадров
- *  вместо цели ≤10). Тесты ниже проверяют разметку и мотор ШТОРКИ, а не
- *  пути: `animation-name`/`transform` сидят на `<div class="line-curtain">`,
- *  не на `<path>`.
+ *  ПРАВКА `2026-08-27` (сквозная шкала): одиннадцать поштучных
+ *  `.line-curtain` (по одной на секцию + подвал) заменены ОДНОЙ шторкой на
+ *  всю страницу (`position: fixed`, `top: var(--line-head)`). У рисования
+ *  не остаётся ни одной прокруточной анимации — шторка не едет по
+ *  `view()`-таймлайну секции, она стоит на постоянной экранной линии, а
+ *  движется вместе с документом просто потому, что `scrollY` растёт.
+ *  Единственная анимация самой шторки — `line-load`, временная (1400мс),
+ *  не прокруточная, играет один раз при загрузке.
+ *
+ *  Тесты этого файла, проверявшие МЕХАНИЗМ раскрытия по секциям (`scaleY`
+ *  на каждой из одиннадцати шторок, «ровно один элемент в промежуточном
+ *  состоянии») — сняты вместе с предметом: посекционных окон раскрытия
+ *  больше нет, считать нечего. Их работу — протяжённость и непрерывность
+ *  краски — делает `background-line-ink-continuity.spec.ts` (П-Э1…П-Э4,
+ *  раздел 7 брифа `15-…`).
  *
  *  ЛОВУШКА headless-Chromium: по умолчанию он отдаёт `prefers-reduced-
  *  motion: reduce`, даже когда тест явно этого не просил — любая проверка
- *  движения обязана эмулировать `no-preference` явно, иначе «обычный путь»
- *  тихо тестирует то же самое запасное состояние, что и тест на reduce. */
+ *  движения обязана эмулировать `no-preference` явно. */
 
 const LINE_SELECTOR = '.line';
 const CURTAIN_SELECTOR = '.line-curtain';
-// Десять секций главной, подвал линии не несёт — раздел 12.1 брифа
-// `11-line-narrator-brief.md`, В-4 (ПРАВКА `2026-08-27`): владелец
-// подтвердил референс, линия уходит за левую кромку холста внутри самой
-// секции `contact` и в подвал не заходит, `Footer.astro` больше не рисует
-// `.line`/`.line-curtain`. Раньше здесь стояло 11 (десять секций + хвост
-// подвала, раздел 10 шаг 4 брифа `05-line`) — то число ушло вместе со
-// снятой записью `LINE_PATHS.footer`.
+// Десять секций главной несут путь (`svg.line`) — не тронуто этой правкой.
 const LINE_ELEMENT_COUNT = 10;
 
-/** Читает `scaleY` из `getComputedStyle(el).transform` — вычисленный вид
- *  всегда матрица `matrix(a, b, c, d, e, f)` для 2D `transform`, без
- *  вращения `b = c = 0`, `d` и есть `scaleY` (4-й компонент). `NaN`, если
- *  вычисленное значение — `none` (нет назначенного transform вовсе; не
- *  наш случай — шторка всегда несёт хотя бы базовое правило). */
-function scaleYFromTransform(computedTransform: string): number {
-  const match = computedTransform.match(/matrix\(([^)]+)\)/);
-  if (!match) return NaN;
-  const parts = match[1].split(',').map((n) => parseFloat(n.trim()));
-  return parts[3];
-}
-
 /** Ищет В ОДНОМ css-тексте `@supports`-блок, несущий анимацию шторки —
- *  тот, чьё тело содержит `.line-curtain` (маркер условия — общая
- *  техника, её же несут карточки/диалог/тизер в СВОИХ отдельных блоках,
- *  см. комментарий у вызова). Возвращает границы блока или `null`, если
- *  в этом конкретном тексте такого блока нет. */
+ *  тот, чьё тело содержит `.line-curtain` (маркер условия — общая техника,
+ *  её же несут карточки/диалог/тизер в СВОИХ отдельных блоках). */
 function findLineCurtainSupportsBlock(css: string, marker: string) {
   let start = css.indexOf(marker);
   while (start !== -1) {
@@ -72,19 +50,10 @@ function findLineCurtainSupportsBlock(css: string, marker: string) {
   return null;
 }
 
-/** Находит `@supports`-блок анимации шторки — В ЛЮБОЙ из форм подключения.
- *  `<style set:html={...}>` (`BackgroundLine.astro`, `revealKeyframesCss` +
- *  `drawingSupportsCss`) — единственный способ вставить сгенерированный по
- *  реестру CSS в Astro, и такой тег Astro НИКОГДА не выносит во внешний
- *  файл (в отличие от статических `<style>` без `set:html`) — он остаётся
- *  инлайновым в HTML. Позиционирование/бокс шторки (статический `<style>`
- *  того же компонента) при этом уходит во внешний подключённый файл —
- *  бандлер решает какой именно, число внешних файлов не гарантировано.
- *  Прежняя версия смотрела ТОЛЬКО на `link[rel="stylesheet"]` и падала
- *  «блок не нашёлся» — не потому что блок исчез, а потому что он живёт в
- *  инлайновом `<style>`, куда эта версия не смотрела. Проверяем ОБА места,
- *  как это делает сам браузер (инлайновые и подключённые правила
- *  каскадируются вместе одинаково). */
+/** Находит `@supports`-блок анимации шторки — в инлайновом `<style>` или в
+ *  подключённом файле (бандлер решает, куда попадёт литеральный `<style
+ *  is:global>` — число внешних файлов не гарантировано; браузер каскадирует
+ *  оба места одинаково). */
 async function findLineDrawingBlock(page: import('@playwright/test').Page) {
   const marker = '@supports (animation-timeline:view())';
 
@@ -111,31 +80,16 @@ async function findLineDrawingBlock(page: import('@playwright/test').Page) {
 }
 
 test.describe('линия на фоне — запасное состояние без поддержки animation-timeline', () => {
-  test('без блока @supports шторка убрана, линия видна целиком, без анимации', async ({ page }) => {
+  test('без блока @supports шторка убрана (display:none), линия видна целиком, без анимации', async ({ page }) => {
     await page.goto('/');
-    // `animation-timeline:view()` — общая техника: её же несут карточки,
-    // диалог и ядро тизера фабрики (каждый в СВОЁМ @supports). Резать нужно
-    // ИМЕННО блок линии — тот, что содержит уникальную для неё анимацию
-    // `.line-curtain{...animation-timeline...}` — а не первый по тексту
-    // @supports с этим условием (см. `findLineDrawingBlock`).
     const found = await findLineDrawingBlock(page);
     const withoutSupports = found.css.slice(0, found.start) + found.css.slice(found.end);
 
-    /* Вне вырезанного блока имя `line-load` остаётся ЗАКОННО — это само
-       объявление `@keyframes`, которое сборщик держит на верхнем уровне и
-       которое ничего не применяет: набор кадров без `animation-name` не
-       двигает ничего. Проверять надо ПРИМЕНЕНИЕ: базовое правило вне
-       `@supports` держит `transform: scaleY(0)` (шторка убрана) безусловно.
-
-       Голый `.not.toContain('animation-timeline:view()')` по ВСЕМУ
-       остатку файла — ложный сигнал: карточки (`.reveal`) несут ТУ ЖЕ
-       технику в СВОЁМ, отдельном и корректном `@supports (animation-
-       timeline: view())`, который здесь и должен остаться (комментарий
-       выше по файлу это прямо оговаривает). Проверять нужно узко —
-       что СЕЛЕКТОР `.line-curtain` нигде за пределами вырезанного блока
-       не несёт `animation-timeline`. */
-    const leaked = /\.line-curtain\{[^}]*animation-timeline/.test(withoutSupports);
-    expect(leaked, 'вне @supports осталось назначение animation-timeline на шторке').toBe(false);
+    // Вне вырезанного блока `.line-curtain` не должна нести ни `display:
+    // block`, ни `animation-timeline` — оба назначаются ТОЛЬКО внутри
+    // @supports/@media (раздел 2.2 брифа `15-…`).
+    const leakedTimeline = /\.line-curtain\{[^}]*animation-timeline/.test(withoutSupports);
+    expect(leakedTimeline, 'вне @supports осталось назначение animation-timeline на шторке').toBe(false);
 
     if (found.kind === 'inline') {
       await page.evaluate(
@@ -152,29 +106,25 @@ test.describe('линия на фоне — запасное состояние 
 
     const style = await page.locator(CURTAIN_SELECTOR).first().evaluate((el) => {
       const s = getComputedStyle(el);
-      return { transform: s.transform, animationName: s.animationName };
+      return { display: s.display, animationName: s.animationName };
     });
-    // Запасное состояние — `transform: scaleY(0)` (шторка сжата в ноль
-    // высоты, невидима — линия открыта целиком), безусловно, без анимации.
     expect(style.animationName).toBe('none');
-    const scaleY = scaleYFromTransform(style.transform);
-    expect(scaleY, `шторка не убрана: transform=${style.transform}`).toBeLessThan(0.02);
+    expect(style.display, 'шторка не убрана вне @supports — базовое правило обязано быть display:none').toBe('none');
   });
 });
 
 test.describe('линия на фоне — уменьшенное движение', () => {
-  test('при prefers-reduced-motion: reduce шторка убрана, без анимации',
+  test('при prefers-reduced-motion: reduce шторка убрана (display:none), без анимации',
     async ({ browser }) => {
       const ctx = await browser.newContext({ reducedMotion: 'reduce' });
       const page = await ctx.newPage();
       await page.goto('/');
       const style = await page.locator(CURTAIN_SELECTOR).first().evaluate((el) => {
         const s = getComputedStyle(el);
-        return { transform: s.transform, animationName: s.animationName };
+        return { display: s.display, animationName: s.animationName };
       });
       expect(style.animationName).toBe('none');
-      const scaleY = scaleYFromTransform(style.transform);
-      expect(scaleY, `шторка не убрана: transform=${style.transform}`).toBeLessThan(0.02);
+      expect(style.display).toBe('none');
       await ctx.close();
     });
 
@@ -187,8 +137,6 @@ test.describe('линия на фоне — уменьшенное движен�
         const s = getComputedStyle(el);
         return { dasharray: s.strokeDasharray, opacity: s.strokeOpacity };
       });
-      // Путь больше не несёт пунктир вовсе (раздел 7.2 брифа, ПРАВКА D-080) —
-      // раскрытие несёт шторка, не dasharray/dashoffset самого пути.
       expect(style.dasharray).toBe('none');
       expect(Number(style.opacity)).toBeGreaterThan(0);
       await ctx.close();
@@ -196,30 +144,34 @@ test.describe('линия на фоне — уменьшенное движен�
 });
 
 test.describe('линия на фоне — обычный путь (поддержка есть, движение разрешено)', () => {
-  test('каждая .line-curtain получает анимацию, завязанную на view()', async ({ browser }) => {
+  test('ровно одна .line-curtain на странице — сквозная шкала, не посекционные окна', async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: 'no-preference' });
     const page = await ctx.newPage();
     await page.goto('/');
-    const styles = await page.locator(CURTAIN_SELECTOR).evaluateAll((els) =>
-      els.map((el) => {
-        const s = getComputedStyle(el);
-        return { animationName: s.animationName, timeline: s.animationTimeline };
-      }));
-    // Десять секций главной + хвост подвала = 11 путей (раздел 10 шаг 4:
-    // «одиннадцать путей»). Переход больше не отдельный элемент (раздел 7.1).
-    expect(styles.length).toBe(LINE_ELEMENT_COUNT);
-    for (const s of styles) {
-      expect(s.animationName).not.toBe('none');
-    }
+    const count = await page.locator(CURTAIN_SELECTOR).count();
+    expect(count, 'раздел 2.2 брифа 15-…: одна шторка на весь документ, не одиннадцать').toBe(1);
+    await ctx.close();
+  });
+
+  test('шторка фиксирована к окну (position:fixed), стоит на --line-head, а не на scaleY-прогрессе секции', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'no-preference' });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    const style = await page.locator(CURTAIN_SELECTOR).evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { position: s.position, animationName: s.animationName, top: s.top };
+    });
+    expect(style.position).toBe('fixed');
+    expect(style.animationName).toBe('line-load');
+    expect(style.top, 'top шторки обязан быть числом px (var(--line-head) вычислен), не auto/0').not.toBe('auto');
     await ctx.close();
   });
 
   test('линия присутствует в HTML без выполнения JavaScript (статика)', async ({ request }) => {
     const res = await request.get('/');
     const html = await res.text();
-    // Десять секций главной + подвал (`footerLineData()`, раздел 7.2:
-    // «подвал получает тот же класс `.line`, ту же сторону, что у
-    // contact») — источник lib/sections.ts + Footer.astro.
+    // Десять секций главной + подвал (`footerLineData()`) несут метаданные
+    // data-line-side — не тронуто этой правкой (геометрия путей та же).
     expect((html.match(/data-line-side="(left|right)"/g) ?? []).length).toBe(11);
     expect(html).toContain('class="line"');
     expect(html).toContain('class="line-curtain"');
@@ -232,7 +184,7 @@ test.describe('линия на фоне — обычный путь (подде�
     const pointerEvents = await first.evaluate((el) => getComputedStyle(el).pointerEvents);
     expect(pointerEvents).toBe('none');
 
-    const curtain = page.locator(CURTAIN_SELECTOR).first();
+    const curtain = page.locator(CURTAIN_SELECTOR);
     await expect(curtain).toHaveAttribute('aria-hidden', 'true');
     const curtainPointerEvents = await curtain.evaluate((el) => getComputedStyle(el).pointerEvents);
     expect(curtainPointerEvents).toBe('none');
@@ -246,9 +198,8 @@ test.describe('линия на фоне — только главная сего
   });
 });
 
-/* Раздел 6 брифа отменяет D-026: порог 900 px (линия не рисуется вовсе)
- * заменён на 480 px, и обоснование другое — прогон вынесен в поле страницы
- * вне колонки содержимого, а не прибит к левому краю в 64…320 px. */
+/* Раздел 6 брифа `05-line` отменяет D-026: порог 900 px (линия не рисуется
+ * вовсе) заменён на 480 px. */
 test.describe('линия на фоне — порог 480 px (раздел 6, D-026 отменён)', () => {
   test('на 390 px (мобильный) линии нет в разметке видимой', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
@@ -270,13 +221,19 @@ test.describe('линия на фоне — порог 480 px (раздел 6, D
     await page.goto('/');
     await expect(page.locator(LINE_SELECTOR).first()).toBeVisible();
   });
+
+  test('на 480…899 px сквозная шторка тоже видна (display:block) — раздел 6.4 брифа 15-…: механика ширины не знает', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width: 600, height: 900 } });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    const display = await page.locator(CURTAIN_SELECTOR).evaluate((el) => getComputedStyle(el).display);
+    expect(display).toBe('block');
+    await ctx.close();
+  });
 });
 
 /* Раздел 9, пункт 7 — ни на одной ширине из числа проверяемых линия не
- * порождает горизонтальную прокрутку: холст `.line` ограничен `--line-canvas`
- * (`min(100vw, 1440px)`, сужен до 1252px на 1324…1439 ради рельса — раздел
- * 4.2 брифа `05-line`), границу проверяем измерением, а не полагаемся на
- * формулу. */
+ * порождает горизонтальную прокрутку. */
 test.describe('линия на фоне — не создаёт горизонтальной прокрутки', () => {
   for (const width of [480, 768, 900, 1220, 1324, 1440, 1920]) {
     test(`${width}px: scrollWidth === clientWidth`, async ({ page }) => {
@@ -290,26 +247,10 @@ test.describe('линия на фоне — не создаёт горизонт
 });
 
 /* Раздел 9, пункт 10 — переходов на странице ровно (число точек рельса − 1),
- * и они стоят на границах точек рельса, а не где придётся. Число было семь
- * при восьми точках рельса; правка владельца 2026-08-18 (пункт 23 захода
- * `03-redesign-2026-08-14`: `pain` и `faq` получили собственные точки) подняла
- * рельс до десяти точек, значит переходов теперь девять — это ожидаемое
- * следствие пересчёта `lib/backgroundLine.ts` от `railPoints()` (единственный
- * источник, второй список переходов не заводится), а не поломка. Проверка
- * идёт по data-атрибутам (lib/backgroundLine.ts, раздел 4, схема Ч-3), не по
- * картинке — картинка проверяется юнит-тестом геометрии. */
+ * и они стоят на границах точек рельса. Метаданные Ч-4 (`data-line-side`/
+ * `data-line-turn`) не тронуты этой правкой — механика раскрытия и разметка
+ * стороны/перехода независимы друг от друга. */
 test.describe('линия на фоне — переходы стоят на границах актов (схема Ч-4)', () => {
-  /* Прежний сторож кодировал схему Ч-3 («переход на границе каждой точки
-   * рельса») и требовал девять переходов. Ч-3 умерла от арифметики: D-048
-   * дал десять точек рельса на десять секций, и правило выродилось в
-   * «переход на каждом стыке» — то, что бриф линии сам отверг словами
-   * «событие на каждом стыке — значит событий нет». Действует Ч-4 (D-049):
-   * переход стоит на границе АКТОВ, а переход, оставляющий прогон короче
-   * экрана, поглощается предыдущим актом.
-   *
-   * Проверяется правило, а не список: набор переходов выводится из
-   * замеренной раскладки заново и сверяется с разметкой. Список секций в
-   * тесте не зашит — смени состав главной, и ожидание пересчитается само. */
   const MIN_RUN = 900;
 
   test('переходы стоят там, где меняется акт, и нигде больше', async ({ page }) => {
@@ -328,7 +269,6 @@ test.describe('линия на фоне — переходы стоят на г�
 
     const turning = sections.filter((s) => s.turn !== 'none');
 
-    // 1. Сторона меняется РОВНО на переходах и нигде больше.
     sections.forEach((s, i) => {
       if (i === 0) return;
       const flipped = s.side !== sections[i - 1].side;
@@ -339,13 +279,11 @@ test.describe('линия на фоне — переходы стоят на г�
       ).toBe(s.turn !== 'none');
     });
 
-    // 2. Направление перехода согласовано со стороной, на которую он ведёт.
     turning.forEach((s) => {
       expect(s.turn, `переход в «${s.id}» ведёт не на свою сторону`)
         .toBe(s.side === 'right' ? 'lr' : 'rl');
     });
 
-    // 3. Ни один прогон не короче экрана — вторая половина правила Ч-4.
     const bounds = [0, ...turning.map((s) => s.top), sections[sections.length - 1].bottom];
     for (let i = 1; i < bounds.length; i += 1) {
       const run = bounds[i] - bounds[i - 1];
@@ -353,162 +291,7 @@ test.describe('линия на фоне — переходы стоят на г�
         .toBeGreaterThanOrEqual(MIN_RUN);
     }
 
-    // 4. Начало слева, финиш справа — линия приходит к подвалу с той же
-    //    стороны, с которой он рисует свой хвост.
     expect(sections[0].side).toBe('left');
     expect(sections[sections.length - 1].side).toBe('right');
-  });
-});
-
-/* Раздел 9, пункты 5–7 — «рисуется, а не появляется» в машинной форме.
- * Устройство раздела 7.3 (`animation-range: cover var(--line-lead) cover
- * calc(100% - var(--line-trail))`, `lead + trail = 100vh`, боксы мостят
- * документ без зазоров — раздел 3.5) обязано давать РОВНО ОДИН элемент в
- * промежуточном состоянии (шторка ЧАСТИЧНО убрана — `0 < прогресс < 1`) в
- * любой момент прокрутки: все остальные — строго «убрана» (открыт целиком)
- * или строго «на месте» (ещё не начат). Ноль элементов в промежуточном
- * состоянии — это и есть дефект «появляется кусками, а не рисуется».
- *
- * ПРАВКА 2026-08-21 (D-080): «прогресс» теперь читается не из
- * `stroke-dashoffset` пути, а из `transform: scaleY(...)` шторки —
- * безразмерная величина, `frac = 1 − scaleY` даёт долю раскрытия напрямую,
- * без деления на `getBoundingClientRect().height` (в отличие от первой
- * версии на `translate`, которая давала долю от высоты бокса). */
-test.describe('линия на фоне — непрерывность рисования (раздел 9, пункты 5–7)', () => {
-  test('ровно один элемент в промежуточном состоянии на каждом шаге прокрутки', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/');
-    // `#hero` несёт одноразовое вычерчивание при загрузке (раздел 7.4,
-    // `line-load`, 1400ms, время — не прокрутка): пока оно не осядет,
-    // `transform` героя идёт по РЕАЛЬНОМУ времени, а не по позиции
-    // прокрутки — не дефект, а другой, законный источник движения того же
-    // свойства. Ждём его завершения явно.
-    await page.waitForTimeout(1500);
-
-    const { scrollHeight, viewportHeight } = await page.evaluate(() => ({
-      scrollHeight: document.documentElement.scrollHeight,
-      viewportHeight: window.innerHeight,
-    }));
-    const maxScroll = scrollHeight - viewportHeight;
-    expect(maxScroll, 'страница не прокручивается — тест бессмыслен').toBeGreaterThan(300);
-
-    const STEP = 300;
-    const samples: { y: number; mid: number; total: number }[] = [];
-    for (let y = 0; y <= maxScroll; y += STEP) {
-      await page.evaluate((sy) => window.scrollTo(0, sy), y);
-      // Скролл-таймлайн пересчитывается на кадре компоновки, не синхронно
-      // с `scrollTo()` — без ожидания следующего кадра снимок читает СТАРОЕ
-      // значение (ловушка ловилась дважды на `stroke-dashoffset`, затем на
-      // `translate`, здесь тот же приём для `transform`).
-      await page.evaluate(
-        () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
-      );
-      const counts = await page.evaluate((sel) => {
-        const curtains = Array.from(document.querySelectorAll(sel)) as HTMLElement[];
-        let mid = 0;
-        for (const c of curtains) {
-          // `transform: scaleY(<число>)` вычисляется в БЕЗРАЗМЕРНУЮ матрицу
-          // `matrix(1, 0, 0, scaleY, 0, 0)` — никакой двусмысленности px/%,
-          // которую нёс прежний `translate` (ловушка первой версии этого
-          // теста), делить на высоту бокса не нужно вовсе. `scaleY` — 4-й
-          // компонент матрицы; тождество `BackgroundLine.astro`/`toScaleY`:
-          // `scaleY = 1 − X/100`, значит доля раскрытия `frac = 1 − scaleY`.
-          const t = getComputedStyle(c).transform;
-          const match = t.match(/matrix\(([^)]+)\)/);
-          const scaleY = match ? parseFloat(match[1].split(',')[3]) : 1;
-          const frac = 1 - scaleY;
-          // 0 — перекрывает целиком, 1 — убрана целиком.
-          // Порог 2%, а не 0,2% — тот же приём, что был у `stroke-dashoffset`:
-          // на СТЫКЕ двух окон предыдущий элемент стоит на ~0,997 (открыт), а
-          // следующий на ~0,003 (едва начат).
-          if (frac > 0.02 && frac < 0.98) mid += 1;
-        }
-        return { mid, total: curtains.length };
-      }, CURTAIN_SELECTOR);
-      samples.push({ y, mid: counts.mid, total: counts.total });
-    }
-
-    expect(samples[0].total, 'шторки линии не найдены на странице').toBe(LINE_ELEMENT_COUNT);
-
-    // Ноль элементов в промежуточном состоянии допустим на самом верху (до
-    // начала первого прогона), на самом низу (после конца хвоста) — раздел
-    // 9, пункт 7 — и, ПРАВКА `2026-08-27` (задача «починить механику
-    // проявления линии», вариант А владельца, `BackgroundLine.astro`,
-    // `--line-draw-trail`): на КОРОТКОМ прогоне подряд идущих выборок ровно
-    // на стыке двух окон раскрытия.
-    //
-    // Было (до этой правки, ПРАВКА 2026-08-22): `--line-lead + --line-trail
-    // = 100vh` РОВНО — окна раскрытия соседних секций мостили прокрутку без
-    // зазора, и стык был бесконечно узкой ТОЧКОЙ; допуск на одну
-    // изолированную выборку с `mid=0` был запасом на дискретность сетки
-    // сэмплирования (`STEP=300px`), а не признанием настоящего зазора.
-    //
-    // Эта точная сумма — и есть причина дефекта «голова рисования паркуется
-    // на 2/3 экрана» (диагноз задачи, подтверждён визуально и сторожем
-    // `background-line-ink-continuity.spec.ts`): при `lead+trail=100vh`
-    // верхняя кромка шторки стоит на ОДНОЙ И ТОЙ ЖЕ точке экрана и в начале,
-    // и в конце своего окна — голова физически не может сдвинуться. Лечение
-    // (раздел «ПРАВКА 2026-08-27» в `BackgroundLine.astro`) — сделать сумму
-    // СТРОГО БОЛЬШЕ вьюпорта для самой линии (`--line-draw-trail: 110vh`,
-    // кнопка и цифры остаются на прежнем `--line-trail: 67vh`, см. тот же
-    // файл): окна раскрытия соседних секций перестают перекрываться и
-    // раздаются ВРЕМЕННЫМ зазором — на протяжении этого зазора ПРЕДЫДУЩАЯ
-    // секция уже полностью дорисована (её шторка убрана целиком, `frac≈1`,
-    // не «в процессе»), а СЛЕДУЮЩАЯ ещё не начала (её шторка ещё закрыта
-    // целиком, `frac≈0`) — отсюда `mid=0` на НЕСКОЛЬКИХ подряд идущих
-    // выборках, не на одной. Это НЕ визуальный разрыв: чернила предыдущей
-    // секции покрывают её бокс ПОЛНОСТЬЮ до самой границы со следующей (тот
-    // же физический стык, без выноса), и чернила следующей стартуют РОВНО
-    // от той же границы, когда её окно наконец откроется — доказано
-    // геометрическим сторожем `background-line-ink-continuity.spec.ts`,
-    // который меряет ФАКТИЧЕСКИЕ чернила на экране, а не состояние шторки,
-    // и держит все семь целевых ширин зелёными. Этот тест ниже проверяет
-    // МЕХАНИЗМ шторки (её `transform`), а не картинку, и ему нужен
-    // обновлённый допуск — не отменённый, а измеренный.
-    //
-    // Ширина ожидаемого «мёртвого» прогона выводится из тех же токенов,
-    // что несёт `BackgroundLine.astro` (`--line-lead: 33vh`,
-    // `--line-draw-trail: 110vh`), не переписывается вторым числом:
-    // излишек суммы над вьюпортом — `(33+110−100)vh = 43vh`, при вьюпорте
-    // теста (900px высотой) это `0,43·900 ≈ 387px`. Максимум ПОДРЯД идущих
-    // выборок шагом `STEP`, которые может целиком накрыть зона такой
-    // ширины при любом сдвиге сетки относительно границы секций —
-    // `floor(387/300)+1 = 2` (тот самый случай, который и держит замер:
-    // падения ловились ПАРАМИ, `2100/2400`, `5700/6000`, `7800/8100`).
-    // Прогон длиннее этого — уже не эффект геометрии диапазона, а
-    // настоящий незакрытый зазор между окнами, и остаётся дефектом.
-    const LEAD_VH = 33;
-    const DRAW_TRAIL_VH = 110; // BackgroundLine.astro, `--line-draw-trail`
-    const deadZonePx = ((LEAD_VH + DRAW_TRAIL_VH - 100) / 100) * viewportHeight;
-    const maxDeadRun = Math.floor(deadZonePx / STEP) + 1;
-
-    const bad: typeof samples = [];
-    let runStart = -1;
-    for (let i = 0; i < samples.length; i++) {
-      const s = samples[i];
-      if (s.mid > 2) {
-        bad.push(s); // больше двух «в процессе» одновременно — не эффект стыка, дефект.
-        continue;
-      }
-      if (s.mid === 0) {
-        if (runStart === -1) runStart = i;
-        continue;
-      }
-      // s.mid — 1 или 2, прогон нулей (если был) закрылся здесь.
-      if (runStart !== -1) {
-        const runLen = i - runStart;
-        const edge = runStart === 0; // прогон от самого верха — законное «до начала» (пункт 7).
-        if (!edge && runLen > maxDeadRun) bad.push(...samples.slice(runStart, i));
-        runStart = -1;
-      }
-    }
-    // Прогон нулей, дотянувший до самого низа страницы без закрывающей
-    // ненулевой выборки, сюда не попадает вовсе (цикл выше добавляет в
-    // `bad` только ЗАКРЫТЫЕ прогоны) — законное «после конца хвоста»
-    // (раздел 9, пункт 7), второй проверки не требует.
-    expect(
-      bad,
-      `непрерывность нарушена в точках прокрутки: ${bad.map((s) => `${s.y}px (mid=${s.mid})`).join(', ')}`,
-    ).toEqual([]);
   });
 });

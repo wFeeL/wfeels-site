@@ -18,6 +18,26 @@ import { test, expect } from '@playwright/test';
 
 const VIEWPORT_1440_900 = { width: 1440, height: 900 };
 
+/** Читает `--line-head` в px на живой странице (`70-workshop/specs/site-v3/
+ *  15-line-through-scale-brief.md`, раздел 2.5/4.1) — заменяет прежнюю
+ *  константу `0.67 * vh` (`cover calc(100% - var(--line-trail))`,
+ *  `--line-trail: 67vh`) всюду, где пороги считались от неё. Приём —
+ *  `position: fixed` зонд с `top: var(--line-head)`: браузер сам резолвит
+ *  формулу `max(80vh, calc(100vh - 347px))` в пиксели, второй копии
+ *  формулы в тесте не заводится. */
+async function readLineHeadPx(page: import('@playwright/test').Page): Promise<number> {
+  return page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.position = 'fixed';
+    probe.style.visibility = 'hidden';
+    probe.style.top = 'var(--line-head)';
+    document.body.appendChild(probe);
+    const head = probe.getBoundingClientRect().top;
+    probe.remove();
+    return head;
+  });
+}
+
 /** Декодирует PNG-снимок средствами самого браузера (`Image` → `<canvas>` →
  *  `getImageData`, усреднение центрального пятна 4×4) — библиотека для
  *  чтения PNG в проекте не заведена и не нужна. Общий хвост для `readPixel`
@@ -107,8 +127,12 @@ test.describe('линия-рассказчик — П1: непрерывност
       await page.goto('/');
 
       // П-14 (структурно): footer не несёт собственного непрозрачного фона —
-      // фон переехал на footer::before (z-index -4), сам footer не заводит
-      // z-index (иначе -4 разбирался бы в чужом локальном стеке, не общем).
+      // фон переехал на footer::before (z-index -2, раздел 2.4 брифа
+      // `15-line-through-scale-brief.md`, правка `2026-08-27` — было -4),
+      // сам footer не заводит z-index (иначе -2 разбирался бы в чужом
+      // локальном стеке, не общем). Числовое значение z-index проверяет
+      // `background-line-footer-reach.spec.ts` (П-Ф3); здесь — структурный
+      // инвариант «footer сам не несёт z-index».
       const footerStyle = await page.locator('footer').evaluate((el) => {
         const s = getComputedStyle(el);
         return { background: s.backgroundColor, zIndex: s.zIndex, position: s.position };
@@ -131,21 +155,23 @@ test.describe('линия-рассказчик — П1: непрерывност
     });
   }
 
-  test('на стыке contact → подвал нет горизонтального среза: плотный скан секций остаётся зелёным (KNOWN_GAP не пополнился)', async () => {
-    // Геометрический скан стыков и середин секций (background-line-ink-continuity.spec.ts)
-    // не тронут этой задачей и покрывает 480–899px известным разрывом
-    // .mobile-cta-range (KNOWN_GAP, задокументирован там же, продуктовый
-    // вопрос без решения владельца — раздел 7 п.7 нашего брифа). Здесь
-    // фиксируется факт: список известных разрывов не пополнился новым —
-    // при регрессии footer::before список исполнитель обязан обновить
-    // руками, а не расширять тест.
+  test('сторож протяжённости линии (background-line-ink-continuity.spec.ts) не заводит скрытых исключений', async () => {
+    // ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/
+    // 15-line-through-scale-brief.md`): сторож переписан целиком под
+    // сквозную шкалу и сканирует ширины ≥900px (раздел 2.5 брифа/П-Э1…П-Э4);
+    // известный зазор `.mobile-cta-range` между `faq`/`contact` на
+    // 480…899px — раздел 6.4 брифа: «остаётся и меняет природу», решение
+    // владельца не получено, вопрос вынесен отдельно (раздел 9 брифа), в
+    // разметку/скан этого файла не входит. Проверка здесь — что новый
+    // сторож не завёл СВОЙ список исключений (`KNOWN_GAP` или аналог) молча:
+    // если такой список появится, это будет означать новый необъявленный
+    // разрыв, а не восстановленный.
     const { readFileSync } = await import('node:fs');
     const src = readFileSync(
       new URL('./background-line-ink-continuity.spec.ts', import.meta.url),
       'utf8',
     );
-    const matches = src.match(/width:\s*\d+,/g) ?? [];
-    expect(matches.length, 'KNOWN_GAP пополнился новой шириной — расхождение стало ожидаемым вместо починенного').toBe(1);
+    expect(src, 'сторож протяжённости завёл список исключений — разрыв не задокументирован явно в брифе').not.toMatch(/KNOWN_GAP/);
   });
 });
 
@@ -253,10 +279,15 @@ test.describe('линия-рассказчик — П2: кнопка перво�
       // (4 интервала по 8,8px) плюс запас — на нём ни один из пяти порогов
       // не должен быть пройден.
       const bottom = await page.locator('#hero .cta .btn.primary').evaluate((el) => el.getBoundingClientRect().bottom);
-      const afterScrollY = Math.ceil(bottom + 0 - 0.67 * VIEWPORT_1440_900.height) + 8;
+      // Раздел 4.2 брифа `15-line-through-scale-brief.md`: механическая
+      // замена `0.67 · vh` (было — `cover calc(100% - var(--line-trail))`)
+      // на `--line-head` (стало — `cover calc(100% - var(--line-head))`),
+      // читаемый живьём, а не второй копией формулы `max(80vh, 100vh-347)`.
+      const lineHead = await readLineHeadPx(page);
+      const afterScrollY = Math.ceil(bottom - lineHead) + 8;
       const beforeAllScrollY = Math.max(
         0,
-        Math.floor(bottom + 0 - 0.67 * VIEWPORT_1440_900.height) - 8 - Math.ceil((N_STEPS - 1) * STEP_PX) - 8,
+        Math.floor(bottom - lineHead) - 8 - Math.ceil((N_STEPS - 1) * STEP_PX) - 8,
       );
 
       await page.evaluate((y) => window.scrollTo(0, y), beforeAllScrollY);
@@ -371,33 +402,28 @@ test.describe('линия-рассказчик — П2: кнопка перво�
     });
   }
 
-  // РАСХОЖДЕНИЕ С БРИФОМ (измерено, не опечатка теста): раздел 3, П2(г)
-  // называет границу «окно выше 1249px» при формуле `0,67·vh ≥ 881`
-  // (881 — нижняя кромка кнопки, конец диапазона). Сама формула, решённая
-  // для 881, даёт vh = 881 / 0,67 ≈ 1314,9, а не 1249 (1249 — это
-  // 837 / 0,67, ВЕРХНЯЯ кромка кнопки, начало диапазона, другая строка той
-  // же таблицы). Прямой замер подтверждает формулу, а не число 1249: на
-  // высоте 1315px кнопка уже полностью акцентная (проверено `astro
-  // preview`, окно 1440×высота, `getComputedStyle`). Порог не затронут
-  // лестницей — это порог ПЯТОГО (последнего, самого широкого) слоя, тот
-  // же самый, что нёс единственный слой до неё.
+  // ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/
+  // 15-line-through-scale-brief.md`, раздел 4.1/4.2): порог считается от
+  // `--line-head`, не от `0,67·vh` — граница пятого (последнего, самого
+  // широкого) слоя переходит в «уже акцентная» там, где `--line-head ≥ 881`
+  // (881 — нижняя кромка кнопки, конец диапазона, живая геометрия, не
+  // тронута этой правкой). `--line-head = max(80vh, 100vh − 347)`, и при
+  // `vh < 1735px` (обе проверяемые здесь высоты — 900 и ~1102 — далеко ниже)
+  // это ровно `0,8·vh`: `vh ≥ 881 / 0,8 = 1101,25`, округлено вверх — 1102px.
+  // Порог не затронут лестницей — это порог ПЯТОГО слоя, тот же самый, что
+  // нёс единственный слой до неё.
   //
-  // ПОБОЧНОЕ СЛЕДСТВИЕ ЛЕСТНИЦЫ (раздел 10.6, Р-3), которого не было у
-  // единственного слоя: у слоя `data-step="1"` (самого узкого, 1/5
-  // ширины) порог сдвинут РАНЬШЕ на 35,2px прокрутки — на высоте окна
-  // между ~1262px (порог первого слоя) и 1315px (порог пятого) кнопка при
-  // scrollY=0 уже ЧАСТИЧНО акцентная (левые 20% ширины), а не полностью
-  // серая. Прежний бинарный тест «1314 ещё серая / 1315 уже акцентная»
-  // ловил ровно эту границу единственного слоя и на лестнице закономерно
-  // перестал быть верным для 1314 (при 1314 первый слой уже загорелся).
-  // Здесь проверяются оба КРАЯ диапазона, а не прежняя тесная пара:
+  // ПОБОЧНОЕ СЛЕДСТВИЕ ЛЕСТНИЦЫ (раздел 10.6, Р-3, не тронуто этой правкой):
+  // у слоя `data-step="1"` (самого узкого) порог сдвинут РАНЬШЕ на 35,2px
+  // прокрутки — между порогом первого и порогом пятого слоя кнопка при
+  // scrollY=0 уже ЧАСТИЧНО акцентная. Здесь проверяются оба КРАЯ диапазона:
   // заведомо малая высота (900px, тот же VIEWPORT_1440_900, на которой
-  // «серая при scrollY=0» уже проверена выше по всем пяти слоям) —
-  // кнопка обязана быть ПОЛНОСТЬЮ серой; 1315px — ПОЛНОСТЬЮ акцентной.
-  test('окно 900px: кнопка ещё полностью серая при загрузке; окно ≥1315px (граница по формуле брифа 0,67·vh ≥ 881, не 1249 — см. комментарий): кнопка уже полностью акцентная (раздел 3, П2(г) — законное исключение из П-5)', async ({ browser }) => {
+  // «серая при scrollY=0» уже проверена выше по всем пяти слоям) — кнопка
+  // обязана быть ПОЛНОСТЬЮ серой; 1102px — ПОЛНОСТЬЮ акцентной.
+  test('окно 900px: кнопка ещё полностью серая при загрузке; окно ≥1102px (граница по формуле --line-head ≥ 881, раздел 4.2 брифа 15-…): кнопка уже полностью акцентная (раздел 3, П2(г) — законное исключение из П-5)', async ({ browser }) => {
     const heightsAndExpected: [number, string][] = [
       [900, 'ещё-серая'],
-      [1315, 'уже-акцентная'],
+      [1102, 'уже-акцентная'],
     ];
     for (const [height, expected] of heightsAndExpected) {
       const ctx = await browser.newContext({
@@ -658,7 +684,10 @@ test.describe('линия-рассказчик — П4: спина шагов и
     // Прокрутка до конца окна первой цифры (01) — она дорисована, а
     // последняя (05), стоящая заметно ниже по документу, ещё нет.
     const firstBottom = await page.locator('#process .step .num').first().evaluate((el) => el.getBoundingClientRect().bottom + window.scrollY);
-    const scrollYAfterFirst = Math.ceil(firstBottom - 0.67 * VIEWPORT_1440_900.height) + 8;
+    // Раздел 4.3 брифа `15-line-through-scale-brief.md`: та же механическая
+    // замена `0,67·vh` → `--line-head`, что и у лестницы кнопки выше.
+    const lineHead = await readLineHeadPx(page);
+    const scrollYAfterFirst = Math.ceil(firstBottom - lineHead) + 8;
     await page.evaluate((y) => window.scrollTo(0, y), scrollYAfterFirst);
     const firstScaleX = await underlineScaleX(page, 0);
     const lastScaleX = await underlineScaleX(page, 4);
