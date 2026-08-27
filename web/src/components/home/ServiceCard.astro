@@ -8,10 +8,17 @@ import Card from '../Card.astro';
 import ServiceIcon from './ServiceIcon.astro';
 import type { ServiceGroup } from '../../data/services';
 
-interface Props { group: ServiceGroup }
-const { group } = Astro.props;
+interface Props {
+  group: ServiceGroup;
+  /** Целевая коробка линии-рассказчика (`70-workshop/specs/site-v3/
+   *  15-line-through-scale-brief.md`, раздел 5.2) — переезжает в `Card`
+   *  без собственной логики, `Services.astro` решает, у какой группы он
+   *  `true`, по замеру пересечения траверса с боксом карточки. */
+  trace?: boolean;
+}
+const { group, trace = false } = Astro.props;
 ---
-<Card stack={true}>
+<Card stack={true} trace={trace}>
   <div class="body">
     <ServiceIcon kind={group.icon} />
     <h3 class="t-h3">{group.title}</h3>

@@ -100,6 +100,12 @@ const ILLUSTRATIONS: Record<string, any> = {
         illustrationHeight={ILLUSTRATION_HEIGHT[item.slug]}
         illustrationMobileHeight={MOBILE_HEIGHT[item.slug]}
         illustrationBare={item.slug === 'storefront' || item.slug === 'websites'}
+        {/* Раздел 5.2 брифа `15-line-through-scale-brief.md`: единственное
+            поле секции, которое реестр 12.5 называет пересечённым —
+            «лист «Замера»» (`CaseWeightIllustration`, slug `site-v3`).
+            `storefront`/`websites` идут `bare` (см. выше) — паспарту у них
+            нет вовсе, целью становиться нечему. */}
+        illustrationTrace={item.slug === 'site-v3'}
         centerCopy={item.slug === 'storefront' || item.slug === 'websites'}
         href={caseHref(item.slug)}
         hreflang={locale === 'en' ? 'ru' : undefined}

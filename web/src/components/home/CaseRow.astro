@@ -35,6 +35,10 @@ interface Props {
   illustrationMobileHeight?: number;
   /** Поле без паспарту — для реального скриншота, уже имеющего свою рамку. */
   illustrationBare?: boolean;
+  /** Целевая коробка линии-рассказчика — см. `CaseIllustrationField`, проп
+   *  `trace` (`70-workshop/specs/site-v3/15-line-through-scale-brief.md`,
+   *  раздел 5.2). */
+  illustrationTrace?: boolean;
   /** Центрировать короткий текст по вертикали относительно высокой галереи. */
   centerCopy?: boolean;
   /** Реально построенная detail-страница. Без адреса заголовок остаётся текстом. */
@@ -44,7 +48,7 @@ interface Props {
 }
 const {
   item, mirrored = false, illustrationHeight, illustrationMobileHeight,
-  illustrationBare = false, centerCopy = false, href, hreflang,
+  illustrationBare = false, illustrationTrace = false, centerCopy = false, href, hreflang,
 } = Astro.props;
 ---
 <div class:list={['row', { mirror: mirrored, 'center-copy': centerCopy }]}>
@@ -62,6 +66,7 @@ const {
       height={illustrationHeight}
       mobileHeight={illustrationMobileHeight}
       bare={illustrationBare}
+      trace={illustrationTrace}
     >
       <slot />
     </CaseIllustrationField>

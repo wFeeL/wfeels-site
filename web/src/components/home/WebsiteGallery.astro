@@ -105,15 +105,19 @@ const ui = GALLERY_UI[locale];
     display: grid;
     place-items: center;
     overflow: clip;
-    /* Линия-рассказчик (`70-workshop/specs/site-v3/11-line-narrator-brief.md`,
-       раздел 10.3, Р-1): поле `CaseIllustrationField` вокруг этой галереи
-       рисуется `bare` (`illustrationBare` в `Cases.astro`) — прозрачным,
-       без собственного паспарту. Но сама подложка сцены под скрином несла
-       СОБСТВЕННУЮ непрозрачную заливку `--surface` и оставалась тем самым
-       непрозрачным листом, который правило кальки обязано было снять, а не
-       заглаживало намерением — приёмка (П-19) меряет результат. Та же
-       плотность 62%, что и у остальных листов главной. */
-    background: color-mix(in srgb, var(--surface) 62%, transparent);
+    /* Калька СНЯТА (`70-workshop/specs/site-v3/15-line-through-scale-brief.
+       md`, раздел 5, задача 3) — правило раздела 10.3 брифа
+       `11-line-narrator-brief.md` отменено целиком, второго числа плотности
+       не заводится. Поле `CaseIllustrationField` вокруг этой галереи
+       рисуется `bare` (`illustrationBare` в `Cases.astro`) — прозрачным, без
+       собственного паспарту, но сама подложка сцены под скрином несёт
+       СОБСТВЕННУЮ непрозрачную заливку `--surface`: это «лист» (раздел 5.2),
+       не цель — траверс `cases` пересекает только «Замер» (`site-v3`,
+       `#cases .field:not(.bare)`, обвод в `CaseIllustrationField.astro`), а
+       блок «Сайты» стоит на другом отрезке пути (замерено геометрией того же
+       способа, что и целевые карточки — пересечение есть, но это законный
+       слепой прогон, назван в П-Э5, не заслон без имени). */
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
   }

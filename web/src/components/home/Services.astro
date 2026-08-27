@@ -16,8 +16,20 @@ const t = dict(locale);
 <Label>{t.servicesLabel}</Label>
 <h2 class="t-h2">{t.servicesHeading}</h2>
 
+{/* `trace` — раздел 5.2 брифа `70-workshop/specs/site-v3/
+    15-line-through-scale-brief.md`: три из четырёх карточек — цели траверса
+    линии-рассказчика (`linePaths.ts`, `services: traversePath(...)`), одна
+    («ИИ») — нет. Замерено геометрически (`getScreenCTM`/`getPointAtLength`
+    траверса против `getBoundingClientRect()` каждой карточки, 1180/1440/1920,
+    метод раздела 0 того же брифа): траверс проходит сквозь «Сайты»,
+    «Автоматизация и интеграции» и «Telegram» (заметно, ~65–140 точек выборки
+    из 400 на каждую), «ИИ» не задевает вовсе (0 точек на всех трёх ширинах) —
+    S-дуга идёт по верхнему ряду и по правой карточке нижнего, левая нижняя
+    остаётся вне хода. `icon` — устойчивый идентификатор группы (не индекс,
+    не заголовок), не порядковый номер: правило переживёт переупорядочивание
+    карточек в `data/services.ts`, если оно случится. */}
 <div class="grid">
-  {serviceGroups(locale).map((group) => <ServiceCard group={group} />)}
+  {serviceGroups(locale).map((group) => <ServiceCard group={group} trace={group.icon !== 'ai'} />)}
 </div>
 
 {/* Строка ниш («Под вашу отрасль: …») снята правкой владельца 2026-08-21:

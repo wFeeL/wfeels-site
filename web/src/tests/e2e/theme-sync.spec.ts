@@ -29,19 +29,12 @@ import { test, expect } from '@playwright/test';
  * который его красит, читая сам токен с `:root` в тот же момент: если узел
  * отстал от токена, его цвет не совпадёт с уже обновившимся значением
  * переменной. */
-/* Правка 2026-08-27 (`70-workshop/specs/site-v3/11-line-narrator-brief.md`,
- * раздел 10.3, Р-1 «калька»): `.card` (первая на странице — сервисная,
- * `#services .grid > .card`) больше не закрашена сплошным `--surface` —
- * её заливка `color-mix(in srgb, var(--surface) 62%, transparent)`, и
- * браузер возвращает её как `color(srgb r g b / 0.62)`, а не как
- * `rgb(...)`, поэтому строковое сравнение с `HEX_TO_RGB[token]` перестало
- * что-либо доказывать — оно проверяло бы ФОРМАТ строки, а не рассинхрон.
- * Проверка остаётся ровно той же по смыслу (узел не должен отстать от
- * токена, который его красит): эталон теперь читается ЖИВЫМ зондом — тем
- * же правилом `color-mix`, наложенным на текущее значение `--surface` в
- * ТОТ ЖЕ момент, что и сам узел. Если бы `.card` отстал (старая тема ещё
- * не сменилась в её собственном вычисленном стиле), её цвет разошёлся бы
- * с зондом, читающим токен из :root прямо сейчас — сторож ловит именно это. */
+/* Правка `70-workshop/specs/site-v3/15-line-through-scale-brief.md`,
+ * раздел 5 (задача 3): калька Р-1 (`color-mix(in srgb, var(--surface) 62%,
+ * transparent)`) СНЯТА целиком — `.card` (первая на странице — сервисная,
+ * `#services .grid > .card`) снова закрашена сплошным `--surface`, зонд
+ * калькой больше не нужен. Сравнение — прямое, тем же способом, что и
+ * остальные узлы этого сторожа (`HEX_TO_RGB[token]`). */
 const readState = (page: import('@playwright/test').Page) =>
   page.evaluate(() => {
     const cs = getComputedStyle(document.documentElement);
@@ -50,17 +43,11 @@ const readState = (page: import('@playwright/test').Page) =>
       getComputedStyle(document.querySelector(sel)!).color;
     const bgOf = (sel: string) =>
       getComputedStyle(document.querySelector(sel)!).backgroundColor;
-    const probe = document.createElement('div');
-    probe.style.cssText = 'position:absolute;visibility:hidden;background-color:color-mix(in srgb, var(--surface) 62%, transparent)';
-    document.body.appendChild(probe);
-    const tokenSurfaceCalque = getComputedStyle(probe).backgroundColor;
-    probe.remove();
     return {
       theme: document.documentElement.dataset.theme,
       tokenText: token('--text'),
       tokenTextMuted: token('--text-muted'),
       tokenSurface: token('--surface'),
-      tokenSurfaceCalque,
       header: colorOf('header'),
       main: colorOf('#main'),
       footer: colorOf('footer'),
@@ -121,7 +108,7 @@ test.describe('синхронность смены темы', () => {
         .toBe(rgb(after.tokenText));
       expect(after.footer, 'подвал отстал от токена --text-muted')
         .toBe(rgb(after.tokenTextMuted));
-      expect(after.card, 'карточка отстала от токена --surface (калька, раздел 10.3)')
-        .toBe(after.tokenSurfaceCalque);
+      expect(after.card, 'карточка отстала от токена --surface')
+        .toBe(rgb(after.tokenSurface));
     });
 });

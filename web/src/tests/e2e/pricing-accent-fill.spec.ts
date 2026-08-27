@@ -1,135 +1,102 @@
 import { test, expect } from '@playwright/test';
 
-/** Сторож на дефект «карточка-акцент потеряла заливку» (проверка брифа
- *  `70-workshop/specs/site-v3/11-line-narrator-brief.md`, раздел 10.4, Р-2 —
- *  «через главный блок»). Причина дефекта — конфликт специфичности CSS:
- *  калька Р-1 (`base.css`, `#pricing .card`, специфичность (1,1,0), id +
- *  класс) перебивала модификатор `.card--accent` внутри `Card.astro`
- *  ((0,2,0) после скоупинга Astro — ниже, хотя объявлен позже) — карточка
- *  «Корпоративный сайт» получала точно ту же непрозрачную-на-62%-заливку
- *  `--surface`, что и соседние тарифы, и переставала быть акцентной по фону.
- *  Ни один прежний тест этого не ловил: все проверки карточки-акцента
- *  (`background-line-narrator.spec.ts`, П-21/П-22) смотрят на геометрию
- *  линии и разметку обводки, а не на `background-color`.
+/** Сторож карточки-акцента секции «Цены» — **переписан целиком**
+ *  (`70-workshop/specs/site-v3/15-line-through-scale-brief.md`, раздел 5,
+ *  задача 3), потому что прежняя версия проверяла ровно тот дефект, который
+ *  этот бриф закрывает: она требовала, чтобы линия-рассказчик была ВИДНА
+ *  сквозь лицо карточки-акцента (`lineThroughCardContrast ≥ 1.06`) и чтобы
+ *  заливка оставалась заметно полупрозрачной (`alpha < 0.3`). Ровно это —
+ *  «краска идёт по лицу карточки в полной полевой плотности 1,195:1» —
+ *  замер владельца назвал бликом/полиграфическим браком (раздел 5.1 брифа).
  *
- *  Проверка НАРОЧНО читает `getComputedStyle` на живой странице, а не класс
- *  в разметке или правило в исходном CSS — сравнение по имени класса ловит
- *  только «класс присутствует», а не «фон и правда другой» (ровно так этот
- *  дефект и прошёл зелёным раньше: класс `.card--accent` был на месте,
- *  собственное правило `Card.astro` тоже было на месте, но проигрывало по
- *  специфичности снаружи). Числа считаются по формуле WCAG-контраста, той
- *  же, что использует `BackgroundLine.contrast.test.ts`, но на значениях,
- *  снятых В БРАУЗЕРЕ в момент прогона (токены `--bg`/`--accent`/
- *  `--line-opacity` и собственный `backgroundColor` карточки), а не
- *  вычисленных заранее руками — тест не проверяет статическое число, он
- *  проверяет соотношение, которое обязано держаться при любой правке
- *  токенов. */
+ *  НОВЫЙ ИНВАРИАНТ (раздел 5.2 брифа): карточка-акцент — «цель» линии, а не
+ *  «лист». Лицо непрозрачно (в композитном смысле — итоговый нарисованный
+ *  пиксель не меняется от того, что физически лежит НИЖЕ в DOM), тон при
+ *  этом НЕ становится плоским `--surface`: тот же `--accent-soft`, что
+ *  раньше был заливкой самой карточки, теперь рисуется вторым слоем
+ *  `background` НАД непрозрачным `--surface` (`Card.astro`, `.card--accent`)
+ *  — итоговый композитный пиксель ЧИТАЕТСЯ так же (акцентный тон поверх
+ *  поверхности), но линия сквозь него больше не проходит ни в каком
+ *  сценарии. Событие «линия коснулась главного блока» несёт не просвет, а
+ *  обвод по кромке (`.line-trace`, `styles/base.css`) — отдельный сторож
+ *  ниже НЕ проверяет анимацию обвода (это `background-line-narrator.spec.ts`
+ *  / новый сторож П-Ц1), только то, что лицо действительно непрозрачно и
+ *  действительно отличается от соседних карточек.
+ *
+ *  Проверка НАРОЧНО читает пиксель со скриншота (`page.screenshot` +
+ *  `canvas`), а не `getComputedStyle(...).backgroundColor`: composited-
+ *  формула `linear-gradient(var(--accent-soft), var(--accent-soft)),
+ *  var(--surface)` кладёт тон акцента в `background-image`, и
+ *  `backgroundColor` вернул бы только нижний слой (`--surface`) — сравнение
+ *  по нему не отличило бы «дефект вернулся» (заливка снова плоский
+ *  `--surface` без тона) от «всё в порядке» (тон есть, просто в другом
+ *  слое). Пиксель — та же ЖИВАЯ величина, которую видит браузер. */
 
 const VIEWPORT = { width: 1440, height: 900 };
-// Полоса краски сквозь лист обязана остаться различимой — тот же порог,
-// что и у обычных карточек калькированной секции (раздел 10.3 брифа).
-const MIN_LINE_CONTRAST = 1.06;
 const MIN_AA = 4.5;
-// Плотность заливки калькированной карточки (Р-1) — 62%. Акцентная
-// карточка обязана лежать заметно ниже этого порога, иначе она либо
-// вернулась к той же заливке, что соседи (дефект), либо стала непрозрачной
-// сверх меры и перестала пропускать линию (переезд Р-2 требует именно это).
-const MAX_ACCENT_ALPHA = 0.3;
+// Допуск на округление PNG и лёгкое сглаживание рядом с рамкой/паддингом.
+const PIXEL_TOLERANCE = 3;
 
 type Rgb = [number, number, number];
 
-/** Разбирает и `rgba(r, g, b, a)`, и `color(srgb r g b / a)` — Chromium
- *  возвращает первый формат для литеральных `rgba()`-значений (как
- *  `--accent-soft`) и второй для результата `color-mix()` (как заливка
- *  калькированных соседей), а `getComputedStyle` не приводит их к одному
- *  виду сам. */
-function parseColor(value: string): { rgb: Rgb; alpha: number } {
-  const rgbaMatch = /^rgba?\(\s*([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\s*\)$/.exec(value);
-  if (rgbaMatch) {
-    return {
-      rgb: [Number(rgbaMatch[1]), Number(rgbaMatch[2]), Number(rgbaMatch[3])],
-      alpha: rgbaMatch[4] !== undefined ? Number(rgbaMatch[4]) : 1,
-    };
+/** Chromium сериализует вычисленное значение `--accent-soft` не буквальной
+ *  строкой токена (`rgba(47, 91, 255, 0.09)`), а восьмизначным hex
+ *  (`#2f5bff17`) — оба формата разбираются, второй встречается на практике. */
+function parseAccentSoftAlpha(value: string): number {
+  const rgbaMatch = /rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\s*\)/.exec(value);
+  if (rgbaMatch) return Number(rgbaMatch[1]);
+  const hexMatch = /^#[0-9a-f]{6}([0-9a-f]{2})$/i.exec(value.trim());
+  if (hexMatch) return parseInt(hexMatch[1], 16) / 255;
+  throw new Error(`не удалось разобрать альфу --accent-soft: ${value}`);
+}
+
+/** Chromium сериализует вычисленное значение custom property в кратчайшую
+ *  форму — `#fff`, не `#ffffff` (та же нормализация, что превратила
+ *  `rgba(...)` в 8-значный hex у `parseAccentSoftAlpha` выше). Оба варианта
+ *  длины разбираются. */
+function hexToRgb(hex: string): Rgb {
+  const h = hex.replace('#', '').trim();
+  if (h.length === 3) {
+    return h.split('').map((c) => parseInt(c + c, 16)) as Rgb;
   }
-  const colorMatch = /^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\s*\)$/.exec(value);
-  if (colorMatch) {
-    return {
-      rgb: [Number(colorMatch[1]) * 255, Number(colorMatch[2]) * 255, Number(colorMatch[3]) * 255],
-      alpha: colorMatch[4] !== undefined ? Number(colorMatch[4]) : 1,
-    };
-  }
-  throw new Error(`не удалось разобрать цвет: ${value}`);
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) as Rgb;
 }
 
 function relLum([r, g, b]: Rgb): number {
   const c = (v: number) => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
   return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b);
 }
-
 function contrast(a: Rgb, b: Rgb): number {
   const [hi, lo] = [relLum(a), relLum(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
-
 function blend(fg: Rgb, bg: Rgb, alpha: number): Rgb {
   return fg.map((v, i) => alpha * v + (1 - alpha) * bg[i]) as Rgb;
 }
 
-async function measure(page: import('@playwright/test').Page) {
-  const raw = await page.evaluate(() => {
-    const accentCard = document.querySelector('#pricing .top-grid > .card--accent');
-    const plainCard = document.querySelector('#pricing .top-grid > .card:not(.card--accent)');
-    if (!accentCard || !plainCard) return null;
-    const root = getComputedStyle(document.documentElement);
-    return {
-      theme: document.documentElement.dataset.theme ?? 'light',
-      accentBg: getComputedStyle(accentCard).backgroundColor,
-      plainBg: getComputedStyle(plainCard).backgroundColor,
-      accentTokenHex: root.getPropertyValue('--accent').trim(),
-      bgTokenHex: root.getPropertyValue('--bg').trim(),
-      textTokenHex: root.getPropertyValue('--text').trim(),
-      textMutedTokenHex: root.getPropertyValue('--text-muted').trim(),
-      lineOpacity: Number(root.getPropertyValue('--line-opacity').trim()),
-    };
-  });
-  expect(raw, 'не нашёл на странице обе карточки #pricing .top-grid > .card').not.toBeNull();
-  const r = raw!;
-
-  const hexToRgb = (hex: string): Rgb => {
-    const h = hex.replace('#', '');
-    return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) as Rgb;
-  };
-
-  const accent = parseColor(r.accentBg);
-  const plain = parseColor(r.plainBg);
-  const bg = hexToRgb(r.bgTokenHex);
-  const accentToken = hexToRgb(r.accentTokenHex);
-  const text = hexToRgb(r.textTokenHex);
-  const textMuted = hexToRgb(r.textMutedTokenHex);
-
-  // Ink пикселя линии там, где она лежит под ВСЕМИ поверхностями (z-index
-  // -3, `05-line.md`) — акцентный токен, наложенный на `--bg` с шириной-
-  // зависимой `--line-opacity`, той же переменной, что читает
-  // `BackgroundLine.contrast.test.ts`.
-  const lineInk = blend(accentToken, bg, r.lineOpacity);
-  const accentOverBg = blend(accent.rgb, bg, accent.alpha);
-  const accentOverLine = blend(accent.rgb, lineInk, accent.alpha);
-
-  return {
-    theme: r.theme,
-    accentAlpha: accent.alpha,
-    plainAlpha: plain.alpha,
-    accentCss: r.accentBg,
-    plainCss: r.plainBg,
-    lineThroughCardContrast: contrast(accentOverBg, accentOverLine),
-    textOnCard: contrast(text, accentOverBg),
-    textMutedOnCard: contrast(textMuted, accentOverBg),
-  };
+async function pixelAt(page: import('@playwright/test').Page, x: number, y: number): Promise<Rgb> {
+  const buf = await page.screenshot({ clip: { x: Math.round(x) - 1, y: Math.round(y) - 1, width: 3, height: 3 } });
+  const rgb = await page.evaluate(async (b64) => {
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('decode failed'));
+      img.src = `data:image/png;base64,${b64}`;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(1, 1, 1, 1).data;
+    return [d[0], d[1], d[2]] as Rgb;
+  }, buf.toString('base64'));
+  return rgb;
 }
 
-test.describe('карточка-акцент секции «Цены» — фон отличается от соседей (дефект «фон стёрла калька»)', () => {
+test.describe('карточка-акцент секции «Цены» — лицо непрозрачно, тон акцента остаётся (П-Ц1)', () => {
   for (const theme of ['light', 'dark'] as const) {
-    test(`тема «${theme}»: заливка карточки-акцента отличается от соседних карточек, полоса линии и текст держат порог`, async ({ page }) => {
+    test(`тема «${theme}»: пиксель лица совпадает с непрозрачным составом accent-soft-над-surface, отличается от соседней карточки`, async ({ page }) => {
       await page.setViewportSize(VIEWPORT);
       await page.goto('/');
 
@@ -140,34 +107,74 @@ test.describe('карточка-акцент секции «Цены» — фо�
         );
       }
 
-      const m = await measure(page);
+      // Карточки ниже первого экрана — `page.screenshot({ clip })` снимает
+      // из ТЕКУЩЕГО кадра страницы, а не всего документа: без прокрутки
+      // координаты `getBoundingClientRect()` уводят клип за пределы вьюпорта.
+      await page.locator('#pricing .top-grid > .card--accent').scrollIntoViewIfNeeded();
+
+      const setup = await page.evaluate(() => {
+        const accentCard = document.querySelector('#pricing .top-grid > .card--accent') as HTMLElement | null;
+        const plainCard = document.querySelector('#pricing .top-grid > .card:not(.card--accent)') as HTMLElement | null;
+        if (!accentCard || !plainCard) return null;
+        const ar = accentCard.getBoundingClientRect();
+        const pr = plainCard.getBoundingClientRect();
+        const root = getComputedStyle(document.documentElement);
+        return {
+          theme: document.documentElement.dataset.theme ?? 'light',
+          // Точка у правого края карточки, посередине по высоте — вне угловых
+          // засечек (`.card::before`, 12px от каждого угла) и вне ховер-лампы
+          // (`.card::after`, требует `:hover`).
+          accentPoint: { x: ar.left + ar.width - 15, y: ar.top + ar.height / 2 },
+          plainPoint: { x: pr.left + pr.width - 15, y: pr.top + pr.height / 2 },
+          accentTokenHex: root.getPropertyValue('--accent').trim(),
+          surfaceTokenHex: root.getPropertyValue('--surface').trim(),
+          textTokenHex: root.getPropertyValue('--text').trim(),
+          textMutedTokenHex: root.getPropertyValue('--text-muted').trim(),
+          accentSoftRaw: root.getPropertyValue('--accent-soft').trim(),
+        };
+      });
+      expect(setup, 'не нашёл на странице обе карточки #pricing .top-grid > .card').not.toBeNull();
+      const s = setup!;
+
+      const accentToken = hexToRgb(s.accentTokenHex);
+      const surfaceToken = hexToRgb(s.surfaceTokenHex);
+      const text = hexToRgb(s.textTokenHex);
+      const textMuted = hexToRgb(s.textMutedTokenHex);
+      const alpha = parseAccentSoftAlpha(s.accentSoftRaw);
+      const expectedAccentPixel = blend(accentToken, surfaceToken, alpha);
+
+      const accentPixel = await pixelAt(page, s.accentPoint.x, s.accentPoint.y);
+      const plainPixel = await pixelAt(page, s.plainPoint.x, s.plainPoint.y);
+
       // eslint-disable-next-line no-console
       console.log(
-        `${theme}: акцент=${m.accentCss} (alpha=${m.accentAlpha}), сосед=${m.plainCss} (alpha=${m.plainAlpha}), `
-        + `линия сквозь карточку=${m.lineThroughCardContrast.toFixed(3)}:1, --text=${m.textOnCard.toFixed(2)}:1, `
-        + `--text-muted=${m.textMutedOnCard.toFixed(2)}:1 (способ замера: getComputedStyle в браузере, формула WCAG)`,
+        `${theme}: точка акцента=${accentPixel.join(',')}, ожидание=${expectedAccentPixel.map((v) => Math.round(v)).join(',')}, `
+        + `сосед=${plainPixel.join(',')}, --surface=${surfaceToken.join(',')}, альфа --accent-soft=${alpha}`,
       );
 
-      // Ядро сторожа: акцентная карточка обязана иметь ДРУГУЮ вычисленную
-      // заливку, чем соседняя карточка той же секции — не «другой класс в
-      // разметке», а другой цвет, реально нарисованный браузером.
-      expect(m.accentCss, 'заливка карточки-акцента совпала с заливкой соседней карточки — калька Р-1 снова перебивает .card--accent по специфичности')
-        .not.toBe(m.plainCss);
+      // Ядро сторожа 1: лицо карточки-акцента совпадает с НЕПРОЗРАЧНЫМ
+      // составом accent-soft-над-surface — не плоским `--surface` (калька
+      // вернулась бы к этому), не полупрозрачным «сквозь него видно линию»
+      // (старый дефект).
+      for (let i = 0; i < 3; i++) {
+        expect(
+          Math.abs(accentPixel[i] - expectedAccentPixel[i]),
+          `канал ${i}: пиксель лица карточки-акцента ${accentPixel.join(',')} разошёлся с ожидаемым непрозрачным составом ${expectedAccentPixel.map((v) => Math.round(v)).join(',')}`,
+        ).toBeLessThanOrEqual(PIXEL_TOLERANCE);
+      }
 
-      // Плотность заливки-акцента обязана остаться заметно ниже 62% кальки
-      // (иначе это снова заливка калькированного соседа, просто случайно
-      // совпавшая численно) и при этом не стать непрозрачной — линия обязана
-      // читаться сквозь неё.
-      expect(m.accentAlpha, `плотность заливки карточки-акцента ${m.accentAlpha} не ниже плотности кальки (0.62) — фон снова совпадает с соседями`)
-        .toBeLessThan(MAX_ACCENT_ALPHA);
+      // Ядро сторожа 2: заливка отличается от соседней (плоской `--surface`)
+      // карточки — тон акцента жив, карточка не потеряла отличие (тот самый
+      // дефект специфичности, что чинил Р-2/раздел 10.4 брифа 11).
+      const diff = Math.abs(accentPixel[0] - plainPixel[0])
+        + Math.abs(accentPixel[1] - plainPixel[1])
+        + Math.abs(accentPixel[2] - plainPixel[2]);
+      expect(diff, `заливка карточки-акцента ${accentPixel.join(',')} неотличима от соседней ${plainPixel.join(',')} — тон акцента пропал`)
+        .toBeGreaterThan(PIXEL_TOLERANCE);
 
-      expect(m.lineThroughCardContrast, `полоса краски сквозь карточку-акцент ${m.lineThroughCardContrast.toFixed(3)}:1 ниже порога ${MIN_LINE_CONTRAST}:1`)
-        .toBeGreaterThanOrEqual(MIN_LINE_CONTRAST);
-
-      expect(m.textOnCard, `--text на карточке-акценте ${m.textOnCard.toFixed(2)}:1 ниже AA`)
-        .toBeGreaterThanOrEqual(MIN_AA);
-      expect(m.textMutedOnCard, `--text-muted на карточке-акценте ${m.textMutedOnCard.toFixed(2)}:1 ниже AA`)
-        .toBeGreaterThanOrEqual(MIN_AA);
+      // Текст остаётся читаемым на непрозрачном композитном фоне.
+      expect(contrast(text, expectedAccentPixel), '--text на карточке-акценте ниже AA').toBeGreaterThanOrEqual(MIN_AA);
+      expect(contrast(textMuted, expectedAccentPixel), '--text-muted на карточке-акценте ниже AA').toBeGreaterThanOrEqual(MIN_AA);
     });
   }
 });

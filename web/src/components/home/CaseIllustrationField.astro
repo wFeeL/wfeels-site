@@ -49,8 +49,16 @@ interface Props {
   mobileHeight?: number;
   /** Снять паспарту, рамку, фиксированную высоту и отступ у готового медиа. */
   bare?: boolean;
+  /** Целевая коробка линии-рассказчика (`70-workshop/specs/site-v3/
+   *  15-line-through-scale-brief.md`, раздел 5.2) — поле получает обвод по
+   *  кромке (`.line-trace`) вместо просвечивания линии сквозь лицо.
+   *  Бессмысленно у `bare` (паспарту и так нет, класс не рисуется), но
+   *  пропа это не проверяет отдельно — вызывающая сторона (`Cases.astro`)
+   *  ставит `true` только для единственной несущей поле цели («Замер»,
+   *  slug `site-v3`, реестр 12.5 «лист «Замера» пересечён»). */
+  trace?: boolean;
 }
-const { height, mobileHeight, bare = false } = Astro.props;
+const { height, mobileHeight, bare = false, trace = false } = Astro.props;
 const hasContent = Astro.slots.has('default')
   ? (await Astro.slots.render('default')).trim().length > 0
   : false;
@@ -60,12 +68,14 @@ const style = mobileHeight
 ---
 {hasContent && (
   <div class:list={['field', { bare }]} style={style}>
+    {!bare && trace && <span class="line-trace" aria-hidden="true"></span>}
     <slot />
   </div>
 )}
 
 <style>
   .field {
+    position: relative;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);

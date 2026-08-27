@@ -22,8 +22,15 @@ interface Props {
    *  тем же приёмом, что и `stack` выше: живёт внутри `Card.astro`, а не
    *  борется специфичностью с `:global(.card)` снаружи. */
   accent?: boolean;
+  /** Целевая коробка линии-рассказчика (`70-workshop/specs/site-v3/
+   *  15-line-through-scale-brief.md`, раздел 5.2): карточка получает обвод
+   *  по кромке (`.line-trace`, `styles/base.css`), который загорается,
+   *  когда перо линии уходит из её коробки — вместо того, чтобы просвечивать
+   *  сквозь лицо. Ставится точечно вызывающей секцией по замеру пересечения
+   *  (`Services.astro`, `Pricing.astro`), а не наугад. */
+  trace?: boolean;
 }
-const { href, stack = false, accent = false } = Astro.props;
+const { href, stack = false, accent = false, trace = false } = Astro.props;
 const Tag = href ? 'a' : 'div';
 ---
 {/* `reveal` — появление по прокрутке, одна утилита в `styles/base.css`
@@ -31,7 +38,10 @@ const Tag = href ? 'a' : 'div';
     только `--reveal-i` через `:nth-child` в своих `<style>` — сама карточка
     не объявляет ни `opacity`, ни `animation-*`, войны специфичности со
     скоупингом Astro тут нет (см. комментарий к пропу `stack` выше). */}
-<Tag class={`card reveal${stack ? ' card--stack' : ''}${accent ? ' card--accent' : ''}`} href={href}><slot /></Tag>
+<Tag class={`card reveal${stack ? ' card--stack' : ''}${accent ? ' card--accent' : ''}`} href={href}>
+  {trace && <span class="line-trace" aria-hidden="true"></span>}
+  <slot />
+</Tag>
 
 <style>
   .card {
@@ -102,9 +112,25 @@ const Tag = href ? 'a' : 'div';
   /* Рамка акцентного цвета вместо серой + подложка на тон темнее обычной
      поверхности (`--surface`) карточек рядом. `--accent-soft` — уже
      откалиброванный по теме акцентный тон (не изобретён здесь), тот же,
-     которым красится ховер строк и подложка меток. */
+     которым красится ховер строк и подложка меток.
+
+     ПРАВКА `70-workshop/specs/site-v3/15-line-through-scale-brief.md`,
+     раздел 5: было `background: var(--accent-soft)` — заливка ЦЕЛИКОМ
+     полупрозрачна (rgba, альфа 9%/14% по теме), и потому пропускала
+     линию-рассказчик сквозь лицо карточки в её полной полевой плотности
+     (карточка-акцент — единственная из своей секции, исключённая из
+     кальки Р-1 починкой специфичности; калька снята целиком этим же
+     брифом, раздел 5.1). Карточка стала «целью» линии (`trace` в
+     `Pricing.astro`, обвод `.line-trace` вместо просвечивания), а цель
+     обязана быть непрозрачной («Лицо не просвечивает никогда», раздел
+     5.2). Тон при этом НЕ меняется ни на бит: тот же `--accent-soft`
+     рисуется вторым слоем `background` НАД непрозрачным `--surface`, а не
+     заливкой самой карточки — итоговый композитный пиксель тот же самый
+     (альфа-смешение поверх `--surface`, тем же числом, что и раньше), но
+     теперь это смешение происходит ВНУТРИ фона одного элемента, а не между
+     карточкой и тем, что физически нарисовано под ней в DOM. */
   .card--accent {
     border-color: var(--accent);
-    background: var(--accent-soft);
+    background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--surface);
   }
 </style>
