@@ -10,8 +10,13 @@ import { test, expect } from '@playwright/test';
  *  не остаётся ни одной прокруточной анимации — шторка не едет по
  *  `view()`-таймлайну секции, она стоит на постоянной экранной линии, а
  *  движется вместе с документом просто потому, что `scrollY` растёт.
- *  Единственная анимация самой шторки — `line-load`, временная (1400мс),
- *  не прокруточная, играет один раз при загрузке.
+ *  Анимация раскрытия шторки — `line-load`, временная (1400мс), не
+ *  прокруточная, играет один раз при загрузке. ПРАВКА `2026-08-27`
+ *  (вариант Б финала, `70-workshop/specs/site-v3/
+ *  16-line-digits-and-finale-brief.md`, раздел 3.3): рядом с ней теперь
+ *  живёт `line-finish` — прокруточная, доводит голову до `100vh` на
+ *  последних `4Δ` прокрутки (П-Ф-Б1). Список анимаций шторки —
+ *  `line-load, line-finish`.
  *
  *  Тесты этого файла, проверявшие МЕХАНИЗМ раскрытия по секциям (`scaleY`
  *  на каждой из одиннадцати шторок, «ровно один элемент в промежуточном
@@ -31,8 +36,21 @@ const LINE_ELEMENT_COUNT = 10;
 
 /** Ищет В ОДНОМ css-тексте `@supports`-блок, несущий анимацию шторки —
  *  тот, чьё тело содержит `.line-curtain` (маркер условия — общая техника,
- *  её же несут карточки/диалог/тизер в СВОИХ отдельных блоках). */
+ *  её же несут карточки/диалог/тизер в СВОИХ отдельных блоках).
+ *
+ *  ПРАВКА `2026-08-27` (вариант Б финала, `70-workshop/specs/site-v3/
+ *  16-line-digits-and-finale-brief.md`, раздел 3.3): у подвала завелась
+ *  СВОЯ местная шторка `.line-curtain-local` (`Footer.astro`) в СВОЁМ,
+ *  отдельном `@supports (animation-timeline: view())`-блоке — а строка
+ *  `.line-curtain-local` содержит подстроку `.line-curtain` как префикс.
+ *  Прежняя проверка `.includes('.line-curtain')` попадала на ЭТОТ, более
+ *  ранний в тексте бандла блок, забирала его как «искомый» и оставляла
+ *  настоящий блок шторки нетронутым — сторож ниже («леда, вне @supports»)
+ *  тогда бил тревогу на настоящей, ничем не нарушенной шторке. Проверка
+ *  сужена: за `.line-curtain` не должен следовать `-` (иначе это чужой,
+ *  местный класс подвала). */
 function findLineCurtainSupportsBlock(css: string, marker: string) {
+  const bareCurtain = /\.line-curtain(?!-)/;
   let start = css.indexOf(marker);
   while (start !== -1) {
     let depth = 0;
@@ -44,7 +62,7 @@ function findLineCurtainSupportsBlock(css: string, marker: string) {
         if (depth === 0) { end = i + 1; break; }
       }
     }
-    if (css.slice(start, end).includes('.line-curtain')) return { start, end };
+    if (bareCurtain.test(css.slice(start, end))) return { start, end };
     start = css.indexOf(marker, end);
   }
   return null;
@@ -162,7 +180,14 @@ test.describe('линия на фоне — обычный путь (подде�
       return { position: s.position, animationName: s.animationName, top: s.top };
     });
     expect(style.position).toBe('fixed');
-    expect(style.animationName).toBe('line-load');
+    // ПРАВКА `2026-08-27` (вариант Б финала, `70-workshop/specs/site-v3/
+    // 16-line-digits-and-finale-brief.md`, раздел 3.3): шторка несёт ВТОРУЮ
+    // анимацию, `line-finish` (разгон головы до `100vh` на последних `4Δ`
+    // прокрутки, П-Ф-Б1/П-Ф-Б3) — список через запятую, `line-load`
+    // остаётся первым и по-прежнему временным. Предмет изменился принятым
+    // финалом, не ослаблен: ниже по-прежнему проверяется, что шторка
+    // `fixed` и не переехала на `scaleY`-прогресс секции.
+    expect(style.animationName).toBe('line-load, line-finish');
     expect(style.top, 'top шторки обязан быть числом px (var(--line-head) вычислен), не auto/0').not.toBe('auto');
     await ctx.close();
   });

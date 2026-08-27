@@ -64,7 +64,37 @@ interface InkSample {
    *  `animation-timeline: scroll(root block)` считает свои проценты от
    *  ЖИВОГО `scrollHeight`, поэтому и ожидаемое положение шторки в тесте
    *  обязано браться от него же в ТОТ ЖЕ момент — иначе тест меряет
-   *  застывшую константу против движущейся цели. */
+   *  застывшую константу против движущейся цели.
+   *
+   *  ВТОРАЯ НАХОДКА ЭТОГО ЖЕ ПРОГОНА: `<footer>` тоже несёт
+   *  `[data-line-side]`/`svg.line > path` (вариант Б, `70-workshop/specs/
+   *  site-v3/16-line-digits-and-finale-brief.md`, раздел 3.3), но его
+   *  краску закрывает НЕ глобальная `.line-curtain` (она визуально ПОД
+   *  `footer::before`, `z-index -3` против `-2`, не отменено), а СВОЯ,
+   *  местная `.line-curtain-local` — второй, независимый механизм на
+   *  СВОЁМ `view()`-таймлайне («вход» подвала в окно, footer-геометрия),
+   *  который НЕ знает о `document.documentElement.scrollHeight` вовсе — в
+   *  отличие от глобальной шторки (`scroll(root block)`, растущей вместе с
+   *  `docScrollHeight` из первой находки). Расхождение растущего
+   *  `scrollHeight` (первая находка) и не растущего вместе с ним местного
+   *  таймлайна (эта находка) даёт до `~80px` разницы между «где формула
+   *  головы предсказывает край» и «где местная шторка подвала реально
+   *  стоит» на последних шагах скана — раскрытое не единичным экраном, а
+   *  ПОЛОСОЙ измерений (ловушка 8, `50-code/CLAUDE.md`). Единственный
+   *  корректный источник для секции `<footer>` — сама её местная шторка, а
+   *  единственный МЕХАНИЗМ, уже проверяющий это правильно (сэмплированием
+   *  `getPointAtLength()` с фильтром по видимому X — тот же приём, что
+   *  закрывает ловушку 26) — `background-line-footer-reach.spec.ts`
+   *  (П-Ф-О1/О2, П-Ф-Б4/Б5/Б6). Переносить туда же общую геометрическую
+   *  модель ОДНОЙ глобальной шторки, на которой построен весь этот файл,
+   *  значило бы городить ВТОРУЮ модель поверх уже проверенной — поэтому
+   *  `<footer>` из скана этого файла ИСКЛЮЧЁН целиком (см. `readInkSample`
+   *  ниже): его протяжённость и завершённость проверяет сосед, а «голова
+   *  идёт 1,25× прокрутки» (П-Ф-Б3) этот файл проверяет НАПРЯМУЮ — по
+   *  РЕАЛЬНОЙ экранной позиции самой `.line-curtain` (`sample.curtainTop`
+   *  ниже, сверенной с формулой на каждом шаге скана), а не косвенно через
+   *  чернила секции, чья видимость определяется ДРУГИМ, footer-местным
+   *  механизмом. */
   docScrollHeight: number;
   /** `true`, если краска НА ЭТОМ ШАГЕ действительно ограничена головой
    *  (какой-то путь физически продолжается НИЖЕ головы, и голова его
@@ -84,19 +114,27 @@ interface InkSample {
  *  путям, чей рендерный бокс хоть немного заходит выше головы (там есть
  *  нарисованная краска), от нижней кромки этого бокса, зажатой сверху
  *  линией головы (краска физически не может быть видна ниже неё — куртина
- *  красит сплошным цветом) и снизу нулём (не выше верхней кромки окна). */
+ *  красит сплошным цветом) и снизу нулём (не выше верхней кромки окна).
+ *
+ *  `<footer>` ИСКЛЮЧЁН из скана (см. вторую находку в JSDoc `InkSample.
+ *  docScrollHeight` выше) — его краску закрывает не эта, глобальная
+ *  `.line-curtain`, а собственная, местная `.line-curtain-local` на
+ *  независимом таймлайне; протяжённость и завершённость подвала проверяет
+ *  `background-line-footer-reach.spec.ts`. */
 async function readInkSample(page: import('@playwright/test').Page): Promise<InkSample> {
   return page.evaluate(() => {
     const curtain = document.querySelector('.line-curtain') as HTMLElement;
     const curtainTop = curtain.getBoundingClientRect().top;
     const vh = window.innerHeight;
-    const sections = Array.from(document.querySelectorAll('[data-line-side]'));
+    const sections = Array.from(document.querySelectorAll('[data-line-side]')).filter(
+      (sec) => sec.tagName !== 'FOOTER',
+    );
     let inkBottom: number | null = null;
     let capped = false;
     for (const sec of sections) {
-      const path = sec.querySelector('svg.line > path:not(.line-branch):not(.line-head)');
+      const path = sec.querySelector('svg.line > path:not(.line-branch):not(.line-head)') as SVGPathElement | null;
       if (!path) continue;
-      const r = (path as SVGPathElement).getBoundingClientRect();
+      const r = path.getBoundingClientRect();
       if (r.bottom <= 0 || r.top >= vh) continue; // не в кадре вовсе
       if (r.top >= curtainTop) continue; // весь путь ещё ниже головы — краски здесь нет
       const bottom = Math.min(r.bottom, curtainTop);

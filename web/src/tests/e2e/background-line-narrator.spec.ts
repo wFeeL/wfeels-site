@@ -100,19 +100,21 @@ async function readPixelAtViewport(
   return decodeClipAverage(page, buffer);
 }
 
-/** По решению В-4 (раздел 12.1 брифа `11-line-narrator-brief.md`, таблица
- *  12.5) подвал линии не несёт вовсе: краска уходит за левую кромку холста
- *  ещё в `contact`, и `Footer.astro` перестал рисовать `.line`/
- *  `.line-curtain` — запись `LINE_PATHS.footer` снята из реестра. Было:
- *  здесь стояла `footerDockGeometry()`, читавшая `d` пути дока из
- *  `<footer>` (первая пара чисел `M x,y`) — сама эта геометрия снята вместе
- *  с записью реестра, измерять больше нечего. Функция ниже проверяет ровно
- *  обратное — что структурных узлов линии под `<footer>` нет вовсе. */
-async function footerHasNoLine(page: import('@playwright/test').Page): Promise<boolean> {
+/** РЕШЕНИЕ В-4 (раздел 12.1 брифа `11-line-narrator-brief.md`, таблица
+ *  12.5 — «подвал линии не несёт вовсе») ОТМЕНЕНО вариантом Б финала
+ *  (`70-workshop/specs/site-v3/16-line-digits-and-finale-brief.md`, раздел
+ *  3.3, выбран владельцем `2026-08-27`): уход `contact` переехал в подвал
+ *  тем же жестом (`footer.wide`), и `Footer.astro` теперь намеренно рисует
+ *  `.line`/`.line-curtain-local` — запись `LINE_PATHS.footer` вернулась в
+ *  реестр. Канонический сторож этого узла (порядок слоёв, отсутствие
+ *  акцента — П-Ф-Б5/Б6) — `background-line-footer-reach.spec.ts`; функция
+ *  ниже проверяет только структурный факт, обратный тому, что проверялся
+ *  до правки: узлы линии под `<footer>` ОБЯЗАНЫ быть в разметке. */
+async function footerHasLine(page: import('@playwright/test').Page): Promise<boolean> {
   return page.evaluate(() => {
     const footer = document.querySelector('footer');
     if (!footer) return false;
-    return footer.querySelector('.line, .line-curtain') === null;
+    return footer.querySelector('.line') !== null && footer.querySelector('.line-curtain-local') !== null;
   });
 }
 
@@ -121,7 +123,7 @@ test.describe('линия-рассказчик — П1: непрерывност
     ['светлая', 'light'],
     ['тёмная', 'dark'],
   ] as const) {
-    test(`тема «${themeLabel}»: фон подвала прозрачный, линии в подвале нет (П-1, решение В-4)`, async ({ browser }) => {
+    test(`тема «${themeLabel}»: фон подвала прозрачный, линия в подвале есть (П-1, В-4 отменена вариантом Б)`, async ({ browser }) => {
       const ctx = await browser.newContext({
         reducedMotion: 'reduce', // состояние по умолчанию — линия видна целиком и статична (раздел 3, «Что происходит при reduce»)
         colorScheme,
@@ -144,16 +146,16 @@ test.describe('линия-рассказчик — П1: непрерывност
       expect(footerStyle.background, 'footer несёт собственный непрозрачный фон — линия снова красится под ним').toBe('rgba(0, 0, 0, 0)');
       expect(footerStyle.zIndex, 'footer завёл z-index — собственный стековый контекст уронит линию под ::before').toBe('auto');
 
-      // РЕШЕНИЕ В-4 (раздел 12.1 брифа `11-line-narrator-brief.md`): линия
-      // уходит за левую кромку холста в `contact` и в подвал не заходит;
-      // «дотягивание линии до подвала» отменено. Было: тест искал док
-      // линии внутри `<footer>` (`footerDockGeometry()`) и требовал
-      // `not.toBeNull()`, затем сравнивал цвет пикселя на доке с цветом в
-      // стороне — «линия видна на середине подвала» (П-1 старой редакции).
-      // Стало: подвал структурно не несёт ни одного узла линии, и это —
-      // ожидаемое состояние, а не сбой измерения.
-      const noLine = await footerHasNoLine(page);
-      expect(noLine, 'в подвале остался .line/.line-curtain — по решению В-4 подвал линию не несёт').toBe(true);
+      // В-4 ОТМЕНЕНА вариантом Б (см. JSDoc `footerHasLine` выше): подвал
+      // ТЕПЕРЬ структурно несёт линию — уход `contact` переехал сюда тем же
+      // жестом. Было: тест требовал полного отсутствия узлов линии в
+      // подвале (`footerHasNoLine`, `toBe(true)` на «нет линии»). Стало:
+      // подвал обязан нести оба узла — `.line` и местную шторку
+      // `.line-curtain-local` (порядок слоёв и отсутствие акцента в её
+      // покраске проверяет отдельно `background-line-footer-reach.spec.ts`,
+      // П-Ф-Б5/Б6, — здесь только структурный факт присутствия).
+      const hasLine = await footerHasLine(page);
+      expect(hasLine, 'в подвале нет .line/.line-curtain-local — вариант Б финала требует, чтобы линия доходила до подвала').toBe(true);
 
       await ctx.close();
     });
