@@ -60,10 +60,16 @@ import {
  *  поимённо:
  *   1. `hero`, НАЧАЛО — соседа сверху нет, торец уходит выше первой секции
  *      и накрывается шторкой (`CAP_OVERHANG_HERO`, `linePaths.ts`).
- *   2. `contact`, КОНЕЦ — после В-4 подвал линии не несёт, соседа снизу нет;
- *      конец пути лежит за ЛЕВОЙ кромкой холста (`x = −200`) и обрезан
- *      `#contact .line { overflow: hidden }` — торца на экране не
- *      существует ни в один момент.
+ *   2. `footer`, КОНЕЦ — ПЕРЕЕХАЛО с `contact` `2026-08-27`
+ *      (`70-workshop/specs/site-v3/16-line-digits-and-finale-brief.md`,
+ *      раздел 3.3, вариант Б): уход за левую кромку холста переехал с
+ *      `contact` на подвал тем же обоснованием — подвал последний в
+ *      документе, соседа снизу нет; конец пути лежит за ЛЕВОЙ кромкой
+ *      холста (`x = −200`) и обрезан `footer .line { clip-path: … }` —
+ *      торца на экране не существует ни в один момент. `contact` теперь
+ *      кончается чистым вертикальным доком (`linePaths.ts`) и это
+ *      исключение с него снято — Г-2 у `contact` выполняется на общих
+ *      основаниях.
  *  Список исключений — здесь и только здесь; смягчения порога `VERTICAL_END_
  *  MIN` для всех остальных записей эта правка не касается.
  *
@@ -77,7 +83,7 @@ import {
  *  сегментами по `y ∈ [0, vbH]`, а не байтовая замена. Ни одна прежняя
  *  запись от поправки не портится — мера строго меньше при том же пороге. */
 const NAMED_VERTICAL_START_EXCEPTIONS = new Set(['hero']);
-const NAMED_VERTICAL_END_EXCEPTIONS = new Set(['contact']);
+const NAMED_VERTICAL_END_EXCEPTIONS = new Set(['footer']);
 
 const SAMPLE_COUNT = 200;
 const R_MIN_FACTOR = 8; // Г-1: R_min ≥ 8·w
@@ -126,7 +132,7 @@ describe('реестр линии — Г-2: вертикальные концы 
   });
 
   it.each(Object.keys(LINE_PATHS))('%s: конец — прямой вертикальный участок ≥ 96', (id) => {
-    if (NAMED_VERTICAL_END_EXCEPTIONS.has(id)) return; // 12.2, П-А2 — contact: соседа снизу нет после В-4
+    if (NAMED_VERTICAL_END_EXCEPTIONS.has(id)) return; // 12.2, П-А2 — footer: соседа снизу нет, последний в документе (перееxало с contact, брифа 16-…, раздел 3.3)
     const entry = LINE_PATHS[id];
     const { flat } = sampled(entry);
     const vEnd = verticalRunLength(flat, false);

@@ -6,26 +6,35 @@ import { dict, type Locale } from '../i18n/locales';
 import { TELEGRAM_URL, emailIconLinkHtml } from '../lib/contacts';
 import { samePath, headerCtaHref } from '../lib/nav';
 import { footerLineData } from '../lib/backgroundLine';
+import { LINE_PATHS } from '../lib/linePaths';
 
 interface Props {
   /** Язык подвала. Приходит из `Base.astro` — своего вывода у подвала нет. */
   lang: Locale;
-  /** Хвост линии на фоне — ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/
-   *  11-line-narrator-brief.md`, раздел 12.1, В-4): подвал БОЛЬШЕ НЕ РИСУЕТ
-   *  `.line`/`.line-curtain`. Владелец подтвердил референс — линия уходит за
-   *  ЛЕВУЮ кромку холста в `contact` (`x = −200`) и в подвал не заходит;
-   *  «дотягивание линии до подвала» (прежнее решение, ради которого нёсся
-   *  `LINE_PATHS.footer`) отменяется. Проп и его гейт ОСТАЮТСЯ (страница
-   *  подвала без линии — `/contact`, `/thanks`, юридические и т. д. — не
-   *  должна потерять `footer::before`, D-126: тот фон красится ниже линии
-   *  и в силе независимо от того, есть ли линия на этой странице вовсе).
+  /** Хвост линии на фоне. ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/
+   *  11-line-narrator-brief.md`, раздел 12.1, В-4): подвал ПЕРЕСТАВАЛ
+   *  рисовать `.line`/`.line-curtain` — уход держал `contact`.
+   *
+   *  ПРАВКА `2026-08-27`, тем же днём, позже (`70-workshop/specs/site-v3/
+   *  16-line-digits-and-finale-brief.md`, раздел 3.3, вариант Б «Разгон»,
+   *  выбран владельцем): В-4 ПЕРЕОТКРЫТА. Подвал СНОВА рисует `.line`
+   *  (`LINE_PATHS.footer`, `lib/linePaths.ts`) — уход переехал сюда с
+   *  `contact` тем же боковым ходом (25,9%). Своей ГЛОБАЛЬНОЙ шторки
+   *  (`.line-curtain`) подвал по-прежнему не несёт — она одна на всю
+   *  страницу (`BackgroundLine.astro`, `position: fixed`); подвал несёт
+   *  СВОЮ, МЕСТНУЮ шторку (`.line-curtain-local`) — она красит фон подвала
+   *  ПОВЕРХ ещё не пройденной краски, потому что фон подвала
+   *  (`footer::before`) стоит НИЖЕ краски линии (`z-index: -2` против `-1`
+   *  у `.line`/`.line-curtain-local` внутри подвала — см. CSS ниже) и не
+   *  может прятать её сам.
+   *
    *  `data-line-side` остаётся на `<footer>` метаданными — сторона акта
-   *  «выход» (раздел 7.2), которую теперь читает только `footerLineData()`
-   *  и её собственный сторож (`backgroundLine.test.ts`); визуально она
-   *  больше ни на что не влияет, так как рисовать ей больше нечего.
-   *  `data-line-last` подвал больше не несёт — атрибут переехал на
-   *  `#contact` (`Section.astro`, `BackgroundLine.astro`), последнюю
-   *  секцию, реально несущую линию. */
+   *  «выход» (раздел 7.2), которую читает `footerLineData()` и её
+   *  собственный сторож (`backgroundLine.test.ts`); той же стороной
+   *  рисуется `LINE_PATHS.footer` (`DOCK_LEFT` у обеих). `data-line-last`
+   *  подвал не несёт — атрибут остаётся на `#contact` (`Section.astro`),
+   *  он размечает конец РАССКАЗА линии (раздел 12.1 брифа `11-…`), а не
+   *  конец её геометрии; подвал довершает геометрию, не рассказ. */
   line?: boolean;
   /** Полоса действия подвала (`.footer-cta`) — спека `09-footer-brief.md`,
    *  раздел 3.1. `Base.astro` вычисляет значение из адреса страницы
@@ -70,8 +79,36 @@ const LEGAL_EMAIL = 'i@dsaburov.ru';
 const ctaHref = headerCtaHref(Astro.url.pathname);
 
 const tail = line ? footerLineData() : null;
+/* Путь подвала — `LINE_PATHS.footer` (`lib/linePaths.ts`, раздел 3.3 брифа
+   `16-line-digits-and-finale-brief.md`). Тот же приём, что `Section.astro`:
+   реестр — единственный источник геометрии, `Footer.astro` его не считает
+   и не пересказывает. */
+const linePath = line ? LINE_PATHS.footer : undefined;
 ---
 <footer data-line-side={tail?.side}>
+  {linePath && (
+    <>
+      {/* Прямой потомок `<footer>` — тот же порядок разметки, что несёт
+          `Section.astro` для секций главной (`background-line-registry-
+          sync.spec.ts` ищет `[data-line-side] > svg.line > path`). */}
+      <svg
+        class="line"
+        viewBox={`0 0 1000 ${linePath.vbH}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path d={linePath.wide} />
+      </svg>
+      {/* Местная шторка подвала (раздел 3.3 брифа `16-…`) — красит
+          НЕПРОШЕДШУЮ ещё краску линии тем же цветом, что несёт фон подвала
+          (`footer::before`), и едет по СВОЕЙ `view()`-шторке (`entry 20% →
+          100%`), синхронно с разгоном головы (см. CSS ниже). ДОЛЖНА стоять
+          ПОСЛЕ `.line` в DOM: оба узла на одном `z-index: -1`, и при равном
+          `z-index` порядок в DOM решает, кто красится поверх — шторка
+          обязана лечь НАД ещё не открытой краской. */}
+      <div class="line-curtain-local" aria-hidden="true"></div>
+    </>
+  )}
   <Container>
     {cta && (
       <>
@@ -256,6 +293,61 @@ const tail = line ? footerLineData() : null;
     :global(:root:not([data-theme='light'])) footer { --footer-bg-mix: 80%; }
   }
   :global(:root[data-theme='dark']) footer { --footer-bg-mix: 80%; }
+
+  /* ── Линия в подвале (раздел 3.3 брифа `16-line-digits-and-finale-
+     brief.md`, вариант Б «Разгон», ВОЗВРАЩЕНА решением владельца поверх
+     В-4) ──────────────────────────────────────────────────────────────
+     Общее правило `.line { z-index: -3 }` (`BackgroundLine.astro`) годится
+     для всех секций главной — там фон страницы плоский, между линией и
+     содержимым ничего нет. В подвале есть промежуточный слой
+     (`footer::before`, `z-index: -2`, комментарий выше) — линия ОБЯЗАНА
+     стоять ВЫШЕ него, иначе фон подвала закрасит её собой. `-1` — тот же
+     уровень, что и местная шторка ниже (порядок между ними решает DOM, не
+     число). */
+  footer .line { z-index: -1; }
+
+  /* Местная шторка подвала — красит НЕПРОШЕДШУЮ ещё краску тем же цветом,
+     что несёт фон подвала (единственный способ спрятать её: сам фон
+     подвала лежит НИЖЕ линии, «-2» ниже «-1», а не наоборот — обратный
+     порядок дал бы ползущую кромку, отвергнуто разделом 3.5 брифа, пункт
+     2). Запасное состояние — снята вовсе (`display: none`), тот же приём,
+     что несёт сквозная `.line-curtain` (`BackgroundLine.astro`): П-Ф-О4
+     приёмки — в `reduce`/без поддержки/на печати краска подвала видна
+     ЦЕЛИКОМ, шторки нет. */
+  .line-curtain-local { display: none; }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      @media (min-width: 480px) {
+        .line-curtain-local {
+          display: block;
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          pointer-events: none;
+          background: color-mix(in srgb, var(--bg) var(--footer-bg-mix), black);
+          /* `entry 20% → entry 100%` — выведено из `R = 4Δ`
+             (`BackgroundLine.astro`, `line-finish`), не подобрано: голова
+             входит в подвал ровно тогда, когда до упора прокрутки остаётся
+             `0,8 · высота подвала`, то есть на `entry 20%` местной
+             `view()`-шторки ЭТОГО `<footer>` (безымянный таймлайн — раздел
+             диапазон отсчитывается от коробки самого подвала, не секции).
+             Приёмка — П-Ф-Б4 брифа `16-…»: расхождение «глубина головы в
+             подвале» / «сдвиг местной шторки» ≤ 4px на четырёх точках
+             `entry` (замерено автором брифа: ≤ 0,9px). */
+          animation-name: footer-finish;
+          animation-duration: 1ms;
+          animation-timing-function: linear;
+          animation-fill-mode: both;
+          animation-timeline: view();
+          animation-range: entry 20% entry 100%;
+        }
+      }
+    }
+  }
+  @keyframes footer-finish {
+    to { translate: 0 100%; }
+  }
 
   /* ── Полоса действия ─────────────────────────────────────────────────── */
   /* Столбиком до 900 px, дальше — грид с прижатой к низу правой ячейкой

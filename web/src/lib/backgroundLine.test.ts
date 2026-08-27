@@ -165,18 +165,26 @@ describe('линия на фоне — preserveAspectRatio на каждом SVG
   });
 
   /* ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/11-line-narrator-
-   *  brief.md`, раздел 12.1 В-4): подвал БОЛЬШЕ НЕ РИСУЕТ `.line` — линия
-   *  уходит за левую кромку холста внутри своей собственной коробки
-   *  (`contact`) и в подвал не заходит. Проверка «Footer.astro пишет
-   *  preserveAspectRatio на хвосте» переписана на обратную: у подвала не
-   *  остаётся ни одного `<svg>` вовсе, а не «свой SVG с правильным
-   *  атрибутом» — падает, если кто-нибудь вернёт разметку линии в подвал
-   *  без такого же внимательного `preserveAspectRatio`, каким уже покрыт
-   *  `Section.astro` выше. */
-  it('Footer.astro не рисует ни одного <svg> — линия в подвал не заходит (В-4)', () => {
+   *  brief.md`, раздел 12.1 В-4): подвал ПЕРЕСТАВАЛ рисовать `.line` —
+   *  линия уходила за левую кромку холста внутри `contact` и в подвал не
+   *  заходила.
+   *
+   *  ПРАВКА `2026-08-27`, тем же днём, позже (`70-workshop/specs/site-v3/
+   *  16-line-digits-and-finale-brief.md`, раздел 3.3, вариант Б «Разгон»,
+   *  выбран владельцем): В-4 ПЕРЕОТКРЫТА решением владельца — уход
+   *  переехал с `contact` на подвал. Проверка переписана НАЗАД, к
+   *  исходному смыслу («каждый `<svg>` компонента несёт
+   *  `preserveAspectRatio="none"`»), а не оставлена в состоянии «нет
+   *  `<svg>» — предмет проверки (ловушка 1, `preserveAspectRatio` на КАЖДОМ
+   *  SVG страницы) не изменился, изменился только факт «есть ли этот SVG у
+   *  Footer.astro вообще». */
+  it('Footer.astro пишет preserveAspectRatio="none" на своём <svg> (В-4 переоткрыта, раздел 3.3 брифа `16-…`)', () => {
     const url = new URL('../components/Footer.astro', import.meta.url);
     const svgTags = markupSvgTags(readFileSync(url, 'utf8'));
-    expect(svgTags, 'в Footer.astro появился <svg> — В-4 отменяется молча').toHaveLength(0);
+    expect(svgTags.length, 'в Footer.astro нет ни одного <svg> — вариант Б ожидает линию в подвале').toBeGreaterThan(0);
+    for (const tag of svgTags) {
+      expect(tag, tag).toContain('preserveAspectRatio="none"');
+    }
   });
 });
 
