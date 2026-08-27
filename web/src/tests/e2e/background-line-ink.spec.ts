@@ -98,9 +98,22 @@ async function measureInkAtPathEnds(page: import('@playwright/test').Page): Prom
       const canvasW = Math.max(1, Math.round(vbW * realScaleX));
       const canvasH = Math.max(1, Math.round(vbH * realScaleY));
 
+      // Клин `hero` (`path.line-head`, раздел 12.4 брифа `11-line-
+      // narrator-brief.md`, решение «клин делаем», 12.1 В-1) — вторая
+      // заливаемая фигура в коробке `hero`: красится `fill`, а `stroke:
+      // none` — «у <path> нет сужающегося пера в обводке» (комментарий
+      // `BackgroundLine.astro`, К-7). Было: клон всегда получал
+      // `fill="none"` — годилось, пока в реестре не было ни одной
+      // заливаемой фигуры, и красящий канал у любого `.line path` был
+      // только `stroke`. Стало: канал определяется по вычисленным стилям
+      // самого пути, а не предполагается — фигура с `stroke: none` и
+      // непустым `fill` копирует ЗАЛИВКУ на клон, а не обводку; обратное
+      // (обычный путь линии) ведёт себя как раньше, без изменений.
+      const usesFill = style.stroke === 'none' && style.fill !== 'none';
+
       const clone = path.cloneNode(false) as SVGPathElement;
       clone.removeAttribute('class');
-      clone.setAttribute('stroke', style.stroke);
+      clone.setAttribute('stroke', usesFill ? 'none' : style.stroke);
       clone.setAttribute('stroke-opacity', style.strokeOpacity);
       clone.setAttribute('stroke-width', style.strokeWidth);
       clone.setAttribute('stroke-dasharray', style.strokeDasharray);
@@ -108,7 +121,8 @@ async function measureInkAtPathEnds(page: import('@playwright/test').Page): Prom
       clone.setAttribute('stroke-linecap', style.strokeLinecap);
       clone.setAttribute('stroke-linejoin', style.strokeLinejoin);
       clone.setAttribute('vector-effect', style.vectorEffect);
-      clone.setAttribute('fill', 'none');
+      clone.setAttribute('fill', usesFill ? style.fill : 'none');
+      clone.setAttribute('fill-opacity', usesFill ? style.fillOpacity : '0');
       const pathLengthAttr = path.getAttribute('pathLength');
       if (pathLengthAttr) clone.setAttribute('pathLength', pathLengthAttr);
 
@@ -188,20 +202,25 @@ test.describe('линия на фоне — тест чернил (05-line.md, �
     await page.goto('/');
 
     const results = await measureInkAtPathEnds(page);
-    // Число путей на странице не вписано числом: помимо основного `wide`-пути
-    // на каждую запись реестра (10 секций + хвост подвала), запись может
+    // Число путей на странице не вписано числом: на каждую запись реестра
+    // (после решения В-4, раздел 12.1 брифа `11-line-narrator-brief.md`,
+    // запись `footer` снята — секций 10, без «хвоста подвала») запись может
     // нести второй путь `.line-branch` (раздел 3 П4 брифа
     // `11-line-narrator-brief.md`, решение D-125, `linePaths.ts` —
-    // `LINE_PATHS[id].branch`). Число веток растёт независимо от числа
-    // секций — ожидание выводится из самого реестра, а не переписывается
-    // руками на каждом новом `.branch` (ловушки 15/21/24, `50-code/CLAUDE.md`).
+    // `LINE_PATHS[id].branch`) и/или клин `.line-head` (раздел 12.4 брифа —
+    // `LINE_PATHS.hero.head`, второй `<path>` в той же коробке, второй
+    // заливаемой фигурой; сегодня это только `hero`, но число выводится из
+    // реестра, а не переписывается руками на каждый новый `.head`). Число
+    // веток и клиньев растёт независимо от числа секций — ожидание
+    // выводится из самого реестра (ловушки 15/21/24, `50-code/CLAUDE.md`).
     const registryKeys = Object.keys(LINE_PATHS);
     const branchCount = registryKeys.filter((id) => Boolean(LINE_PATHS[id].branch)).length;
-    const expectedPathCount = registryKeys.length + branchCount;
+    const headCount = registryKeys.filter((id) => Boolean(LINE_PATHS[id].head)).length;
+    const expectedPathCount = registryKeys.length + branchCount + headCount;
     expect(
       results.length,
       `на странице должно быть ${expectedPathCount} путей линии: ${registryKeys.length} записей ` +
-      `реестра (секции + хвост подвала) + ${branchCount} со своей .line-branch`,
+      `реестра (секции) + ${branchCount} со своей .line-branch + ${headCount} со своим .line-head`,
     ).toBe(expectedPathCount);
 
     const failing = results.filter((r) => !r.hasInk);
