@@ -29,6 +29,18 @@ import { HOME_SECTIONS } from '../../lib/sections';
  *  `LINE_PATHS[id].branch`, тем же приёмом («страница рисует не тот путь,
  *  что нарисован реестром» — и обратно).
  *
+ *  ПРАВКА `2026-08-27` (раздел 12.4/12.7 того же брифа): у `hero` появился
+ *  ТРЕТИЙ `<path class="line-head">` (клин) в той же коробке — той же
+ *  природы, что `.line-branch`, и по той же причине основной селектор сужен
+ *  ещё раз, до `:not(.line-branch):not(.line-head)`; клин проверяется своим
+ *  отдельным блоком ниже, симметрично блоку ветвей. Без этого сужения `hero`
+ *  давал бы ДВЕ строки на одну секцию (`wide` и `head`), и вторая красила бы
+ *  тест ложным несовпадением с `LINE_PATHS.hero.wide` — ровно так это и
+ *  падало здесь до правки: «Received» показывал `d` клина, а не основной
+ *  обводки. Подвал (`В-4`, тот же раздел 12.1) больше не рисует `.line`
+ *  вовсе, поэтому счётчик ниже — число секций главной БЕЗ добавления «+1 за
+ *  подвал», как было раньше.
+ *
  *  Доказательство красноты (без этого сторож — просто прозаическое
  *  обещание, а не тест): отчёт исполнителя воспроизводит падение прямым
  *  экспериментом — временно возвращает рисование из локальной функции
@@ -42,7 +54,7 @@ test.describe('линия на фоне — страница рисует пут
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
 
-    const rendered = await page.locator('[data-line-side] > svg.line > path:not(.line-branch)').evaluateAll((paths) =>
+    const rendered = await page.locator('[data-line-side] > svg.line > path:not(.line-branch):not(.line-head)').evaluateAll((paths) =>
       paths.map((p) => {
         const owner = p.closest('[data-line-side]') as HTMLElement;
         const ownerId = owner.id || owner.tagName.toLowerCase();
@@ -50,9 +62,11 @@ test.describe('линия на фоне — страница рисует пут
       }),
     );
 
-    // Десять секций главной + подвал — раздел 10 шаг 4: «одиннадцать путей».
+    // Десять секций главной, подвал линии не несёт (раздел 12.1 брифа
+    // `11-line-narrator-brief.md`, В-4, ПРАВКА `2026-08-27`) — «+1 за
+    // подвал» из прежней версии этой проверки снято вместе с LINE_PATHS.footer.
     expect(rendered.length, 'на странице не найдено ни одного svg.line path').toBe(
-      HOME_SECTIONS.length + 1,
+      HOME_SECTIONS.length,
     );
 
     for (const { ownerId, d } of rendered) {
@@ -131,6 +145,55 @@ test.describe('линия на фоне — ветви рисуются из р�
       expect(
         ownerIdsWithBranch,
         `LINE_PATHS['${key}'].branch задан, но на странице у «${key}» нет .line-branch`,
+      ).toContain(key);
+    }
+  });
+});
+
+test.describe('линия на фоне — клин hero рисуется из реестра (11-line-narrator-brief.md, раздел 12.4/12.7)', () => {
+  test('атрибут d svg.line path.line-head совпадает с LINE_PATHS[id].head', async ({ page }) => {
+    // Та же симметрия, что у блока ветвей выше: клин — второй необязательный
+    // путь В ТОЙ ЖЕ коробке, того же рода, что `.line-branch`, видим только
+    // от 900px (BackgroundLine.astro) — DOM он несёт при любой ширине.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+
+    const rendered = await page.locator('[data-line-side] > svg.line > path.line-head').evaluateAll((paths) =>
+      paths.map((p) => {
+        const owner = p.closest('[data-line-side]') as HTMLElement;
+        const ownerId = owner.id || owner.tagName.toLowerCase();
+        return { ownerId, d: p.getAttribute('d') };
+      }),
+    );
+
+    const headIds = Object.keys(LINE_PATHS).filter((id) => Boolean(LINE_PATHS[id].head));
+    expect(rendered.length, 'число нарисованных .line-head разошлось с числом записей реестра с полем head').toBe(
+      headIds.length,
+    );
+
+    for (const { ownerId, d } of rendered) {
+      const entry = LINE_PATHS[ownerId];
+      expect(entry?.head, `в LINE_PATHS['${ownerId}'] нет поля head, а страница рисует .line-head`).toBeTruthy();
+      expect(
+        d,
+        `«${ownerId}»: атрибут d у .line-head разошёлся с LINE_PATHS['${ownerId}'].head`,
+      ).toBe(entry!.head);
+    }
+  });
+
+  test('в LINE_PATHS нет поля head, которое не нарисовано ни на одной секции страницы', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+
+    const ownerIdsWithHead = await page.locator('[data-line-side]:has(> svg.line > path.line-head)').evaluateAll((els) =>
+      els.map((el) => el.id || el.tagName.toLowerCase()),
+    );
+
+    for (const [key, entry] of Object.entries(LINE_PATHS)) {
+      if (!entry.head) continue;
+      expect(
+        ownerIdsWithHead,
+        `LINE_PATHS['${key}'].head задан, но на странице у «${key}» нет .line-head`,
       ).toContain(key);
     }
   });
