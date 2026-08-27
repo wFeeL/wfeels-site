@@ -162,15 +162,27 @@ export const PROCESS_HEADING = 'Как я работаю';
      брифа, тот же инвариант, что у `.reveal` в `base.css` и у кнопки
      первого экрана): `.num { color: var(--accent) }` выше не трогается
      НИКОГДА. Серый цвет и сам псевдоэлемент зажигания объявляются ТОЛЬКО
-     внутри тройного гейта `@supports (animation-timeline: view())` +
-     `prefers-reduced-motion: no-preference` + `min-width: 900px` — цифра
+     внутри гейта `@supports (animation-timeline: view())` + `screen and
+     (prefers-reduced-motion: no-preference)` + `min-width: 900px` — цифра
      не может остаться серой навсегда, потому что серой её делает только
      блок, внутри которого зажигание заведомо работает. Этот класс ошибки
      ломался дважды подряд в этой же базе (кнопка первого экрана и обвод
      `.line-trace` оставались серыми/скрытыми при `reduce`) — оба раза
-     ловил сторож, не человек. */
+     ловил сторож, не человек.
+
+     `screen and` — правка, найденная приёмкой П-Ц6 этой же задачи: сам
+     раздел 2.2 брифа называет гейт тройным (`@supports` + `no-preference`
+     + `min-width`) БЕЗ `screen`, но живой замер headless Chromium показал,
+     что `prefers-reduced-motion` не переключается на `reduce` при эмуляции
+     печати — без `screen` серый цвет из этого блока пережил бы печать, а
+     раздел 2.5 брифа (таблица режимов) и приёмка П-Ц6 требуют печать
+     акцентной. `@media print { .num::after { content: none } }` ниже сам
+     по себе снимал только дубликат глифа, а не серый цвет базового `.num`
+     — не полная защита. `screen` закрывает класс ошибки тем же способом,
+     что и остальной гейт: печать физически не может остаться внутри блока,
+     который предполагает экран. */
   @supports (animation-timeline: view()) {
-    @media (prefers-reduced-motion: no-preference) {
+    @media screen and (prefers-reduced-motion: no-preference) {
       @media (min-width: 900px) {
         .num { color: var(--text-muted); }
         .num::after {

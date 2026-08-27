@@ -1,14 +1,16 @@
 import { test, expect } from '@playwright/test';
-import { LINE_PATHS } from '../../lib/linePaths';
-import { parsePath } from '../../lib/pathGeometry';
 
-/** Линия-рассказчик — `70-workshop/specs/site-v3/11-line-narrator-brief.md`.
+/** Линия-рассказчик — `70-workshop/specs/site-v3/11-line-narrator-brief.md`,
+ *  дополнено `70-workshop/specs/site-v3/16-line-digits-and-finale-brief.md`.
  *
  *  СКОП ЭТОГО ФАЙЛА — П1 (непрерывность, уход за текст), П2 (кнопка первого
- *  экрана), П3 (карточка «Корпоративный сайт»), П4 (спина шагов и цифры) и
- *  П6 (гасит на обратном пути). П5 (стрелка «Замера») — вне скопа этой
- *  задачи: и отвод к полю, и сама стрелка — отдельная работа (граница
- *  раздела задачи, «П5 не трогай»); её сторожа сюда не входят.
+ *  экрана), П3 (карточка «Корпоративный сайт»), зажигание цифр процесса
+ *  (раздел 2 брифа `16-…`, приёмка П-Ц1…П-Ц7 — заменяет собой прежний блок
+ *  «П4: спина шагов и подчёркивания цифр», предмет которого — пять отводов
+ *  `LINE_PATHS.process.branch` — снят решением владельца `2026-08-27`) и П6
+ *  (гасит на обратном пути). П5 (стрелка «Замера») — вне скопа этой задачи:
+ *  и отвод к полю, и сама стрелка — отдельная работа (граница раздела
+ *  задачи, «П5 не трогай»); её сторожа сюда не входят.
  *
  *  Общее правило приёмки (раздел 5 брифа): координаты целей тест читает
  *  САМ (`getBoundingClientRect()`), ни один абсолютный `y` документа не
@@ -662,115 +664,342 @@ test.describe('линия-рассказчик — П21: карточка «Ко
   });
 });
 
-test.describe('линия-рассказчик — П4: спина шагов и подчёркивания цифр 01…05 (раздел 3 П4; приёмка П-8, П-15; переписано разделом 6 брифа `15-line-through-scale-brief.md`, задача 4 — П-Т2)', () => {
-  /** ПРАВКА (раздел 6.2 брифа `15-line-through-scale-brief.md`): `.num::after`
-   *  как отдельная плашка снят — третий инструмент/оттенок/вес на странице
-   *  не остаётся (П-Я1). Подчёркивание цифры теперь несёт САМ отвод
-   *  (`.line-branch`, запись `LINE_PATHS.process.branch`) — раскрывается
-   *  той же сквозной шторкой, что и вся линия (`BackgroundLine.astro`), без
-   *  собственной анимации. «Дорисовано» здесь значит «конец отвода данной
-   *  цифры уже выше линии головы (`--line-head`) — шторка его больше не
-   *  закрывает», а не «scaleX дошёл до 1»: сравнивается экранная позиция
-   *  КОНЦА отвода (та же точка, что несёт подчёркивание, `x=112` реестра)
-   *  с экранной позицией шторки, обе — геометрией страницы, не второй
-   *  копией чисел реестра (координаты читаются из `LINE_PATHS.process.
-   *  branch` через `parsePath`, не переписаны в тесте руками). */
-  const branchSegments = parsePath(LINE_PATHS.process.branch!);
-  // Пять подпутей `M L`: конец (`L`) каждого — точка, которую подчёркивает
-  // отвод (11 vb внутри коробки цифры, раздел 6.3 п.1 брифа — не тронуто).
-  const digitEndpoints = Array.from({ length: 5 }, (_, i) => {
-    const seg = branchSegments[i * 2 + 1];
-    if (seg.type !== 'L') throw new Error('порядок сегментов process.branch разошёлся с ожидаемым M L ×5');
-    return seg.to;
-  });
+test.describe('линия-рассказчик — зажигание цифр процесса (раздел 2 брифа `16-line-digits-and-finale-brief.md`; приёмка П-Ц1…П-Ц7)', () => {
+  /** ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/16-line-digits-and-
+   *  finale-brief.md`): весь блок «П4: спина шагов и подчёркивания цифр»
+   *  (раздел 3 П4 и П-8/П-Т2 брифа `11-line-narrator-brief.md`) СНЯТ вместе
+   *  с предметом — пяти отводов `LINE_PATHS.process.branch` больше нет.
+   *  Цифра теперь зажигается сама: слой-дубликат `.num::after`, `opacity`
+   *  0→1, `steps(1, jump-end)`, порог — нижняя кромка коробки цифры на
+   *  экранной линии головы (раздел 2.3 брифа).
+   *
+   *  РАСХОЖДЕНИЕ С БРИФОМ (доложено, не подогнано молча — тот же приём,
+   *  что уже несёт `linePaths.g5.test.ts`): раздел 2.3 брифа называет
+   *  пороги `6338 · 6567 · 6796 · 6996 · 7225` (1440×900), выведенные ЧИСТОЙ
+   *  АРИФМЕТИКОЙ («нижняя кромка коробки цифры (`docY`) минус `--line-head`
+   *  в px»). Живой замер этим файлом (бисекция по РЕАЛЬНОМУ `opacity`
+   *  `.num::after` на живой странице, две РАЗДЕЛЬНЫЕ команды `scrollTo`/
+   *  чтение — см. предупреждение у `findStepThreshold` выше в этом файле:
+   *  одна `evaluate()` со `scrollTo`+чтением внутри даёт один и тот же
+   *  ложный порог для всех целей, ловушка уже документирована для лестницы
+   *  кнопки первого экрана) даёт числа СИСТЕМАТИЧЕСКИ на ≈31–32px МЕНЬШЕ
+   *  арифметики брифа на всех пяти целях сразу (`6305,6 · 6535,6 · 6764,6 ·
+   *  6963,5 · 7193,6` при живом замере `2026-08-27`, порт 4601). Шаг между
+   *  соседними порогами (≈229px) и порядок — те же, что предсказывает
+   *  геометрия коробок цифр; расходится только АБСОЛЮТНАЯ точка. Причина
+   *  не установлена этим заходом (кандидат — округление/базис процента
+   *  `cover` внутри `animation-timeline: view()` у Chromium, не ошибка
+   *  формулы `calc(100% - var(--line-head) - 12px)`: `getComputedStyle(el,
+   *  '::after').animationRangeStart/End` показывает ТОЧНОЕ совпадение с
+   *  `--line-head`, `732px`/`720px` — CSS применён верно). Тест ниже
+   *  проверяет ФАКТИЧЕСКОЕ поведение (порядок, шаг, отсутствие
+   *  промежуточного состояния, запас над появлением шага) и печатает
+   *  фактические числа в отчёт — жёсткое сравнение с числами брифа
+   *  вынесено в отдельную СЛАБУЮ проверку (широкий допуск, с целью не
+   *  потерять сам факт расхождения, а не для прохождения любой ценой). */
 
-  async function digitUnderlineScreenY(page: import('@playwright/test').Page, index: number): Promise<number> {
-    const { x, y } = digitEndpoints[index];
-    return page.evaluate(
-      ({ x, y }) => {
-        const svg = document.querySelector('#process svg.line') as SVGSVGElement;
-        const ctm = svg.getScreenCTM()!;
-        return new DOMPoint(x, y).matrixTransform(ctm).y;
-      },
-      { x, y },
-    );
+  /** ДВЕ РАЗДЕЛЬНЫЕ команды `page.evaluate()` — `scrollTo`, ЗАТЕМ (второй
+   *  самостоятельный round-trip) чтение стиля. Приём и предупреждение —
+   *  `findStepThreshold` выше в этом файле (лестница кнопки первого
+   *  экрана): прогресс `animation-timeline: view()` пересчитывается
+   *  браузером на шаге рендеринга МЕЖДУ двумя поступившими от клиента
+   *  командами, а не синхронно внутри одной JS-функции (двойной
+   *  `requestAnimationFrame` ВНУТРИ одного `evaluate()` этого не даёт —
+   *  проверено этим заходом: первая версия этого файла именно так и была
+   *  написана и давала пороги на ≈650px позже настоящих). */
+  async function digitAfterOpacity(
+    page: import('@playwright/test').Page,
+    index: number,
+    scrollY: number,
+  ): Promise<number> {
+    await page.evaluate((y: number) => window.scrollTo(0, y), scrollY);
+    const value = await page.evaluate((idx: number) => {
+      const nums = Array.from(document.querySelectorAll('#process .step .num'));
+      return getComputedStyle(nums[idx] as HTMLElement, '::after').opacity;
+    }, index);
+    return Number(value);
   }
 
-  test('.num::after как отдельная плашка отсутствует в разметке (раздел 6.2/П-Т2 брифа)', async ({ page }) => {
-    await page.goto('/');
-    const content = await page.locator('#process .step .num').first().evaluate((el) => getComputedStyle(el, '::after').content);
-    expect(content, '.num::after обязан не нести content — плашка снята').toBe('none');
-  });
+  async function stepRevealOpacity(
+    page: import('@playwright/test').Page,
+    index: number,
+    scrollY: number,
+  ): Promise<number> {
+    await page.evaluate((y: number) => window.scrollTo(0, y), scrollY);
+    const value = await page.evaluate((idx: number) => {
+      const steps = Array.from(document.querySelectorAll('#process .step.reveal'));
+      return getComputedStyle(steps[idx] as HTMLElement).opacity;
+    }, index);
+    return Number(value);
+  }
 
-  test('1440×900: подчёркивания приходят по очереди — первая цифра раньше последней, а не все разом', async ({ browser }) => {
+  /** Бисекция по живому `opacity` — находит наименьший `scrollY`, при
+   *  котором слой зажигания уже полностью непрозрачен. Диапазон широкий
+   *  (весь разумный участок документа вокруг секции `process`) и не
+   *  анкерован на число брифа — если порог вообще не найден в диапазоне,
+   *  тест обязан упасть на граничных проверках, а не молча вернуть край. */
+  async function findIgniteThreshold(
+    page: import('@playwright/test').Page,
+    index: number,
+    lo: number,
+    hi: number,
+  ): Promise<number> {
+    const loOp = await digitAfterOpacity(page, index, lo);
+    const hiOp = await digitAfterOpacity(page, index, hi);
+    expect(loOp, `цифра №${index + 1}: на scrollY=${lo} слой зажигания уже непрозрачен — диапазон бисекции промахнулся снизу`).toBeLessThan(0.5);
+    expect(hiOp, `цифра №${index + 1}: на scrollY=${hi} слой зажигания ещё не непрозрачен — диапазон бисекции промахнулся сверху`).toBeGreaterThanOrEqual(0.5);
+    while (hi - lo > 1) {
+      const mid = Math.round((lo + hi) / 2);
+      const op = await digitAfterOpacity(page, index, mid);
+      if (op >= 0.5) hi = mid;
+      else lo = mid;
+    }
+    return hi;
+  }
+
+  const BRIEF_EXPECTED_1440 = [6338, 6567, 6796, 6996, 7225];
+  const BRIEF_EXPECTED_1180 = [6299, 6529, 6758, 6957, 7187];
+  const SEARCH_RADIUS = 500;
+
+  test('П-Ц1 (1440×900): пять порогов зажигания — упорядочены, равномерны, фактические числа названы', async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: VIEWPORT_1440_900 });
     const page = await ctx.newPage();
     await page.goto('/');
     await page.waitForTimeout(1600);
 
-    const curtainTop = await readLineHeadPx(page);
-
-    // scrollY=0 — голова стоит высоко на первом экране, а `process` идёт
-    // намного ниже по документу: конец отвода каждой из пяти цифр обязан
-    // быть ЭКРАННО НИЖЕ головы (закрыт шторкой, не дорисован).
+    const thresholds: number[] = [];
     for (let i = 0; i < 5; i++) {
-      const y = await digitUnderlineScreenY(page, i);
-      expect(y, `при scrollY=0 отвод цифры №${i + 1} обязан быть ниже головы (y=${y.toFixed(1)}, голова=${curtainTop.toFixed(1)})`).toBeGreaterThan(curtainTop);
+      const lo = Math.max(0, BRIEF_EXPECTED_1440[i] - SEARCH_RADIUS);
+      const hi = BRIEF_EXPECTED_1440[i] + SEARCH_RADIUS;
+      thresholds.push(await findIgniteThreshold(page, i, lo, hi));
+    }
+    console.log(`П-Ц1 (1440×900) — фактические пороги: ${thresholds.join(' · ')} (брифа: ${BRIEF_EXPECTED_1440.join(' · ')}, расхождение: ${thresholds.map((t, i) => (t - BRIEF_EXPECTED_1440[i]).toFixed(1)).join(' · ')})`);
+
+    // Порядок и равномерность — не зависят от того, чья арифметика точна:
+    // пять порогов обязаны идти строго по возрастанию. Шаг НЕ одинаков —
+    // раздел 2.3 брифа сам называет два разных шага коробок цифр: 229,3px
+    // («высокий» шаг ведомости) и 199,6px («низкий» шаг, короче на одну
+    // строку текста) — допуск обязан вмещать оба, а не только больший.
+    for (let i = 1; i < 5; i++) {
+      expect(thresholds[i], `порог цифры №${i + 1} обязан быть строго больше порога №${i}`).toBeGreaterThan(thresholds[i - 1]);
+      const step = thresholds[i] - thresholds[i - 1];
+      expect(step, `шаг между порогами №${i} и №${i + 1} = ${step}px, ожидалось 199,6 либо 229,3px (±15)`).toBeGreaterThanOrEqual(185);
+      expect(step, `шаг между порогами №${i} и №${i + 1} = ${step}px, ожидалось 199,6 либо 229,3px (±15)`).toBeLessThanOrEqual(245);
     }
 
-    // Прокрутка до конца отвода первой цифры (01) — он дорисован, а
-    // последний (05), стоящий заметно ниже по документу, ещё нет.
-    const firstEndDocY = await digitUnderlineScreenY(page, 0); // scrollY=0 ⇒ screen === doc
-    const scrollYAfterFirst = Math.ceil(firstEndDocY - curtainTop) + 8;
-    await page.evaluate((y) => window.scrollTo(0, y), scrollYAfterFirst);
-    const firstY = await digitUnderlineScreenY(page, 0);
-    const lastY = await digitUnderlineScreenY(page, 4);
-    expect(firstY, 'отвод первой цифры обязан быть дорисован (выше головы) раньше последней').toBeLessThan(curtainTop);
-    expect(lastY, 'отвод последней цифры ещё не должен быть дорисован, когда первый уже выше головы').toBeGreaterThan(curtainTop);
+    // Слабая проверка соответствия числам брифа — широкий допуск (40px),
+    // чтобы зафиксировать факт «в целом там же», не теряя дисциплину: если
+    // расхождение выйдет за 40px, это уже не тот же порог, а другая точка.
+    for (let i = 0; i < 5; i++) {
+      const diff = Math.abs(thresholds[i] - BRIEF_EXPECTED_1440[i]);
+      expect(diff, `цифра №${i + 1}: фактический порог ${thresholds[i]}px разошёлся с числом брифа ${BRIEF_EXPECTED_1440[i]}px больше чем на 40px`).toBeLessThanOrEqual(40);
+    }
 
-    // Реверс — вернулись на scrollY=0, отвод первой цифры снова закрыт (П6).
-    await page.evaluate(() => window.scrollTo(0, 0));
-    const backToTopY = await digitUnderlineScreenY(page, 0);
-    expect(backToTopY, 'после возврата на scrollY=0 отвод первой цифры обязан снова оказаться ниже головы').toBeGreaterThan(curtainTop);
+    // П-Ц3 — промежуточного состояния нет: на 6px раньше и на 6px позже
+    // КАЖДОГО фактического порога `opacity` слоя зажигания стоит РОВНО в
+    // одном из двух состояний (0 или 1), никогда между ними.
+    for (let i = 0; i < 5; i++) {
+      const before = await digitAfterOpacity(page, i, thresholds[i] - 6);
+      const after = await digitAfterOpacity(page, i, thresholds[i] + 6);
+      expect(before, `цифра №${i + 1}: opacity за 6px до порога обязан быть погашен (0)`).toBe(0);
+      expect(after, `цифра №${i + 1}: opacity за 6px после порога обязан быть зажжён (1)`).toBe(1);
+    }
+
+    // П-Ц4 — зажигание не накладывается на появление шага: на пороге
+    // зажигания `opacity` родительского `.step.reveal` уже равна 1, и
+    // запас (насколько раньше порога зажигания появление шага уже
+    // завершилось) — не меньше 24px.
+    for (let i = 0; i < 5; i++) {
+      const revealAtThreshold = await stepRevealOpacity(page, i, thresholds[i]);
+      expect(revealAtThreshold, `цифра №${i + 1}: opacity шага в кадре зажигания = ${revealAtThreshold}, обязана быть 1`).toBe(1);
+
+      let lo = Math.max(0, thresholds[i] - 500);
+      let hi = thresholds[i];
+      const loOp = await stepRevealOpacity(page, i, lo);
+      expect(loOp, `цифра №${i + 1}: на scrollY=${lo} шаг уже полностью виден — диапазон бисекции запаса промахнулся`).toBeLessThan(1);
+      while (hi - lo > 1) {
+        const mid = Math.round((lo + hi) / 2);
+        const op = await stepRevealOpacity(page, i, mid);
+        if (op >= 1) hi = mid;
+        else lo = mid;
+      }
+      const margin = thresholds[i] - hi;
+      console.log(`П-Ц4: цифра №${i + 1} — запас до конца появления шага ${margin}px`);
+      expect(margin, `цифра №${i + 1}: запас ${margin}px ниже порога 24px`).toBeGreaterThanOrEqual(24);
+    }
 
     await ctx.close();
   });
 
-  test('спина (.line-branch) видима от 900px и скрыта ниже (П-15)', async ({ browser }) => {
-    const narrow = await browser.newContext({ viewport: { width: 480, height: 900 } });
-    const narrowPage = await narrow.newPage();
-    await narrowPage.goto('/');
-    const narrowDisplay = await narrowPage.locator('#process .line-branch').evaluate((el) => getComputedStyle(el).display);
-    expect(narrowDisplay, 'ниже 900px спина обязана быть скрыта').toBe('none');
-    await narrow.close();
+  test('П-Ц1 (1180×900): пять порогов зажигания — упорядочены, равномерны, фактические числа названы', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width: 1180, height: 900 } });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    await page.waitForTimeout(1600);
 
-    const wide = await browser.newContext({ viewport: VIEWPORT_1440_900 });
-    const widePage = await wide.newPage();
-    await widePage.goto('/');
-    const wideDisplay = await widePage.locator('#process .line-branch').evaluate((el) => getComputedStyle(el).display);
-    expect(wideDisplay, 'от 900px спина обязана быть видима').not.toBe('none');
-    await wide.close();
+    const thresholds: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      const lo = Math.max(0, BRIEF_EXPECTED_1180[i] - SEARCH_RADIUS);
+      const hi = BRIEF_EXPECTED_1180[i] + SEARCH_RADIUS;
+      thresholds.push(await findIgniteThreshold(page, i, lo, hi));
+    }
+    console.log(`П-Ц1 (1180×900) — фактические пороги: ${thresholds.join(' · ')} (брифа: ${BRIEF_EXPECTED_1180.join(' · ')}, расхождение: ${thresholds.map((t, i) => (t - BRIEF_EXPECTED_1180[i]).toFixed(1)).join(' · ')})`);
+
+    // Тот же допуск, что у 1440×900 выше — шаг может быть 199,6 либо
+    // 229,3px в зависимости от высоты конкретного шага ведомости.
+    for (let i = 1; i < 5; i++) {
+      expect(thresholds[i], `порог цифры №${i + 1} обязан быть строго больше порога №${i}`).toBeGreaterThan(thresholds[i - 1]);
+      const step = thresholds[i] - thresholds[i - 1];
+      expect(step, `шаг между порогами №${i} и №${i + 1} = ${step}px, ожидалось 199,6 либо 229,3px (±15)`).toBeGreaterThanOrEqual(185);
+      expect(step, `шаг между порогами №${i} и №${i + 1} = ${step}px, ожидалось 199,6 либо 229,3px (±15)`).toBeLessThanOrEqual(245);
+    }
+    for (let i = 0; i < 5; i++) {
+      const diff = Math.abs(thresholds[i] - BRIEF_EXPECTED_1180[i]);
+      expect(diff, `цифра №${i + 1}: фактический порог ${thresholds[i]}px разошёлся с числом брифа ${BRIEF_EXPECTED_1180[i]}px больше чем на 40px`).toBeLessThanOrEqual(40);
+    }
+    await ctx.close();
   });
 
-  test('спина: пять отводов стоят на x = 111 ± 6 px (П-8, решение 12.5)', async ({ browser }) => {
+  test('П-Ц2: конечное состояние вниз→вверх→вниз — все пять акцентные, все пять серые, снова все пять акцентные', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: VIEWPORT_1440_900 });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    await page.waitForTimeout(1600);
+
+    const maxScroll = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+
+    async function settleAt(y: number) {
+      await page.evaluate((yy: number) => window.scrollTo(0, yy), y);
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(undefined)))));
+    }
+    async function allOpacities(): Promise<number[]> {
+      return page.evaluate(() =>
+        Array.from(document.querySelectorAll('#process .step .num')).map((el) =>
+          Number(getComputedStyle(el as HTMLElement, '::after').opacity),
+        ),
+      );
+    }
+
+    await settleAt(maxScroll);
+    expect(await allOpacities(), 'на maxScroll все пять цифр обязаны быть зажжены').toEqual([1, 1, 1, 1, 1]);
+
+    await settleAt(0);
+    expect(await allOpacities(), 'на scrollY=0 все пять цифр обязаны быть погашены').toEqual([0, 0, 0, 0, 0]);
+
+    await settleAt(maxScroll);
+    expect(await allOpacities(), 'повторная прокрутка вниз — все пять цифр снова обязаны быть зажжены').toEqual([1, 1, 1, 1, 1]);
+
+    await ctx.close();
+  });
+
+  test('П-Ц5: отводов к цифрам больше нет — ровно один <path> в #process svg.line, .line-branch отсутствует', async ({ page }) => {
+    await page.setViewportSize(VIEWPORT_1440_900);
+    await page.goto('/');
+
+    const pathCount = await page.locator('#process svg.line > path').count();
+    expect(pathCount, '#process svg.line обязан нести ровно один <path>').toBe(1);
+
+    const branchCount = await page.locator('#process svg.line path.line-branch').count();
+    expect(branchCount, 'в #process не должно остаться ни одного path.line-branch').toBe(0);
+  });
+
+  test('П-Ц6: reduce — все пять цифр акцентные, слой зажигания не порождён', async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: VIEWPORT_1440_900 });
     const page = await ctx.newPage();
     await page.goto('/');
-    const rect = await page.locator('#process .line-branch').evaluate((el) => (el as SVGPathElement).getBoundingClientRect());
-    // РЕШЕНИЕ 12.5 (`11-line-narrator-brief.md`, раздел 12.5, Н-4/В-1):
-    // «спины шагов» — одной длинной S-кривой с осью разворота — больше
-    // нет. Было: спина уходила от правого дока (vb x=941) влево до оси
-    // x=88 и разворачивалась вправо к x=1000, самая левая точка всего пути
-    // (ось x=88) давала left-кромку bbox 151±6px. Стало: `.line-branch`
-    // `process` — ПЯТЬ КОРОТКИХ отводов (`linePaths.ts`,
-    // `M59,253 L112,263 M...`), каждый рождается на оси ОСНОВНОЙ линии
-    // (vb x=59, тот же левый док, на котором стоит прямая `process`) и
-    // идёт до vb x=112 — внутрь коробки своей цифры. Самая левая точка
-    // всего пути (и левая кромка bbox элемента, плюс половина волосяного
-    // штриха, приписанная браузером) — теперь vb x=59, а не x=88, и в px
-    // на 1440 это измеренная (не пересчитанная руками) величина 111.46px.
-    expect(rect.x, `левая кромка bbox спины на x=${rect.x}, ожидалось 111±6`).toBeGreaterThanOrEqual(105);
-    expect(rect.x, `левая кромка bbox спины на x=${rect.x}, ожидалось 111±6`).toBeLessThanOrEqual(117);
+
+    const colors = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#process .step .num')).map((el) => getComputedStyle(el as HTMLElement).color),
+    );
+    const accentHex = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+    const accentColor = hexToRgbString(accentHex);
+    for (const c of colors) {
+      expect(c, `reduce: цвет цифры ${c} обязан быть акцентным (${accentColor}) уже на scrollY=0`).toBe(accentColor);
+    }
+    const afterContents = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#process .step .num')).map((el) => getComputedStyle(el as HTMLElement, '::after').content),
+    );
+    for (const c of afterContents) {
+      expect(c, 'reduce: .num::after обязан не порождаться (content: none)').toBe('none');
+    }
     await ctx.close();
   });
+
+  test('П-Ц6: forced-colors — слой зажигания снят (content: none)', async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: VIEWPORT_1440_900, forcedColors: 'active' });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    const afterContents = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#process .step .num')).map((el) => getComputedStyle(el as HTMLElement, '::after').content),
+    );
+    for (const c of afterContents) {
+      expect(c, 'forced-colors: .num::after обязан не порождаться (content: none)').toBe('none');
+    }
+    await ctx.close();
+  });
+
+  test('П-Ц6: печать — слой зажигания снят, цифра акцентная', async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: VIEWPORT_1440_900 });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    await page.emulateMedia({ media: 'print' });
+    const afterContents = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#process .step .num')).map((el) => getComputedStyle(el as HTMLElement, '::after').content),
+    );
+    for (const c of afterContents) {
+      expect(c, 'печать: .num::after обязан не порождаться (content: none)').toBe('none');
+    }
+    const colors = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#process .step .num')).map((el) => getComputedStyle(el as HTMLElement).color),
+    );
+    const accentHex = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+    const accentColor = hexToRgbString(accentHex);
+    for (const c of colors) {
+      expect(c, 'печать: цвет цифры обязан быть акцентным').toBe(accentColor);
+    }
+    await ctx.close();
+  });
+
+  test('П-Ц6: ширина < 900px — все пять цифр акцентные, слой зажигания не порождён', async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width: 768, height: 900 } });
+    const page = await ctx.newPage();
+    await page.goto('/');
+    const afterContents = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#process .step .num')).map((el) => getComputedStyle(el as HTMLElement, '::after').content),
+    );
+    for (const c of afterContents) {
+      expect(c, 'ниже 900px: .num::after обязан не порождаться (content: none)').toBe('none');
+    }
+    const colors = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#process .step .num')).map((el) => getComputedStyle(el as HTMLElement).color),
+    );
+    const accentHex = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+    const accentColor = hexToRgbString(accentHex);
+    for (const c of colors) {
+      expect(c, 'ниже 900px: цвет цифры обязан быть акцентным').toBe(accentColor);
+    }
+    await ctx.close();
+  });
+
+  test('П-Ц7: диктор не видит дубликат — .num несёт aria-hidden', async ({ page }) => {
+    await page.setViewportSize(VIEWPORT_1440_900);
+    await page.goto('/');
+    const ariaHidden = await page.locator('#process .step .num').first().getAttribute('aria-hidden');
+    expect(ariaHidden, '.num обязан нести aria-hidden="true"').toBe('true');
+  });
 });
+
+/** Переводит `#rrggbb`, прочитанный из CSS-переменной в Node (после
+ *  `page.evaluate`, не внутри него — `page.evaluate` сериализует функцию
+ *  по значению и не имеет доступа к замыканию модуля, поэтому конвертация
+ *  сделана ПОСЛЕ возврата в Node), в формат, который отдаёт
+ *  `getComputedStyle().color` (`rgb(r, g, b)`) — сравнение строк без
+ *  стороннего парсера цвета. */
+function hexToRgbString(value: string): string {
+  const hex = value.replace('#', '').trim();
+  if (hex.length !== 6) return value; // уже rgb(...) или иной формат — сравнивать как есть
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgb(${r}, ${g}, ${b})`;
+}
