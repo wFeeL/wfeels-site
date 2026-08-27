@@ -600,11 +600,18 @@ header .brand { view-transition-name: --site-brand; }
    `Card.astro`: сам компонент документирует (см. комментарий к пропу
    `accent` в `Card.astro`) намеренный отказ бороться специфичностью с
    правилами снаружи, а это правило и так адресное (единственная секция), и
-   исключение читается прямо на месте дефекта. */
+   исключение читается прямо на месте дефекта.
+
+   `#about .card` УДАЛЁН (раздел 10.14.7 брифа `11-line-narrator-brief.md`,
+   Р-6): в `About.astro` карточки нет и не было — там `div.photo-frame` и
+   `img.photo` — селектор был мёртв с первого дня и ничего не делал.
+   Заслон, который в «Обо мне» действительно есть (фотография — непрозрачная
+   картинка, а не лист, калька к ней неприменима по существу), закрывает
+   не калька, а «полоса отвода» (`Container.astro`, `--ink-lane`,
+   `About.astro`, `#about .photo-col`). */
 #services .grid > .card,
 #pricing .card:not(.card--accent),
 #cases .field:not(.bare),
-#about .card,
 #faq .panel {
   background: color-mix(in srgb, var(--surface) 62%, transparent);
 }
