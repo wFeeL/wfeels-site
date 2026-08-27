@@ -164,15 +164,22 @@ export const PROCESS_HEADING = 'Как я работаю';
   }
 
   /* Своя (безымянная) шкала вида НА САМОЙ ЦИФРЕ — не именованная шкала
-     секции: диапазон `cover var(--line-lead) … cover calc(100% -
-     var(--line-trail))` обязан прийтись на коробку самой цифры, тем же
+     секции: диапазон обязан прийтись на коробку самой цифры, тем же
      доводом, что и у кнопки первого экрана (раздел 3 П2 брифа). Пять
      цифр = пять экземпляров ОДНОГО правила — ни одного числа в CSS,
      момент срабатывания каждой считает браузер из её собственной коробки
      (раздел 3 П6 брифа: сдвиг раскладки правило не ломает). От 900px —
      рассказу нет места на мобильной раскладке (раздел 7 п.6, приёмка
      П-15). `fill-mode: both` — подчёркивание обязано стоять на
-     `scaleX(0)` ДО прихода линии, а не показывать конечное состояние. */
+     `scaleX(0)` ДО прихода линии, а не показывать конечное состояние.
+
+     ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/
+     15-line-through-scale-brief.md`, раздел 4.3): механическая замена двух
+     токенов на сквозную шкалу головы, ни одного нового числа — `var(--line-
+     lead)` → `calc(100vh - var(--line-head))`, `var(--line-trail)` →
+     `var(--line-head)`. Момент, когда цифра пересекает экранную линию
+     головы, не изменился по смыслу (та же точка «перо дошло досюда»),
+     изменился только токен, от которого он считается. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
       @media (min-width: 900px) {
@@ -183,7 +190,7 @@ export const PROCESS_HEADING = 'Как я работаю';
           animation-timing-function: linear;
           animation-fill-mode: both;
           animation-timeline: view();
-          animation-range: cover var(--line-lead) cover calc(100% - var(--line-trail));
+          animation-range: cover calc(100vh - var(--line-head)) cover calc(100% - var(--line-head));
         }
       }
     }

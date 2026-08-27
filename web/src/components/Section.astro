@@ -52,18 +52,16 @@ interface Props {
    *  просто теперь это отдельный узел разметки, а не сама секция. */
   surface?: boolean;
   /** Последняя секция, реально несущая линию (раздел 12.1 брифа
-   *  `11-line-narrator-brief.md`, В-4) — ПРАВКА `2026-08-27`: атрибут
-   *  `data-line-last` переехал сюда с подвала (`Footer.astro`), потому что
-   *  подвал больше не рисует линию вовсе, а `contact` стал её концом (краска
-   *  уходит за левую кромку холста внутри его собственной коробки, раздел
-   *  12.5). `BackgroundLine.astro` читает этот атрибут, чтобы дать
-   *  `.line-curtain` этой секции самодостаточный диапазон раскрытия
-   *  (`cover 0% contain 0%`) вместо диапазона, рассчитанного на то, что
-   *  дальше вниз по документу есть ещё контент, несущий ту же линию — как и
-   *  раньше у подвала, `contact` идёт последней и второй такой секции на
-   *  странице нет. На главной этот проп несёт только `contact`
-   *  (`HomePage.astro`, `GAP.contact`); секции вне главной линии не несут
-   *  вовсе и проп не используют. */
+   *  `11-line-narrator-brief.md`, В-4) — `contact` на главной, подвал линию
+   *  не рисует. ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/
+   *  15-line-through-scale-brief.md`, раздел 2.3): CSS-правило, читавшее
+   *  этот атрибут (`[data-line-last] .line-curtain{animation-range:cover 0%
+   *  contain 0%}`), СНЯТО вместе с посекционными окнами раскрытия — сквозной
+   *  шторке понятие «последней секции» не нужно вовсе (раздел 2.1: «событий
+   *  «стык секций» не существует»). Атрибут `data-line-last` остаётся в
+   *  разметке как метаданные (маркер «эта секция — конец рассказа линии»,
+   *  читаемый структурными сторожами, `selected-deco.spec.ts`), но CSS
+   *  больше его не потребляет. */
   lineLast?: boolean;
 }
 const { id, label, heading, topGap, bottomGap, surface = false, lineLast = false } = Astro.props;
@@ -94,12 +92,14 @@ const { id, label, heading, topGap, bottomGap, surface = false, lineLast = false
  *
  * ПРАВКА 2026-08-21 (D-080, «пролагивает при листании»): путь больше не
  * несёт `pathLength`/`stroke-dasharray`/`stroke-dashoffset` — он рисуется
- * ЦЕЛИКОМ и статически, раскрытие несёт соседний `<div class="line-
- * curtain">` через композитный `transform: scaleY(...)` (второй проход
- * того же дня — заменил первую версию на `translate`, см.
- * `BackgroundLine.astro`).
- * Оба элемента читают ОДИН и тот же `LINE_PATHS[id]` — второго источника
- * геометрии по-прежнему нет. */
+ * ЦЕЛИКОМ и статически.
+ *
+ * ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/15-line-through-scale-
+ * brief.md`, раздел 2): поштучная `<div class="line-curtain">` этой секции
+ * СНЯТА — раскрытие несёт ОДНА сквозная шторка на всю страницу
+ * (`BackgroundLine.astro`, `position: fixed`), а не одиннадцать поштучных.
+ * Секция рисует только сам путь (`<svg class="line">`), она больше не несёт
+ * узла раскрытия вовсе. */
 const line = lineDataFor(id);
 const linePath = id ? LINE_PATHS[id] : undefined;
 ---
@@ -135,16 +135,6 @@ const linePath = id ? LINE_PATHS[id] : undefined;
             нигде по построению»). */}
         {linePath.head && <path class="line-head" d={linePath.head} />}
       </svg>
-      {/* Шторка — задача «пролагивает при листании» (D-080). Открывает путь
-          выше через `transform: scaleY(...)` (композитится, не перекрашивает),
-          а не через `stroke-dashoffset` пути (перекрашивает бокс на каждом
-          кадре). `--line-overhang-pct` — инлайновый, потому что зависит от
-          `vbH` ЭТОЙ секции (`BackgroundLine.astro` объясняет устройство). */}
-      <div
-        class="line-curtain"
-        style={`--line-overhang-pct:${linePath.overhangPercent}%`}
-        aria-hidden="true"
-      ></div>
     </>
   )}
   {label && <Label>{label}</Label>}

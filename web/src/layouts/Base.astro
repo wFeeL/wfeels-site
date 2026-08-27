@@ -177,7 +177,6 @@ const structured = [
     ))}
   </head>
   <body>
-    {line && <BackgroundLine />}
     <a class="skip" href="#main">
       {t.skip}
     </a>
@@ -185,6 +184,17 @@ const structured = [
     <main id="main" tabindex="-1">
       <slot />
     </main>
+    {/* Сквозная шторка линии (`70-workshop/specs/site-v3/
+        15-line-through-scale-brief.md`, раздел 2) — ОДИН узел на всю
+        страницу, `position: fixed`, z-index -3. Стоит ПОСЛЕ `<main>`
+        сознательно: она и все `.line` внутри секций делят один и тот же
+        z-index (-3), а при равном z-index порядок покраски решает порядок
+        в DOM — шторка обязана идти ПОЗЖЕ каждого `.line`, иначе рисунок
+        покрасился бы поверх неё, а не наоборот. `<footer>`, идущий следом,
+        несёт свой фон на z-index -2 (D-126, правка раздела 2.4 брифа
+        `15-…`) — выше шторки независимо от DOM-порядка, поэтому подвал
+        всегда виден поверх неё. */}
+    {line && <BackgroundLine />}
     <Footer lang={lang} line={line} cta={cta} />
     {rail && <Rail />}
 
