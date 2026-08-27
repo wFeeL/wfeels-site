@@ -51,8 +51,22 @@ interface Props {
    *  и раньше (поля, обвод, скругление, приём карточек и тизера фабрики),
    *  просто теперь это отдельный узел разметки, а не сама секция. */
   surface?: boolean;
+  /** Последняя секция, реально несущая линию (раздел 12.1 брифа
+   *  `11-line-narrator-brief.md`, В-4) — ПРАВКА `2026-08-27`: атрибут
+   *  `data-line-last` переехал сюда с подвала (`Footer.astro`), потому что
+   *  подвал больше не рисует линию вовсе, а `contact` стал её концом (краска
+   *  уходит за левую кромку холста внутри его собственной коробки, раздел
+   *  12.5). `BackgroundLine.astro` читает этот атрибут, чтобы дать
+   *  `.line-curtain` этой секции самодостаточный диапазон раскрытия
+   *  (`cover 0% contain 0%`) вместо диапазона, рассчитанного на то, что
+   *  дальше вниз по документу есть ещё контент, несущий ту же линию — как и
+   *  раньше у подвала, `contact` идёт последней и второй такой секции на
+   *  странице нет. На главной этот проп несёт только `contact`
+   *  (`HomePage.astro`, `GAP.contact`); секции вне главной линии не несут
+   *  вовсе и проп не используют. */
+  lineLast?: boolean;
 }
-const { id, label, heading, topGap, bottomGap, surface = false } = Astro.props;
+const { id, label, heading, topGap, bottomGap, surface = false, lineLast = false } = Astro.props;
 
 /* Линия на фоне — бриф `70-workshop/specs/site-v3/05-line.md`, раздел 10
  * шаг 6 («Подключить реестр путей к странице») поверх раздела 7.1 (коробка
@@ -95,6 +109,7 @@ const linePath = id ? LINE_PATHS[id] : undefined;
   data-bottom-gap={bottomGap}
   data-line-side={line?.side}
   data-line-turn={line?.turn}
+  data-line-last={lineLast ? '' : undefined}
 >
   {linePath && (
     <>
@@ -111,6 +126,14 @@ const linePath = id ? LINE_PATHS[id] : undefined;
             путь дорисовывается синхронно, второй механики не заводится).
             Видимость от 900 px — правило в `BackgroundLine.astro`. */}
         {linePath.branch && <path class="line-branch" d={linePath.branch} />}
+        {/* Клин первого экрана (раздел 12.4 брифа `11-line-narrator-brief.
+            md`) — третий путь В ТОЙ ЖЕ коробке, той же природы, что и
+            `branch` выше: статическая заливка (не обводка), раскрывается
+            той же шторкой, второй анимации не заводится. Заполнено только у
+            `hero`. Рисуется ПОСЛЕ обводки, чтобы клин лежал НАД её штрихом
+            (перекрытие, не стыковка встык, — раздел 12.4: «зазора нет
+            нигде по построению»). */}
+        {linePath.head && <path class="line-head" d={linePath.head} />}
       </svg>
       {/* Шторка — задача «пролагивает при листании» (D-080). Открывает путь
           выше через `transform: scaleY(...)` (композитится, не перекрашивает),

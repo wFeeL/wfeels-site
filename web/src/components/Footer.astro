@@ -6,18 +6,26 @@ import { dict, type Locale } from '../i18n/locales';
 import { TELEGRAM_URL, emailIconLinkHtml } from '../lib/contacts';
 import { samePath, headerCtaHref } from '../lib/nav';
 import { footerLineData } from '../lib/backgroundLine';
-import { LINE_PATHS } from '../lib/linePaths';
 
 interface Props {
   /** Язык подвала. Приходит из `Base.astro` — своего вывода у подвала нет. */
   lang: Locale;
-  /** Хвост линии на фоне (бриф `02-background-line.md`, раздел 3.1/7.2) —
-   *  подвал несёт его только на странице, где линия вообще есть (сегодня —
-   *  главная, `Base.astro` пробрасывает свой проп `line` сюда без правки).
-   *  Без гейта подвал рисовал бы неоформленный `<svg>` на КАЖДОЙ странице:
-   *  разметку и атрибуты несёт этот файл, а `stroke`/`vector-effect`/
-   *  анимацию — `BackgroundLine.astro`, который подключается только при
-   *  `line: true`. */
+  /** Хвост линии на фоне — ПРАВКА `2026-08-27` (`70-workshop/specs/site-v3/
+   *  11-line-narrator-brief.md`, раздел 12.1, В-4): подвал БОЛЬШЕ НЕ РИСУЕТ
+   *  `.line`/`.line-curtain`. Владелец подтвердил референс — линия уходит за
+   *  ЛЕВУЮ кромку холста в `contact` (`x = −200`) и в подвал не заходит;
+   *  «дотягивание линии до подвала» (прежнее решение, ради которого нёсся
+   *  `LINE_PATHS.footer`) отменяется. Проп и его гейт ОСТАЮТСЯ (страница
+   *  подвала без линии — `/contact`, `/thanks`, юридические и т. д. — не
+   *  должна потерять `footer::before`, D-126: тот фон красится ниже линии
+   *  и в силе независимо от того, есть ли линия на этой странице вовсе).
+   *  `data-line-side` остаётся на `<footer>` метаданными — сторона акта
+   *  «выход» (раздел 7.2), которую теперь читает только `footerLineData()`
+   *  и её собственный сторож (`backgroundLine.test.ts`); визуально она
+   *  больше ни на что не влияет, так как рисовать ей больше нечего.
+   *  `data-line-last` подвал больше не несёт — атрибут переехал на
+   *  `#contact` (`Section.astro`, `BackgroundLine.astro`), последнюю
+   *  секцию, реально несущую линию. */
   line?: boolean;
   /** Полоса действия подвала (`.footer-cta`) — спека `09-footer-brief.md`,
    *  раздел 3.1. `Base.astro` вычисляет значение из адреса страницы
@@ -62,28 +70,8 @@ const LEGAL_EMAIL = 'i@dsaburov.ru';
 const ctaHref = headerCtaHref(Astro.url.pathname);
 
 const tail = line ? footerLineData() : null;
-const tailPath = line ? LINE_PATHS.footer : undefined;
 ---
-<footer data-line-side={tail?.side} data-line-last={tail ? '' : undefined}>
-  {tail && tailPath && (
-    <>
-      <svg
-        class="line"
-        viewBox={`0 0 1000 ${tailPath.vbH}`}
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <path d={tailPath.wide} />
-      </svg>
-      {/* Шторка — та же механика, что в `Section.astro` (D-080, задача
-          «пролагивает при листании»); подробности — `BackgroundLine.astro`. */}
-      <div
-        class="line-curtain"
-        style={`--line-overhang-pct:${tailPath.overhangPercent}%`}
-        aria-hidden="true"
-      ></div>
-    </>
-  )}
+<footer data-line-side={tail?.side}>
   <Container>
     {cta && (
       <>

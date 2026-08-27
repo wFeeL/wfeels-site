@@ -109,7 +109,14 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
  *  за `isActStitch`. Теперь число одно, и оно видно прямо в записи секции. */
 const GAP: Record<
   string,
-  { topGap?: 'wide'; bottomGap?: 'none'; surface?: boolean; label?: string; heading?: string }
+  {
+    topGap?: 'wide';
+    bottomGap?: 'none';
+    surface?: boolean;
+    label?: string;
+    heading?: string;
+    lineLast?: boolean;
+  }
 > = {
   pain: { bottomGap: 'none', label: t.painLabel, heading: t.painHeading },
   services: { topGap: 'wide', bottomGap: 'none' },
@@ -126,8 +133,12 @@ const GAP: Record<
      как и семь предыдущих, и до этой правки он держался умолчанием 96, то
      есть был одним из тех «маленьких расстояний», на которые указал
      владелец. Низ намеренно остаётся умолчанием (96 на столе) — это внешний
-     край страницы перед подвалом, а не стык между секциями. */
-  contact: { topGap: 'wide' },
+     край страницы перед подвалом, а не стык между секциями.
+
+     `lineLast: true` — переезд `data-line-last` с подвала (раздел 12.1
+     брифа `11-line-narrator-brief.md`, В-4): `contact` теперь последняя
+     секция главной, реально несущая линию — подвал её больше не рисует. */
+  contact: { topGap: 'wide', lineLast: true },
 };
 ---
 <Base
@@ -160,7 +171,7 @@ const GAP: Record<
         <HomeSection
           id={s.id} order={s.order} title={s.title}
           topGap={gap.topGap} bottomGap={gap.bottomGap} surface={gap.surface}
-          label={gap.label} heading={gap.heading}
+          label={gap.label} heading={gap.heading} lineLast={gap.lineLast}
           Content={HOME_COMPONENTS[s.id]}
         />
       );
@@ -183,7 +194,7 @@ const GAP: Record<
           <HomeSection
             id={s.id} order={s.order} title={s.title}
             topGap={gap.topGap} bottomGap={gap.bottomGap} surface={gap.surface}
-            label={gap.label} heading={gap.heading}
+            label={gap.label} heading={gap.heading} lineLast={gap.lineLast}
             Content={HOME_COMPONENTS[s.id]}
           />
         );
@@ -196,7 +207,7 @@ const GAP: Record<
         <HomeSection
           id={s.id} order={s.order} title={s.title}
           topGap={gap.topGap} bottomGap={gap.bottomGap} surface={gap.surface}
-          label={gap.label} heading={gap.heading}
+          label={gap.label} heading={gap.heading} lineLast={gap.lineLast}
           Content={HOME_COMPONENTS[s.id]}
         />
       );

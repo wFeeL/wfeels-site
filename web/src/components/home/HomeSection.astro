@@ -28,11 +28,14 @@ interface Props {
    *  они по-прежнему несут свой заголовок сами, внутри `Content`. */
   label?: string;
   heading?: string;
+  /** Переезд `data-line-last` с подвала на `contact` (раздел 12.1 брифа
+   *  `11-line-narrator-brief.md`, В-4) — см. проп `Section.astro`. */
+  lineLast?: boolean;
   Content?: any;
 }
-const { id, order, title, topGap, bottomGap, surface, label, heading, Content } = Astro.props;
+const { id, order, title, topGap, bottomGap, surface, label, heading, lineLast, Content } = Astro.props;
 ---
-<Section id={id} topGap={topGap} bottomGap={bottomGap} surface={surface} label={label} heading={heading}>
+<Section id={id} topGap={topGap} bottomGap={bottomGap} surface={surface} label={label} heading={heading} lineLast={lineLast}>
   {Content ? (
     <Content />
   ) : order === 1 ? (
