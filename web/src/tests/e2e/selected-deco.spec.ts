@@ -168,16 +168,29 @@ test.describe('выбранные deco-фичи', () => {
     await page.goto('/');
     const result = await page.evaluate(() => {
       const line = document.querySelector<HTMLElement>('.line')!;
+      // `[data-line-last]` переехал с `<footer>` на `#contact`
+      // (`70-workshop/specs/site-v3/11-line-narrator-brief.md`, раздел
+      // 12.1 В-4 / 12.7 п.9, `BackgroundLine.astro`) — `#contact` НЕ
+      // последний узел документа (`<footer>` идёт следом), и правило
+      // `overflow: clip` на нём снято намеренно: клип обрезал бы законный
+      // верхний вынос стыковки с `faq` над ним, а довод, ради которого клип
+      // был нужен («пустая прокручиваемая область НИЖЕ последнего узла»),
+      // для `#contact` не возникает — её нижний вынос физически не может
+      // превысить высоту подвала, стоящего ниже в потоке. Отсюда: overflow
+      // проверяется как `visible` (запасное CSS-значение, не `clip`), а
+      // «документ не продолжается за подвал» проверяется на САМОМ подвале
+      // (`<footer>`, буквально последний узел), не на `[data-line-last]`.
       const last = document.querySelector<HTMLElement>('[data-line-last]')!;
+      const footer = document.querySelector<HTMLElement>('footer')!;
       return {
         z: getComputedStyle(line).zIndex,
         overflow: getComputedStyle(last).overflow,
-        footerBottom: Math.round(last.getBoundingClientRect().bottom + window.scrollY),
+        footerBottom: Math.round(footer.getBoundingClientRect().bottom + window.scrollY),
         scrollHeight: document.documentElement.scrollHeight,
       };
     });
     expect(result.z).toBe('-3');
-    expect(result.overflow).toContain('clip');
+    expect(result.overflow).toBe('visible');
     expect(Math.abs(result.footerBottom - result.scrollHeight)).toBeLessThanOrEqual(1);
   });
 });
