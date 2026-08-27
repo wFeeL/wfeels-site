@@ -50,6 +50,22 @@ const SCROLL_STEP = 250; // раздел 0 брифа: «шагом не кру�
 interface InkSample {
   inkBottom: number | null; // null — путь нигде не пересекает полосу головы
   curtainTop: number;
+  /** `document.documentElement.scrollHeight` В МОМЕНТ этого замера — а не
+   *  константа, снятая один раз в начале скана. НАХОДКА этого прогона
+   *  (раздел «Оставшиеся риски» отчёта приёмки): у подвала путь
+   *  (`LINE_PATHS.footer`, `linePaths.ts`) продолжается за пределы своего
+   *  `viewBox` по Y (`vbY` до 380 при `vbH=245`) и обрезан `clip-path`
+   *  ТОЛЬКО по X (`inset(0 0 0 …)`, все прочие стороны — 0) — при
+   *  `overflow: visible` эта невидимая (`x<0`, за левой кромкой окна) часть
+   *  всё равно попадает в «scrollable overflow» страницы в Chromium и
+   *  РАСТИТ `scrollHeight` по мере того, как прокрутка приближается к этой
+   *  области — растяжение зависит от текущей позиции прокрутки, а не от
+   *  времени и не от JS (воспроизведено с `javaScriptEnabled: false`).
+   *  `animation-timeline: scroll(root block)` считает свои проценты от
+   *  ЖИВОГО `scrollHeight`, поэтому и ожидаемое положение шторки в тесте
+   *  обязано браться от него же в ТОТ ЖЕ момент — иначе тест меряет
+   *  застывшую константу против движущейся цели. */
+  docScrollHeight: number;
   /** `true`, если краска НА ЭТОМ ШАГЕ действительно ограничена головой
    *  (какой-то путь физически продолжается НИЖЕ головы, и голова его
    *  обрезает) — «рисование в процессе». `false` — голова уже прошла ВЕСЬ
@@ -95,7 +111,7 @@ async function readInkSample(page: import('@playwright/test').Page): Promise<Ink
         capped = r.bottom >= curtainTop - 0.5;
       }
     }
-    return { inkBottom, curtainTop, capped };
+    return { inkBottom, curtainTop, capped, docScrollHeight: document.documentElement.scrollHeight };
   });
 }
 
@@ -107,9 +123,25 @@ async function scrollAndWaitFrame(page: import('@playwright/test').Page, y: numb
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 }
 
-test.describe('линия на фоне — сквозная шкала: П-Э1/П-Э2/П-Э3 (протяжённость и монотонность головы)', () => {
+/** ПЕРЕПИСАНО `2026-08-27` в части П-Э2 (`70-workshop/specs/site-v3/
+ *  16-line-digits-and-finale-brief.md`, раздел 3.3 вариант Б «Разгон»,
+ *  приёмка П-Ф-Б3: «`П-Э2` переписывается под изменившийся предмет, а не
+ *  смягчается»). Предмет действительно изменился: `.line-curtain` больше не
+ *  стоит на экранной константе `--line-head` весь путь — на последних `4Δ`
+ *  прокрутки (`Δ = 100vh − --line-head`) её несёт вторая анимация
+ *  (`line-finish`, `BackgroundLine.astro`), доводящая голову до `100vh`
+ *  (`П-Ф-Б1`). Формула ниже — тот же расчёт, что стоит в комментарии у
+ *  `line-finish`: на отрезке `[maxScroll − 4Δ, maxScroll]` прогресс
+ *  `scroll(root block)`-таймлайна линеен по `scrollY`, поэтому
+ *  `curtainTop(y) = lineHead + (y − rampStart) / 4` — приращение головы
+ *  относительно шага прокрутки составляет `1 + 1/4 = 1,25`, ровно то число,
+ *  что называет раздел 3.3 брифа («голова идёт 1,25× скорости прокрутки на
+ *  последних `4Δ`»). Вне этого отрезка формула вырождается в прежнюю
+ *  константу — старое поведение не подвинуто, а обнимается тем же
+ *  выражением. */
+test.describe('линия на фоне — сквозная шкала: П-Э1/П-Э2/П-Э3 (протяжённость и монотонность головы), П-Ф-Б3 (разгон 1,25× на последних 4Δ)', () => {
   for (const width of WIDTHS) {
-    test(`${width}×${SCAN_HEIGHT}: голова стоит на --line-head и идёт вровень с прокруткой`, async ({ browser }) => {
+    test(`${width}×${SCAN_HEIGHT}: голова стоит на --line-head и идёт вровень с прокруткой, 1,25× на разгоне`, async ({ browser }) => {
       test.setTimeout(120_000);
       const ctx = await browser.newContext({
         reducedMotion: 'no-preference',
@@ -138,10 +170,35 @@ test.describe('линия на фоне — сквозная шкала: П-Э1/
       });
       expect(maxScroll, 'страница не прокручивается — сканировать нечего').toBeGreaterThan(300);
 
+      // Δ = 100vh − --line-head: на этом файле окно всегда SCAN_HEIGHT
+      // (900) высотой, поэтому «100vh» здесь — SCAN_HEIGHT буквально, не
+      // условное число. `rampStart` — точка прокрутки, где начинается
+      // `animation-range` шторки (её 100% — это `maxScroll` пикселей
+      // документа НА МОМЕНТ замера, раздел 3.3 брифа, `line-finish`) —
+      // используется здесь только чтобы НАМЕТИТЬ точки скана (не обязана
+      // быть точной), настоящее сравнение ниже берёт `docScrollHeight`
+      // каждой выборки (см. JSDoc `InkSample.docScrollHeight` — «живой»
+      // scrollHeight, а не снятая один раз константа).
+      const delta = SCAN_HEIGHT - lineHead;
+      const rampStart = maxScroll - 4 * delta;
+      // `expectedTop` берёт `liveScrollHeight` ОТДЕЛЬНО для каждой
+      // выборки — `scroll(root block)`-таймлайн считает свои проценты от
+      // ЖИВОГО `document.documentElement.scrollHeight`, а не от значения,
+      // снятого один раз до скана.
+      const expectedTop = (y: number, liveScrollHeight: number) => {
+        const liveMaxScroll = liveScrollHeight - SCAN_HEIGHT;
+        const liveRampStart = liveMaxScroll - 4 * delta;
+        return y <= liveRampStart ? lineHead : lineHead + (y - liveRampStart) / 4;
+      };
+
       const stops = new Set<number>();
       for (let y = 0; y <= maxScroll; y += SCROLL_STEP) stops.add(y);
       stops.add(maxScroll);
-      const ys = Array.from(stops).sort((a, b) => a - b);
+      stops.add(Math.max(0, Math.round(rampStart))); // граница разгона — обязательная точка замера
+      stops.add(Math.max(0, Math.round(rampStart) - 1));
+      const ys = Array.from(stops)
+        .filter((y) => y >= 0 && y <= maxScroll)
+        .sort((a, b) => a - b);
 
       const samples: { y: number; sample: InkSample }[] = [];
       for (const y of ys) {
@@ -151,61 +208,102 @@ test.describe('линия на фоне — сквозная шкала: П-Э1/
       }
       await ctx.close();
 
-      // Голова — экранная константа: curtainTop не должен меняться со
-      // scrollY (это и есть «сквозная шкала», раздел 2.1 брифа).
+      // Голова — экранная константа ВНЕ разгона (`y ≤ rampStart`) и растёт
+      // по формуле `lineHead + (y − rampStart)/4` ВНУТРИ него (П-Ф-Б1/
+      // П-Ф-Б3): на упоре (`y = maxScroll`) формула сама даёт
+      // `lineHead + Δ = 100vh` — это и есть содержимое П-Ф-Б1, отдельно
+      // измеренное на пяти комбинациях окна файлом
+      // `background-line-finale.spec.ts`. Здесь проверяется, что шторка
+      // следует формуле НА ВСЁМ протяжении прокрутки, а не только в конце.
       for (const { y, sample } of samples) {
-        expect(sample.curtainTop, `${width}px, scrollY=${y}: top шторки сместился от --line-head`).toBeCloseTo(lineHead, 0);
+        const top = expectedTop(y, sample.docScrollHeight);
+        expect(sample.curtainTop, `${width}px, scrollY=${y}: top шторки разошёлся с ожидаемым по П-Ф-Б3 (${top.toFixed(1)}, live scrollHeight=${sample.docScrollHeight})`).toBeCloseTo(
+          top,
+          0,
+        );
       }
 
       // П-Э1. Голова стоит там, где сказано — на каждом шаге, где путь
       // вообще пересекает полосу головы (inkBottom !== null) И голова
       // реально обрезает продолжающийся путь (`capped`, а не законный конец
-      // рассказа — см. JSDoc `InkSample.capped`).
-      const LOWER = lineHead - 24;
-      const UPPER = lineHead + nib + 8;
-      const outOfRange = samples.filter(
-        ({ sample }) => sample.inkBottom !== null && sample.capped && (sample.inkBottom < LOWER || sample.inkBottom > UPPER),
-      );
+      // рассказа — см. JSDoc `InkSample.capped`). Порог считается от
+      // ОЖИДАЕМОГО top на этом y (не от константы lineHead — на разгоне
+      // голова уже не стоит на ней), взятого от ЖИВОГО scrollHeight этой
+      // же выборки.
+      const outOfRange = samples.filter(({ y, sample }) => {
+        if (sample.inkBottom === null || !sample.capped) return false;
+        const top = expectedTop(y, sample.docScrollHeight);
+        return sample.inkBottom < top - 24 || sample.inkBottom > top + nib + 8;
+      });
       expect(
         outOfRange,
-        `${width}px: inkBottom вне [${LOWER.toFixed(1)}, ${UPPER.toFixed(1)}] на: ` +
-          outOfRange.map((s) => `${s.y}px(${s.sample.inkBottom?.toFixed(1)})`).join(', '),
+        `${width}px: inkBottom вне допуска на: ` +
+          outOfRange
+            .map((s) => `${s.y}px(${s.sample.inkBottom?.toFixed(1)}, ожидалось ≈${expectedTop(s.y, s.sample.docScrollHeight).toFixed(1)})`)
+            .join(', '),
       ).toEqual([]);
 
-      // П-Э2. Голова идёт вровень с прокруткой — inkBottom_doc = scrollY +
-      // inkBottom обязан быть неубывающим, приращение ≈ шаг ± 8px, на всём
-      // протяжении, где голова реально обрезает путь (`capped`): once путь
-      // дорисован целиком раньше головы (конец рассказа, П-Ф1), его
-      // document-положение по построению перестаёт расти вместе с
-      // прокруткой — это не парковка, а завершение, отдельно проверяемое
-      // `background-line-footer-reach.spec.ts`.
+      // П-Э2/П-Ф-Б3. Голова идёт вровень с прокруткой — inkBottom_doc =
+      // scrollY + inkBottom обязан быть неубывающим; приращение ≈ шагу±8px
+      // ВНЕ разгона и ≈ шагу×1,25±8px ВНУТРИ него (раздел 3.3 брифа
+      // `16-…`, П-Ф-Б3: «переписывается, а не смягчается» — множитель
+      // назван явно и привязан к отрезку `[rampStart, maxScroll]`, а не
+      // распространён на весь путь).
       const withDoc = samples
         .filter((s) => s.sample.inkBottom !== null && s.sample.capped)
-        .map((s) => ({ y: s.y, doc: s.y + (s.sample.inkBottom as number) }));
+        .map((s) => ({ y: s.y, doc: s.y + (s.sample.inkBottom as number), liveRampStart: s.sample.docScrollHeight - SCAN_HEIGHT - 4 * delta }));
 
       const violations: string[] = [];
+      const stepsOutsideRamp: number[] = [];
+      const stepsInsideRamp: number[] = [];
       for (let i = 1; i < withDoc.length; i++) {
         const prev = withDoc[i - 1];
         const cur = withDoc[i];
         const step = cur.y - prev.y;
-        const delta = cur.doc - prev.doc;
-        if (delta < -0.5) {
+        const docDelta = cur.doc - prev.doc;
+        if (docDelta < -0.5) {
           violations.push(`откат на ${cur.y}px: doc ${prev.doc.toFixed(1)} → ${cur.doc.toFixed(1)}`);
           continue;
         }
-        // Приращение обязано быть ≈ шагу прокрутки ± 8px — но только когда
-        // шаг между выборками совпадает с обычным SCROLL_STEP (последняя
-        // пара может быть короче — `maxScroll` не кратен шагу).
-        if (step === SCROLL_STEP && Math.abs(delta - step) > 8) {
-          violations.push(`шаг ${prev.y}→${cur.y}: приращение doc=${delta.toFixed(1)}, ожидалось ${step}±8`);
+        if (step <= 0) continue;
+        // Ожидаемое приращение — сумма по отрезку [prev.y, cur.y]: 1× там,
+        // где y ≤ rampStart, 1,25× там, где y > rampStart (шаг может
+        // застать границу разгона внутри себя — тогда доля до границы идёт
+        // по 1×, доля после — по 1,25×). `rampStart` берётся ЖИВЫМ, от
+        // `docScrollHeight` ВЫБОРКИ `cur` (см. JSDoc `InkSample.
+        // docScrollHeight`) — тот же приём, что уже стоит выше у
+        // `curtainTop`.
+        const liveRampStart = cur.liveRampStart;
+        const belowRamp = Math.max(0, Math.min(cur.y, liveRampStart) - prev.y);
+        const insideRamp = step - belowRamp;
+        const expectedDelta = belowRamp * 1 + insideRamp * 1.25;
+        if (Math.abs(docDelta - expectedDelta) > 8) {
+          violations.push(
+            `шаг ${prev.y}→${cur.y}: приращение doc=${docDelta.toFixed(1)}, ожидалось ${expectedDelta.toFixed(1)}±8 ` +
+              `(${insideRamp.toFixed(0)}px из ${step}px шага — на разгоне, rampStart(live)=${liveRampStart.toFixed(0)})`,
+          );
         }
+        if (insideRamp <= 0.5) stepsOutsideRamp.push(docDelta);
+        else if (belowRamp <= 0.5) stepsInsideRamp.push(docDelta);
       }
-      expect(violations, `${width}px: голова не идёт вровень с прокруткой: ${violations.join('; ')}`).toEqual([]);
+      expect(violations, `${width}px: П-Ф-Б3 нарушен: ${violations.join('; ')}`).toEqual([]);
+
+      // Числа приращения — для отчёта приёмки (раздел 4.4 брифа, П-Ф-Б3
+      // требует «привести числа приращения на отрезке разгона и вне его»).
+      // eslint-disable-next-line no-console
+      console.log(
+        `[П-Ф-Б3 ${width}×${SCAN_HEIGHT}] rampStart=${rampStart.toFixed(1)} Δ=${delta.toFixed(1)} 4Δ=${(4 * delta).toFixed(1)} ` +
+          `maxScroll=${maxScroll} | вне разгона (шаг ${SCROLL_STEP}, ожидание ${SCROLL_STEP}±8): [${stepsOutsideRamp
+            .map((n) => n.toFixed(1))
+            .join(', ')}] | на разгоне (шаг ${SCROLL_STEP}, ожидание ${(SCROLL_STEP * 1.25).toFixed(1)}±8): [${stepsInsideRamp
+            .map((n) => n.toFixed(1))
+            .join(', ')}]`,
+      );
 
       // П-Э3. Под головой краски нет — геометрическая часть: ни один
       // рендерный бокс пути не даёт inkBottom выше верхней границы допуска
-      // (уже проверено в П-Э1 через UPPER), плюс прямой пиксельный замер
-      // ниже (отдельный тест) на реальной странице.
+      // (уже проверено в П-Э1 через ожидаемый top), плюс прямой пиксельный
+      // замер ниже (отдельный тест) на реальной странице.
     });
   }
 });
