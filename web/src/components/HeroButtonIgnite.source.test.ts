@@ -36,44 +36,54 @@ describe('BackgroundLine.astro — кнопка первого экрана (р�
     expect(block, 'кнопка не обязана нести ни одного anim-свойства — ступеньку рисует слой .cta-ignite-overlay').not.toContain('animation');
   });
 
-  it('правило адресное — #hero .cta .cta-ignite-overlay, декоративный слой-дубликат, а не сама кнопка', () => {
-    expect(SOURCE).toContain('#hero .cta .cta-ignite-overlay{');
+  it('правило адресное — #hero .cta .cta-ignite-step, пять декоративных слоёв-дубликатов лестницы, а не сама кнопка', () => {
+    expect(SOURCE).toContain('#hero .cta .cta-ignite-step{');
   });
 
-  it('слой живёт в той же @media (min-width:900px), сразу после блока кнопки', () => {
+  it('общий блок лестницы живёт в той же @media (min-width:900px), сразу после блока кнопки', () => {
     const btnIdx = SOURCE.indexOf('#hero .cta .btn.primary{');
-    const overlayIdx = SOURCE.indexOf('#hero .cta .cta-ignite-overlay{');
-    expect(overlayIdx, 'блок слоя обязан идти после блока кнопки').toBeGreaterThan(btnIdx);
-    const between = SOURCE.slice(SOURCE.indexOf('}', btnIdx) + 1, overlayIdx);
-    expect(between, 'между блоком кнопки и блоком слоя не должно быть закрытия @media').not.toContain('}');
+    const stepIdx = SOURCE.indexOf('#hero .cta .cta-ignite-step{');
+    expect(stepIdx, 'общий блок лестницы обязан идти после блока кнопки').toBeGreaterThan(btnIdx);
+    const between = SOURCE.slice(SOURCE.indexOf('}', btnIdx) + 1, stepIdx);
+    expect(between, 'между блоком кнопки и общим блоком лестницы не должно быть закрытия @media').not.toContain('}');
   });
 
-  it('fill-mode: forwards, не both — ступеньку несёт слой, не сама кнопка', () => {
-    const idx = SOURCE.indexOf('#hero .cta .cta-ignite-overlay{');
+  it('fill-mode: forwards, не both — ступеньку несёт каждый слой, не сама кнопка', () => {
+    const idx = SOURCE.indexOf('#hero .cta .cta-ignite-step{');
     const block = SOURCE.slice(idx, SOURCE.indexOf('}', idx));
     expect(block).toContain('animation-fill-mode:forwards');
     expect(block).not.toContain('animation-fill-mode:both');
   });
 
   it('ступенька, не плавный переход: steps(1,jump-end), не linear и не var(--ease)', () => {
-    const idx = SOURCE.indexOf('#hero .cta .cta-ignite-overlay{');
+    const idx = SOURCE.indexOf('#hero .cta .cta-ignite-step{');
     const block = SOURCE.slice(idx, SOURCE.indexOf('}', idx));
     expect(block).toContain('animation-timing-function:steps(1,jump-end)');
   });
 
   it('шкала — своя (безымянная view()) на коробке слоя, не именованная --line-progress секции', () => {
-    const idx = SOURCE.indexOf('#hero .cta .cta-ignite-overlay{');
+    const idx = SOURCE.indexOf('#hero .cta .cta-ignite-step{');
     const block = SOURCE.slice(idx, SOURCE.indexOf('}', idx));
     expect(block).toContain('animation-timeline:view()');
     expect(block).not.toContain('--line-progress');
   });
 
-  it('диапазон — то же единственное правило, что у шторки (--line-lead/--line-trail)', () => {
-    const idx = SOURCE.indexOf('#hero .cta .cta-ignite-overlay{');
-    const block = SOURCE.slice(idx, SOURCE.indexOf('}', idx));
-    expect(block).toContain(
-      'animation-range:cover var(--line-lead) cover calc(100% - var(--line-trail))',
-    );
+  it('пять порогов лестницы (раздел 10.6, Р-3): пятый совпадает со старым единственным, 1…4 сдвинуты раньше на (N−i)·8,8px', () => {
+    const steps: [number, string][] = [
+      [1, 'calc(100% - var(--line-trail) - 35.2px)'],
+      [2, 'calc(100% - var(--line-trail) - 26.4px)'],
+      [3, 'calc(100% - var(--line-trail) - 17.6px)'],
+      [4, 'calc(100% - var(--line-trail) - 8.8px)'],
+      [5, 'calc(100% - var(--line-trail))'],
+    ];
+    for (const [step, endExpr] of steps) {
+      const idx = SOURCE.indexOf(`#hero .cta .cta-ignite-step[data-step="${step}"]{`);
+      expect(idx, `правило для data-step="${step}" не найдено`).toBeGreaterThan(-1);
+      const block = SOURCE.slice(idx, SOURCE.indexOf('}', idx));
+      expect(block, `data-step="${step}": animation-range обязан кончаться на ${endExpr}`).toContain(
+        `animation-range:cover var(--line-lead) cover ${endExpr}`,
+      );
+    }
   });
 
   it('кадры ступеньки — opacity 0→1 (композитное свойство), не background-color/color', () => {

@@ -18,28 +18,16 @@ import { test, expect } from '@playwright/test';
 
 const VIEWPORT_1440_900 = { width: 1440, height: 900 };
 
-/** Читает пиксель экрана в документных координатах (x, y) — тот же приём,
- *  что `background-line-stitch-blend.spec.ts`: реальный скриншот страницы
- *  (важно измерить именно то, что складывает браузер при композиции слоёв,
- *  а не поведение одного элемента в изоляции), декодирование PNG средствами
- *  самого браузера (`Image` → `<canvas>` → `getImageData`) — библиотека для
- *  чтения PNG в проекте не заведена и не нужна. */
-async function readPixel(
+/** Декодирует PNG-снимок средствами самого браузера (`Image` → `<canvas>` →
+ *  `getImageData`, усреднение центрального пятна 4×4) — библиотека для
+ *  чтения PNG в проекте не заведена и не нужна. Общий хвост для `readPixel`
+ *  (сам скроллит к цели) и `readPixelAtViewport` (не скроллит — состояние
+ *  прокрутки уже задано вызывающим кодом и менять его самовольно нельзя,
+ *  раздел 10.6: цвет ступени лестницы ЗАВИСИТ от scrollY). */
+async function decodeClipAverage(
   page: import('@playwright/test').Page,
-  x: number,
-  y: number,
+  buffer: Buffer,
 ): Promise<[number, number, number]> {
-  const scrollY = await page.evaluate((targetY: number) => {
-    const target = Math.max(0, targetY - 200);
-    window.scrollTo(0, target);
-    return window.scrollY;
-  }, y);
-  const size = 16;
-  const viewportX = x - size / 2;
-  const viewportY = y - scrollY - size / 2;
-  const buffer = await page.screenshot({
-    clip: { x: viewportX, y: viewportY, width: size, height: size },
-  });
   const base64 = buffer.toString('base64');
   return page.evaluate(async (b64: string) => {
     const img = new Image();
@@ -68,6 +56,49 @@ async function readPixel(
     }
     return [r / n, g / n, b / n] as [number, number, number];
   }, base64);
+}
+
+/** Читает пиксель экрана в документных координатах (x, y) — тот же приём,
+ *  что `background-line-stitch-blend.spec.ts`: реальный скриншот страницы
+ *  (важно измерить именно то, что складывает браузер при композиции слоёв,
+ *  а не поведение одного элемента в изоляции). Скроллит страницу так, чтобы
+ *  y попал в удобное окно снимка — годится для СТАТИЧНОГО содержимого,
+ *  чей цвет не зависит от текущего scrollY. */
+async function readPixel(
+  page: import('@playwright/test').Page,
+  x: number,
+  y: number,
+): Promise<[number, number, number]> {
+  const scrollY = await page.evaluate((targetY: number) => {
+    const target = Math.max(0, targetY - 200);
+    window.scrollTo(0, target);
+    return window.scrollY;
+  }, y);
+  const size = 16;
+  const viewportX = x - size / 2;
+  const viewportY = y - scrollY - size / 2;
+  const buffer = await page.screenshot({
+    clip: { x: viewportX, y: viewportY, width: size, height: size },
+  });
+  return decodeClipAverage(page, buffer);
+}
+
+/** Читает пиксель по ВЬЮПОРТНЫМ координатам, БЕЗ скролла (раздел 10.6,
+ *  Р-3): лестница зажигания кнопки меняет видимый цвет в зависимости от
+ *  ТЕКУЩЕГО scrollY — `readPixel` сдвинул бы страницу под свой удобный кадр
+ *  и тем самым сменил бы проверяемое состояние. Вызывающий код обязан сам
+ *  прокрутить страницу до нужного scrollY и передать уже актуальные
+ *  вьюпортные координаты (`getBoundingClientRect()` после скролла). */
+async function readPixelAtViewport(
+  page: import('@playwright/test').Page,
+  viewportX: number,
+  viewportY: number,
+): Promise<[number, number, number]> {
+  const size = 16;
+  const buffer = await page.screenshot({
+    clip: { x: viewportX - size / 2, y: viewportY - size / 2, width: size, height: size },
+  });
+  return decodeClipAverage(page, buffer);
 }
 
 /** Геометрия дока линии подвала — читается из `d` самого пути (первая
@@ -157,7 +188,7 @@ test.describe('линия-рассказчик — П1: непрерывност
   });
 });
 
-test.describe('линия-рассказчик — П2: кнопка первого экрана (раздел 3, П2; приёмка П-5, П-6, П-6б, П-6в)', () => {
+test.describe('линия-рассказчик — П2: кнопка первого экрана — лестница (раздел 3, П2; раздел 10.6, Р-3; приёмка П-5, П-6, П-6б, П-6в)', () => {
   const BORDER_LIGHT = 'rgb(203, 211, 222)';
   const BORDER_DARK = 'rgb(38, 49, 68)';
   const TEXT_LIGHT = 'rgb(15, 22, 32)';
@@ -166,35 +197,66 @@ test.describe('линия-рассказчик — П2: кнопка перво�
   const ACCENT_DARK = 'rgb(91, 132, 255)';
   const ON_ACCENT_LIGHT = 'rgb(255, 255, 255)';
   const ON_ACCENT_DARK = 'rgb(14, 20, 32)';
+  const N_STEPS = 5;
+  const STEP_PX = 8.8; // высота кнопки (44px) / N (5) — раздел 10.6, Р-3.
 
-  /* ПРАВКА (диагноз стоимости отрисовки, `BackgroundLine.astro`; бриф
-   * `11-line-narrator-brief.md`, раздел 3, П2): сама кнопка
-   * (`#hero .cta .btn.primary`) больше не перекрашивается —
-   * она статически серая, а ступеньку рисует накрывающий её декоративный
-   * слой (`Hero.astro`, `.cta-ignite-overlay`), чей `opacity` идёт 0→1 той
-   * же самой шкалой. Видимый пользователю цвет — это цвет слоя, когда его
-   * `opacity` близок к 1 (ступенька мгновенная, полутонов не бывает —
-   * проверка №3 ниже это и охраняет), иначе цвет самой кнопки под ним.
-   * Функция читает то же самое: ЭФФЕКТИВНЫЙ видимый цвет, а не то, какой
-   * конкретно элемент его несёт — весь остальной сценарий теста (приёмка
-   * П-5, П-6…) написан в терминах видимого цвета кнопки и не должен знать
-   * о наличии слоя. */
+  /* ЛЕСТНИЦА (раздел 10.6, Р-3, `2026-08-27`): один слой-дубликат заменён
+   * на пять вложенных по ширине слоёв (`Hero.astro`, `.cta-ignite-step`,
+   * `data-step="1..5"`), каждый — своя ступенька `opacity` со своим
+   * порогом. Топ стека — слой с наибольшим `data-step` (он же самый
+   * широкий и стоит последним в DOM, поэтому painting-порядком выше
+   * остальных): если он непрозрачен, он один накрывает кнопку целиком, и
+   * «эффективный» видимый цвет — его. Если непрозрачных слоёв нет вовсе —
+   * виден сам `.btn.primary`. Эта функция воспроизводит только ДВА
+   * полностью однородных состояния (полностью серое / полностью
+   * акцентное) — то же, что видел прежний тест с единственным слоем;
+   * ЧАСТИЧНОЕ заполнение (одни ступени уже акцентные, другие ещё нет)
+   * отдельно проверяется ниже сэмплированием пикселя по x. */
   async function buttonColors(page: import('@playwright/test').Page) {
-    return page.evaluate(() => {
+    return page.evaluate((nSteps: number) => {
       const btn = document.querySelector('#hero .cta .btn.primary')!;
-      const overlay = document.querySelector('#hero .cta .cta-ignite-overlay');
-      const overlayOpacity = overlay ? parseFloat(getComputedStyle(overlay).opacity) : 0;
-      const visible = overlayOpacity > 0.5 ? overlay! : btn;
+      let visible: Element = btn;
+      for (let step = nSteps; step >= 1; step -= 1) {
+        const layer = document.querySelector(`#hero .cta .cta-ignite-step[data-step="${step}"]`);
+        if (layer && parseFloat(getComputedStyle(layer).opacity) > 0.5) {
+          visible = layer;
+          break;
+        }
+      }
       const s = getComputedStyle(visible);
       return { backgroundColor: s.backgroundColor, color: s.color };
-    });
+    }, N_STEPS);
+  }
+
+  /** Сканирует scrollY от `fromY` до `toY` (шаг 1px) ВНУТРИ браузера (один
+   *  round-trip на слой, не один на пиксель) и возвращает первый scrollY,
+   *  на котором `opacity` слоя `data-step="step"` переходит выше 0,5, или
+   *  -1, если порог не найден в диапазоне. */
+  async function findStepThreshold(
+    page: import('@playwright/test').Page,
+    step: number,
+    fromY: number,
+    toY: number,
+  ): Promise<number> {
+    return page.evaluate(
+      ({ step, fromY, toY }: { step: number; fromY: number; toY: number }) => {
+        for (let y = fromY; y <= toY; y += 1) {
+          window.scrollTo(0, y);
+          const layer = document.querySelector(`#hero .cta .cta-ignite-step[data-step="${step}"]`);
+          const op = layer ? parseFloat(getComputedStyle(layer).opacity) : NaN;
+          if (op > 0.5) return y;
+        }
+        return -1;
+      },
+      { step, fromY, toY },
+    );
   }
 
   for (const [themeLabel, colorScheme, border, text, accent, onAccent] of [
     ['светлая', 'light', BORDER_LIGHT, TEXT_LIGHT, ACCENT_LIGHT, ON_ACCENT_LIGHT],
     ['тёмная', 'dark', BORDER_DARK, TEXT_DARK, ACCENT_DARK, ON_ACCENT_DARK],
   ] as const) {
-    test(`тема «${themeLabel}», 1440×900: серая при scrollY=0, акцентная после прихода линии, ступенька, реверс (П-5, П-6)`, async ({ browser }) => {
+    test(`тема «${themeLabel}», 1440×900: серая при scrollY=0, акцентная после прихода линии, пять порогов лестницы, реверс (П-5, П-6, Р-3)`, async ({ browser }) => {
       const ctx = await browser.newContext({
         reducedMotion: 'no-preference',
         colorScheme,
@@ -209,75 +271,112 @@ test.describe('линия-рассказчик — П2: кнопка перво�
       expect(atTop.backgroundColor, `${themeLabel}: заливка при scrollY=0`).toBe(border);
       expect(atTop.color, `${themeLabel}: подпись при scrollY=0`).toBe(text);
 
-      // 2) Формула брифа (раздел 5, П-6.2): scrollY = ceil(bottom + scrollY − 0.67·innerHeight) + 8.
-      // bottom читается у самой кнопки, а не берётся из брифа константой.
+      // 2) Формула брифа (раздел 5, П-6.2): порог ПЯТОГО слоя (i=5, сдвиг 0)
+      // — тот же самый, что нёс единственный слой до лестницы. bottom
+      // читается у самой кнопки, а не берётся из брифа константой.
+      // `beforeAllScrollY` отодвинут ЕЩЁ РАНЬШЕ на весь разбег лестницы
+      // (4 интервала по 8,8px) плюс запас — на нём ни один из пяти порогов
+      // не должен быть пройден.
       const bottom = await page.locator('#hero .cta .btn.primary').evaluate((el) => el.getBoundingClientRect().bottom);
       const afterScrollY = Math.ceil(bottom + 0 - 0.67 * VIEWPORT_1440_900.height) + 8;
-      const beforeScrollY = Math.floor(bottom + 0 - 0.67 * VIEWPORT_1440_900.height) - 8;
-      expect(beforeScrollY, 'формула брифа дала отрицательный порог "ещё серая" — раскладка ушла сильнее ожидаемого').toBeGreaterThanOrEqual(0);
+      const beforeAllScrollY = Math.max(
+        0,
+        Math.floor(bottom + 0 - 0.67 * VIEWPORT_1440_900.height) - 8 - Math.ceil((N_STEPS - 1) * STEP_PX) - 8,
+      );
 
-      await page.evaluate((y) => window.scrollTo(0, y), beforeScrollY);
+      await page.evaluate((y) => window.scrollTo(0, y), beforeAllScrollY);
       const stillGrey = await buttonColors(page);
-      expect(stillGrey.backgroundColor, `${themeLabel}: at scrollY=${beforeScrollY} кнопка обязана быть ещё серой`).toBe(border);
+      expect(stillGrey.backgroundColor, `${themeLabel}: at scrollY=${beforeAllScrollY} кнопка обязана быть ещё серой (ни один порог лестницы не пройден)`).toBe(border);
 
       await page.evaluate((y) => window.scrollTo(0, y), afterScrollY);
       const nowAccent = await buttonColors(page);
-      expect(nowAccent.backgroundColor, `${themeLabel}: at scrollY=${afterScrollY} кнопка обязана стать акцентной`).toBe(accent);
+      expect(nowAccent.backgroundColor, `${themeLabel}: at scrollY=${afterScrollY} кнопка обязана стать полностью акцентной`).toBe(accent);
       expect(nowAccent.color, `${themeLabel}: подпись после перехода`).toBe(onAccent);
 
-      // 3) Ступенька — на 10 позициях в полосе 200…360px backgroundColor
-      // принимает ровно ДВА значения (П-6.4): запрет промежуточных цветов.
-      const seen = new Set<string>();
-      for (let sy = 200; sy <= 360; sy += 16) {
-        await page.evaluate((y) => window.scrollTo(0, y), sy);
-        const c = await buttonColors(page);
-        seen.add(c.backgroundColor);
+      // 3) Пять РАЗНЫХ порогов, интервал ≈8,8px (раздел 10.6, Р-3) — сканируем
+      // opacity каждого из пяти слоёв отдельно (без снимков экрана, дёшево)
+      // в диапазоне от beforeAllScrollY до afterScrollY+2.
+      const thresholds: number[] = [];
+      for (let step = 1; step <= N_STEPS; step += 1) {
+        const found = await findStepThreshold(page, step, beforeAllScrollY, afterScrollY + 2);
+        expect(found, `${themeLabel}: порог слоя data-step="${step}" не найден в скане ${beforeAllScrollY}…${afterScrollY + 2}`).toBeGreaterThan(-1);
+        thresholds.push(found);
       }
-      expect(seen.size, `${themeLabel}: цветов заливки на полосе 200…360px: ${[...seen].join(', ')}`).toBe(2);
-      expect(seen.has(border)).toBe(true);
-      expect(seen.has(accent)).toBe(true);
+      // eslint-disable-next-line no-console
+      console.log(`${themeLabel}: пять порогов лестницы (scrollY) = [${thresholds.join(', ')}], последний = ${afterScrollY}`);
+      expect(new Set(thresholds).size, 'пять порогов обязаны быть РАЗНЫМИ scrollY, не одним общим').toBe(N_STEPS);
+      for (let i = 1; i < thresholds.length; i += 1) {
+        const gap = thresholds[i] - thresholds[i - 1];
+        expect(gap, `${themeLabel}: интервал между порогом ${i} и ${i + 1} обязан быть ≈8,8px, факт ${gap}px`).toBeGreaterThanOrEqual(6);
+        expect(gap, `${themeLabel}: интервал между порогом ${i} и ${i + 1} обязан быть ≈8,8px, факт ${gap}px`).toBeLessThanOrEqual(12);
+      }
 
-      // 4) Одна анимация, ступенька, fill forwards (П-6.5).
-      //
-      // Диагноз стоимости отрисовки (`BackgroundLine.astro`, раздел о
-      // некомпозитных свойствах): сама кнопка (`#hero .cta .btn.primary`)
-      // больше не несёт анимации вовсе — она статически серая. Ступеньку
-      // несёт накрывающий её декоративный слой (`Hero.astro`,
-      // `.cta-ignite-overlay`), и именно на нём проверяется факт «ровно одна
-      // анимация, ступенька, fill forwards» — у самой кнопки анимаций теперь
-      // 0, и это ожидаемо, а не потеря покрытия.
-      //
-      // РАСХОЖДЕНИЕ С БРИФОМ (измерено, не вкус): брифом заявлено
-      // `effect.getTiming().easing === 'steps(1, jump-end)'`, но Chromium
-      // при ДВУХ явных стопах (0%/100%, `from`/`to`) вешает
-      // `animation-timing-function` на КАЖДЫЙ кадр (`getKeyframes()[i].easing`),
-      // а не на общий `effect.getTiming()` — тот остаётся `'linear'`, потому
-      // что переход НАЧАЛО→КОНЕЦ и есть весь эффект, шаг живёт внутри кадра.
-      // Заодно `jump-end` — термин по умолчанию, браузер отбрасывает его при
-      // сериализации: и `getComputedStyle().animationTimingFunction`, и
-      // `getKeyframes()[0].easing` дают `'steps(1)'`, не `'steps(1, jump-end)'`.
-      // Проверяется то же самое утверждение («ступенька, не плавный переход»)
-      // тем сигналом, который браузер фактически подтверждает.
-      const animInfo = await page.locator('#hero .cta .cta-ignite-overlay').evaluate((el) => {
-        const anims = (el as HTMLElement).getAnimations();
-        const s = getComputedStyle(el);
-        return anims.map((a) => ({
-          effectFill: a.effect?.getTiming().fill,
-          computedTimingFunction: s.animationTimingFunction,
-          keyframeEasings: (a.effect as KeyframeEffect | null)?.getKeyframes().map((k) => k.easing),
-        }));
+      // 4) Заливка растёт слева направо, без смеси цвета (раздел 10.6):
+      // на пороге среднего слоя (`data-step="3"`) полоса 3 из пяти (уже
+      // открытая) обязана быть акцентной, а полоса 4 (ещё не открытая) —
+      // остаться прежней. Координаты полос читаются из живой геометрии
+      // кнопки, не из констант.
+      const btnBox = await page.locator('#hero .cta .btn.primary').evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { left: r.left, width: r.width, top: r.top, height: r.height };
       });
-      expect(animInfo.length, 'слой-дубликат обязан нести ровно одну анимацию рассказа').toBe(1);
-      expect(animInfo[0].effectFill).toBe('forwards');
+      const bandCenterX = (bandIndex1to5: number) => btnBox.left + ((bandIndex1to5 - 0.5) / N_STEPS) * btnBox.width;
+      const midThreshold = thresholds[2]; // порог слоя data-step="3"
+      await page.evaluate((y) => window.scrollTo(0, y), midThreshold);
+      // Y-координата у кнопки не меняется с прокруткой по вертикали окна
+      // (кнопка не двигается сама по себе) — берём её заново под текущим
+      // scrollY, а не переиспользуем btnBox.top, снятый на другом scrollY.
+      const btnTopNow = await page.locator('#hero .cta .btn.primary').evaluate((el) => el.getBoundingClientRect().top);
+      const bandY = btnTopNow + btnBox.height / 2;
+      const litBand = await readPixelAtViewport(page, bandCenterX(3), bandY);
+      const unlitBand = await readPixelAtViewport(page, bandCenterX(4), bandY);
+      const accentRgb = accent.match(/\d+/g)!.map(Number);
+      const borderRgb = border.match(/\d+/g)!.map(Number);
+      const closeTo = (px: number[], target: number[]) => target.every((v, idx) => Math.abs(px[idx] - v) <= 16);
+      expect(closeTo(litBand, accentRgb), `${themeLabel}: полоса 3 на её собственном пороге обязана быть акцентной, факт rgb(${litBand.map((v) => Math.round(v))})`).toBe(true);
+      expect(closeTo(unlitBand, borderRgb), `${themeLabel}: полоса 4, ещё не открытая на этом пороге, обязана остаться серой (без смеси цвета), факт rgb(${unlitBand.map((v) => Math.round(v))})`).toBe(true);
+
+      // 5) Каждый слой несёт ровно одну ступеньку (steps(1,jump-end)), fill:
+      // forwards — та же проверка, что раньше делалась на единственном
+      // слое, теперь на всех пяти.
+      //
+      // РАСХОЖДЕНИЕ С БРИФОМ (измерено, не вкус, унаследовано от прежнего
+      // одноступенчатого слоя): брифом заявлено
+      // `effect.getTiming().easing === 'steps(1, jump-end)'`, но Chromium
+      // при двух явных стопах (0%/100%, from/to) вешает
+      // `animation-timing-function` на КАЖДЫЙ кадр (`getKeyframes()[i].easing`),
+      // а не на общий `effect.getTiming()` — тот остаётся `'linear'`.
+      // `jump-end` — термин по умолчанию, браузер отбрасывает его при
+      // сериализации: и `getComputedStyle().animationTimingFunction`, и
+      // `getKeyframes()[0].easing` дают `'steps(1)'`.
+      const animInfos = await page.evaluate((nSteps: number) => {
+        const out: Array<{ effectFill?: string; computedTimingFunction: string; keyframeEasings?: (string | undefined)[]; animCount: number }> = [];
+        for (let step = 1; step <= nSteps; step += 1) {
+          const el = document.querySelector(`#hero .cta .cta-ignite-step[data-step="${step}"]`) as HTMLElement;
+          const anims = el.getAnimations();
+          const s = getComputedStyle(el);
+          out.push({
+            animCount: anims.length,
+            effectFill: anims[0]?.effect?.getTiming().fill as string | undefined,
+            computedTimingFunction: s.animationTimingFunction,
+            keyframeEasings: (anims[0]?.effect as KeyframeEffect | null)?.getKeyframes().map((k) => k.easing as string),
+          });
+        }
+        return out;
+      }, N_STEPS);
+      for (const [i, info] of animInfos.entries()) {
+        expect(info.animCount, `слой data-step="${i + 1}" обязан нести ровно одну анимацию рассказа`).toBe(1);
+        expect(info.effectFill, `слой data-step="${i + 1}" обязан нести fill:forwards`).toBe('forwards');
+        expect(info.computedTimingFunction, `слой data-step="${i + 1}" обязан быть ступенькой`).toBe('steps(1)');
+        expect(info.keyframeEasings, `слой data-step="${i + 1}": кадры обязаны быть ступенькой`).toEqual(['steps(1)', 'steps(1)']);
+      }
 
       const btnAnimsCount = await page
         .locator('#hero .cta .btn.primary')
         .evaluate((el) => (el as HTMLElement).getAnimations().length);
-      expect(btnAnimsCount, 'сама кнопка обязана остаться без анимации — перекраску несёт слой').toBe(0);
-      expect(animInfo[0].computedTimingFunction).toBe('steps(1)');
-      expect(animInfo[0].keyframeEasings).toEqual(['steps(1)', 'steps(1)']);
+      expect(btnAnimsCount, 'сама кнопка обязана остаться без анимации — перекраску несут слои лестницы').toBe(0);
 
-      // 5) Реверс — вернулись на scrollY=0, кнопка снова серая (П-6.6, П6 брифа).
+      // 6) Реверс — вернулись на scrollY=0, кнопка снова серая (П-6.6, П6 брифа).
       await page.evaluate(() => window.scrollTo(0, 0));
       const backToTop = await buttonColors(page);
       expect(backToTop.backgroundColor, `${themeLabel}: после возврата на scrollY=0 кнопка обязана снова стать серой`).toBe(border);
@@ -294,7 +393,9 @@ test.describe('линия-рассказчик — П2: кнопка перво�
   // 837 / 0,67, ВЕРХНЯЯ кромка кнопки, начало диапазона, другая строка той
   // же таблицы). Прямой замер подтверждает формулу, а не число 1249: на
   // высоте 1314px кнопка ещё серая, на 1315px — уже акцентная (проверено
-  // `astro preview`, окно 1440×высота, `getComputedStyle`).
+  // `astro preview`, окно 1440×высота, `getComputedStyle`). Порог не
+  // затронут лестницей — это порог ПЯТОГО (последнего) слоя, тот же самый,
+  // что нёс единственный слой до неё.
   test('окно ≥1315px (граница по формуле брифа 0,67·vh ≥ 881, не 1249 — см. комментарий): кнопка акцентная уже при загрузке (раздел 3, П2(г) — законное исключение из П-5)', async ({ browser }) => {
     const heightsAndExpected: [number, string][] = [
       [1314, 'ещё-серая'],
@@ -318,7 +419,7 @@ test.describe('линия-рассказчик — П2: кнопка перво�
     }
   });
 
-  test('prefers-reduced-motion: reduce — кнопка акцентная при scrollY=0, серого состояния нет ни в одном кадре (П-6в, П-13)', async ({ browser }) => {
+  test('prefers-reduced-motion: reduce — кнопка акцентная при scrollY=0, серого состояния нет ни в одном кадре, ни один из пяти слоёв не анимирован (П-6в, П-13)', async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: VIEWPORT_1440_900 });
     const page = await ctx.newPage();
     await page.goto('/');
@@ -327,6 +428,15 @@ test.describe('линия-рассказчик — П2: кнопка перво�
     expect(c.color).toBe(ON_ACCENT_LIGHT);
     const anims = await page.locator('#hero .cta .btn.primary').evaluate((el) => (el as HTMLElement).getAnimations().length);
     expect(anims, 'при reduce кнопка не обязана нести ни одной анимации рассказа').toBe(0);
+    const stepAnims = await page.evaluate((nSteps: number) => {
+      let total = 0;
+      for (let step = 1; step <= nSteps; step += 1) {
+        const el = document.querySelector(`#hero .cta .cta-ignite-step[data-step="${step}"]`) as HTMLElement | null;
+        total += el ? el.getAnimations().length : 0;
+      }
+      return total;
+    }, N_STEPS);
+    expect(stepAnims, 'при reduce ни один из пяти слоёв лестницы не обязан нести анимацию').toBe(0);
     await ctx.close();
   });
 
