@@ -29,8 +29,10 @@ interface Props {
   item: CaseCardData;
   /** Зеркальная раскладка — вторая и четвёртая строки (бриф, раздел 2.1). */
   mirrored?: boolean;
-  /** Высота поля иллюстрации, кратная 32 (бриф, раздел 2.2). */
-  illustrationHeight: number;
+  /** Высота поля иллюстрации, кратная 32 (бриф, раздел 2.2). Необязательна —
+   *  см. `CaseIllustrationField`, проп `height`: без неё поле растёт под
+   *  содержимое (сегодня так у иллюстрации «Замер», slug `site-v3`). */
+  illustrationHeight?: number;
   /** Высота поля ниже 899 px, если отличается — см. `CaseIllustrationField`. */
   illustrationMobileHeight?: number;
   /** Поле без паспарту — для реального скриншота, уже имеющего свою рамку. */
