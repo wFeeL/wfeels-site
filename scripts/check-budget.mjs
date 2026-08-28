@@ -268,6 +268,21 @@ function splitSrcset(value) {
     .filter((url) => url !== '');
 }
 
+/* `data-defer-weight="true"` — сигнал от разметки «этот `<img>` несёт
+   настоящий `src`, но браузер не скачивает его при первой загрузке»:
+   штатный `loading="lazy"` вне первого экрана
+   (`components/cases/CaseSpread.astro`, раздел 8/10.2 брифа `12-case-
+   pages-brief.md`, очередь 2026-08-26, пункт 5). Атрибут СВОЙ, не
+   `loading="lazy"` напрямую: галереи главной (`StorefrontGallery.astro`,
+   `WebsiteGallery.astro`, `CaseGallery.astro`) уже ставят `loading="lazy"`
+   на кадр, который несёт литеральный `src` и виден на первом экране —
+   бланкетное исключение по одному атрибуту `loading` вычло бы его вес и
+   тихо занизило число, которое страница вслух называет о себе (ловушка 29,
+   `50-code/CLAUDE.md`). Отдельный атрибут держит два разных случая
+   раздельными: «лениво, но всё равно первый кадр» (главная) и «лениво и
+   вправду не в первой загрузке» (развороты кейсов). */
+const DEFER_WEIGHT_ATTR = 'data-defer-weight';
+
 // Все подресурсы страницы: то, что браузер скачает, кроме навигации.
 function markupRefs(html) {
   const refs = [];
@@ -284,11 +299,13 @@ function markupRefs(html) {
       continue;
     }
 
+    const deferred = tag === 'img' && attrValue(attrs, DEFER_WEIGHT_ATTR) === 'true';
+
     for (const name of RESOURCE_ATTRS[tag] ?? []) {
       const value = attrValue(attrs, name);
       if (!value) continue;
       const urls = name === 'srcset' ? splitSrcset(value) : [value];
-      for (const url of urls) refs.push({ ref: url, where: `<${tag} ${name}>` });
+      for (const url of urls) refs.push({ ref: url, where: `<${tag} ${name}>`, deferred });
     }
   }
 
@@ -439,6 +456,7 @@ for (const page of PAGES) {
   const codes = pageCodepoints(html);
 
   let total = htmlBuf.length;
+  let deferredBytes = 0; // `data-defer-weight` — см. комментарий у DEFER_WEIGHT_ATTR
   let fontBytes = 0;
   const counted = new Set(); // один файл — один раз, даже если на него ссылаются и разметка, и CSS
 
@@ -446,7 +464,7 @@ for (const page of PAGES) {
   const queue = markupRefs(html).map((r) => ({ ...r, baseDir: pageDir }));
 
   while (queue.length > 0) {
-    const { ref, where, baseDir } = queue.shift();
+    const { ref, where, baseDir, deferred } = queue.shift();
     const file = resolveRef(ref, baseDir);
     if (file === null) continue; // чужой домен — за него мы не отвечаем
 
@@ -466,6 +484,15 @@ for (const page of PAGES) {
     }
 
     counted.add(file);
+    /* Кадр с `data-defer-weight="true"` браузер не скачивает при первой
+       загрузке (штатный `loading="lazy"` вне первого экрана) — его байты не
+       входят в предел первой загрузки, но файл обязан существовать
+       (проверка выше уже это гарантирует) и подсчитывается отдельно для
+       диагностической строки. */
+    if (deferred) {
+      deferredBytes += buf.length;
+      continue;
+    }
     total += buf.length;
     if (FONT_EXT.has(extname(file))) fontBytes += buf.length;
 
@@ -521,7 +548,8 @@ for (const page of PAGES) {
   console.log(
     `${pageOk && jsOk ? '✓' : '✗'} ${page} — всего ${kb(total)} (предел ${kb(MAX_PAGE_BYTES)}), ` +
     `из них шрифты ${kb(fontBytes)}, JS сжатый ${kb(jsGzip)} (предел ${kb(MAX_JS_GZIP_BYTES)}), ` +
-    `сторонних скриптов ${thirdPartyScripts}`
+    `сторонних скриптов ${thirdPartyScripts}` +
+    (deferredBytes > 0 ? `, отложено (data-defer-weight) ${kb(deferredBytes)}` : '')
   );
 
   if (!pageOk || !jsOk) failed = true;

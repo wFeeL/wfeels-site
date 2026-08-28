@@ -44,30 +44,6 @@ const structuredData = caseStudySchema({
 const spreads = caseSpreads(item.slug);
 const hasSpreads = spreads.length > 0;
 
-/* Раздел 10.2 брифа: у `websites` порядок кадров разворота совпадает с
-   `WEBSITE_SLIDES` (`data/case-galleries.ts`), поэтому разворот донашивает
-   тот же манифест `/case-galleries.json`, что уже раздаёт `CaseGallery` —
-   только первый кадр страницы несёт литеральный `src`, остальные восемь
-   идут по манифесту (иначе девять кадров по ~100…120 КБ дают > 1 МБ
-   литералом, замерено при первой сборке этой правки). У `zayavka-hub`
-   кадры лёгкие (19…38 КБ) и манифеста для них нет — ключ не задаётся,
-   `CaseSpread` оставляет прежний литеральный `src` на всех кадрах.
-   `ai-consultant` (раздел 4.4 брифа) несёт манифест наравне с
-   `websites`/`storefront` — «только первый кадр страницы литерален»
-   действует по устройству, а не по весу конкретных файлов. */
-const CASE_SPREAD_GALLERY_KEY: Readonly<Record<string, string>> = {
-  websites: 'websites-ru',
-  storefront: 'storefront-ru',
-  'ai-consultant': 'ai-consultant-ru',
-};
-const spreadGalleryKey = CASE_SPREAD_GALLERY_KEY[item.slug];
-let spreadImageOffset = 0;
-const spreadsWithOffset = spreads.map((spread) => {
-  const imageOffset = spreadImageOffset;
-  spreadImageOffset += spread.images?.length ?? 0;
-  return { spread, imageOffset };
-});
-
 /* Блок действия у разворота (раздел 3.7 брифа: «Связанные услуги» и «Все
    кейсы» входят в один блок действия внизу страницы вместе с кнопкой).
    Следующий кейс — по кольцу публикуемых кейсов, тем же порядком, что несёт
@@ -128,8 +104,8 @@ const nextCase = allCases[(currentIndex + 1) % allCases.length];
           </section>
 
           <section class="spreads" aria-label={`Экраны продукта «${item.title}»`}>
-            {spreadsWithOffset.map(({ spread, imageOffset }, i) => (
-              <CaseSpread spread={spread} index={i} galleryKey={spreadGalleryKey} imageOffset={imageOffset} />
+            {spreads.map((spread, i) => (
+              <CaseSpread spread={spread} index={i} />
             ))}
           </section>
 

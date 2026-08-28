@@ -48,48 +48,56 @@ describe('dist/cases — индексируемый каталог и detail-с�
    * правкой у ОБЕИХ многокадровых галерей (`websites`, `storefront`) есть
    * развороты, путь `CaseGallery` на страницах кейсов больше не используется
    * нигде — держать проверку промежуточного состояния, у которого больше нет
-   * ни одного случая, значит проверять пустое множество. Предметная проверка
-   * не снята, а расщеплена на два именных теста ниже (по одному на кейс),
-   * тем же приёмом, что уже применяет тест `websites`: список кадров
-   * выводится из `caseSpreads()`, а не вписан руками (ловушка 15/21,
+   * ни одного случая, значит проверять пустое множество.
+   *
+   * Очередь `70-workshop/plans/site-v3/04-queue-2026-08-26.md`, пункт 5:
+   * манифест `/case-galleries.json` для разворотов кейсов снят — КАЖДЫЙ
+   * кадр несёт литеральный `src` в собранном HTML (раньше — только первый
+   * кадр страницы, а восемь из девяти на `storefront` не имели атрибута
+   * `src` вовсе). Список кейсов и кадров выводится из `publishedCases()` /
+   * `caseSpreads()`, а не вписан руками (ловушка 15/21/24,
    * `50-code/CLAUDE.md`). */
-  it('storefront: разворот выводит все девять кадров, первый — без JavaScript', () => {
+  for (const item of pages) {
+    const slides = caseSpreads(item.slug).flatMap((spread) => spread.images ?? []);
+    if (slides.length === 0) continue; // `site-v3` — ни одного кадра, раздел 4.5 брифа
+
+    it(`${item.slug}: каждый кадр разворота несёт src, alt и отложенность вне первого`, () => {
+      const html = read(`cases/${item.slug}/index.html`);
+      const imgTags = html.match(/<img\b[^>]*>/g) ?? [];
+      expect(imgTags.length, `${item.slug}: число <img> в разметке`).toBe(slides.length);
+
+      slides.forEach((slide, i) => {
+        const tag = imgTags[i];
+        expect(tag, `${item.slug}: кадр ${i + 1} несёт src`).toContain(`src="${slide.src}"`);
+        expect(tag, `${item.slug}: кадр ${i + 1} несёт alt`).toContain(`alt="${slide.alt}"`);
+        if (i === 0) {
+          expect(tag, `${item.slug}: первый кадр страницы — без loading="lazy" (LCP)`)
+            .not.toContain('loading="lazy"');
+          expect(tag, `${item.slug}: первый кадр страницы не в отложенном весе`)
+            .not.toContain('data-defer-weight');
+        } else {
+          expect(tag, `${item.slug}: кадр ${i + 1} — loading="lazy"`).toContain('loading="lazy"');
+          expect(tag, `${item.slug}: кадр ${i + 1} исключён из веса первой загрузки`)
+            .toContain('data-defer-weight="true"');
+        }
+      });
+    });
+  }
+
+  it('storefront: подпись у каждого из девяти кадров', () => {
     const html = read('cases/storefront/index.html');
     const slides = caseSpreads('storefront').flatMap((spread) => spread.images ?? []);
     expect(slides.length, 'storefront: суммарно девять кадров по трём разворотам').toBe(9);
-
-    expect(html, 'storefront: первый кадр без src').toContain(`src="${slides[0].src}"`);
-    for (const slide of slides.slice(1)) {
-      expect(html, `storefront: ${slide.src} не должен быть в первой загрузке`)
-        .not.toContain(`src="${slide.src}"`);
-    }
     for (const slide of slides) {
-      expect(html, `storefront: ${slide.alt}`).toContain(`alt="${slide.alt}"`);
       expect(html, `storefront: подпись ${slide.caption}`).toContain(`>${slide.caption}<`);
     }
     expect(html).toContain('width="780" height="1688"');
   });
 
-  /* `websites` перешёл на развороты (раздел 4.2 брифа) — девять кадров
-   * группами по три («крупный + два подкадра»), каждый со своим `alt`
-   * (`data/case-spreads.ts`), а не сеткой `CaseGallery`. Первый кадр
-   * страницы литеральный `src`, остальные восемь идут по манифесту
-   * `/case-galleries.json` тем же ключом `websites-ru`, что раньше отдавал
-   * их `CaseGallery` — раздел 10.2 брифа («все кадры, кроме первого на
-   * странице, идут без атрибута `src`»). */
-  it('websites: разворот выводит все девять кадров, первый — без JavaScript', () => {
+  it('websites: девять кадров группами по три, свой width/height', () => {
     const html = read('cases/websites/index.html');
     const slides = caseSpreads('websites').flatMap((spread) => spread.images ?? []);
     expect(slides.length, 'websites: суммарно девять кадров по трём разворотам').toBe(9);
-
-    expect(html, 'websites: первый кадр без src').toContain(`src="${slides[0].src}"`);
-    for (const slide of slides.slice(1)) {
-      expect(html, `websites: ${slide.src} не должен быть в первой загрузке`)
-        .not.toContain(`src="${slide.src}"`);
-    }
-    for (const slide of slides) {
-      expect(html, `websites: ${slide.alt}`).toContain(`alt="${slide.alt}"`);
-    }
     expect(html).toContain('width="1586" height="992"');
   });
 
