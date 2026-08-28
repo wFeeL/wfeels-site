@@ -151,6 +151,15 @@ describe('линия на фоне — computeActGroups мостит секци�
  *  остаётся ВНУТРИ той же группы и не создаёт новой, а значит не может
  *  породить и новый переход линии. */
 describe('линия на фоне — секция «Отзывы» не меняет состав актов (14-reviews-brief.md, раздел 4.2)', () => {
+  // Фикстура ниже ПРЕДПОЛАГАЕТ, что `HOME_SECTIONS` ещё не несёт `reviews`
+  // естественно (REVIEWS пуст) — иначе вставка ниже создала бы вторую,
+  // дублирующую запись `reviews` и сама фикстура перестала бы что-либо
+  // доказывать. В день, когда владелец добавит первый настоящий отзыв,
+  // `HOME_SECTIONS` сам понесёт `reviews`, и этот синтетический сторож
+  // становится избыточным (у линии появляется настоящий боевой сторож —
+  // `background-line-staleness.spec.ts` и e2e-сторожа реестра) — поэтому он
+  // пропускает себя, а не падает и не дублирует проверку молча.
+  const hasNativeReviews = HOME_SECTIONS.some((s) => s.id === 'reviews');
   const aboutIndex = HOME_SECTIONS.findIndex((s) => s.id === 'about');
   const REVIEWS_SECTION_FOR_TEST = {
     id: 'reviews',
@@ -166,20 +175,20 @@ describe('линия на фоне — секция «Отзывы» не мен
     ...HOME_SECTIONS.slice(aboutIndex + 1),
   ];
 
-  it('«Отзывы» вставлены между about и faq в тестовом списке (проверка самой фикстуры)', () => {
+  it.skipIf(hasNativeReviews)('«Отзывы» вставлены между about и faq в тестовом списке (проверка самой фикстуры)', () => {
     expect(aboutIndex).toBeGreaterThanOrEqual(0);
     const ids = SECTIONS_WITH_REVIEWS.map((s) => s.id);
     expect(ids.indexOf('about') + 1).toBe(ids.indexOf('reviews'));
     expect(ids.indexOf('reviews') + 1).toBe(ids.indexOf('faq'));
   });
 
-  it('turnOwners не меняется с секцией «Отзывы» и без неё', () => {
+  it.skipIf(hasNativeReviews)('turnOwners не меняется с секцией «Отзывы» и без неё', () => {
     const without = turnOwners(HOME_SECTIONS);
     const withReviews = turnOwners(SECTIONS_WITH_REVIEWS, MEASURED_SECTION_HEIGHT);
     expect(withReviews).toEqual(without);
   });
 
-  it('состав секций по группам актов совпадает с точностью до самой записи «Отзывы»', () => {
+  it.skipIf(hasNativeReviews)('состав секций по группам актов совпадает с точностью до самой записи «Отзывы»', () => {
     const groupsWithout = computeActGroups(HOME_SECTIONS).map((g) => g.ids);
     const groupsWith = computeActGroups(SECTIONS_WITH_REVIEWS, MEASURED_SECTION_HEIGHT).map((g) =>
       g.ids.filter((id) => id !== 'reviews'),
@@ -187,7 +196,7 @@ describe('линия на фоне — секция «Отзывы» не мен
     expect(groupsWith).toEqual(groupsWithout);
   });
 
-  it('«Отзывы» остаются внутри акта 3 (process…faq), не образуя отдельной группы', () => {
+  it.skipIf(hasNativeReviews)('«Отзывы» остаются внутри акта 3 (process…faq), не образуя отдельной группы', () => {
     const groups = computeActGroups(SECTIONS_WITH_REVIEWS, MEASURED_SECTION_HEIGHT);
     const owner = groups.find((g) => g.ids.includes('reviews'));
     expect(owner, 'группа, несущая «reviews», не найдена').toBeTruthy();
@@ -195,7 +204,7 @@ describe('линия на фоне — секция «Отзывы» не мен
     expect(owner!.ids).toEqual(['process', 'guarantees', 'about', 'reviews', 'faq']);
   });
 
-  it('сторона и переход у «about» и «faq» не меняются от присутствия «Отзывов» между ними', () => {
+  it.skipIf(hasNativeReviews)('сторона и переход у «about» и «faq» не меняются от присутствия «Отзывов» между ними', () => {
     const without = computeLineData(HOME_SECTIONS);
     const withReviews = computeLineData(SECTIONS_WITH_REVIEWS, MEASURED_SECTION_HEIGHT);
     expect(withReviews.about).toEqual(without.about);
