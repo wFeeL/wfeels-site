@@ -1,4 +1,5 @@
 import type { Locale } from '../i18n/locales';
+import { homeReviews } from '../data/reviews';
 
 /** Единый список десяти секций главной — единственный источник, из
  *  которого читают разметка страницы, шапка (через `lib/nav.ts`) и рельс-
@@ -97,18 +98,55 @@ export interface HomeSection {
  * `computeActGroups`/`computeLineData` — только группировка сдвигается).
  * Смысл акта тоже сдвигается: граница «кто я и что делаю» → «сколько это
  * стоит и что уже сделано», а не отменяется. */
-export const HOME_SECTIONS: readonly HomeSection[] = [
-  { id: 'hero', order: 1, title: 'Секция 1 — Первый экран', railLabel: 'НАЧАЛО', railFirst: true, act: 'in' },
-  { id: 'pain', order: 2, title: 'Секция 2 — Как обычно бывает', railLabel: 'КАК БЫВАЕТ', railFirst: true, act: 'in' },
-  { id: 'services', order: 3, title: 'Секция 3 — Что я делаю', railLabel: 'УСЛУГИ', railFirst: true, act: 'in' },
-  { id: 'pricing', order: 4, title: 'Секция 4 — Цены', railLabel: 'ЦЕНЫ', railFirst: true, act: 2 },
-  { id: 'cases', order: 5, title: 'Секция 5 — Кейсы', railLabel: 'КЕЙСЫ', railFirst: true, act: 2 },
-  { id: 'process', order: 6, title: 'Секция 6 — Как я работаю', railLabel: 'ПРОЦЕСС', railFirst: true, act: 3 },
-  { id: 'guarantees', order: 7, title: 'Секция 7 — Что я гарантирую', railLabel: 'ГАРАНТИИ', railFirst: true, act: 3 },
-  { id: 'about', order: 8, title: 'Секция 8 — Обо мне', railLabel: 'ОБО МНЕ', railFirst: true, act: 3 },
-  { id: 'faq', order: 9, title: 'Секция 9 — Частые вопросы', railLabel: 'FAQ', railFirst: true, act: 3 },
-  { id: 'contact', order: 10, title: 'Секция 10 — Контакт', railLabel: 'КОНТАКТ', railFirst: true, act: 'out' },
+/** Секция без `order` — сам номер больше не пишется литералом (правка
+ *  `70-workshop/specs/site-v3/14-reviews-brief.md`, раздел 4.2): секция
+ *  «Отзывы» вставляется в массив УСЛОВНО (см. `REVIEWS_SECTION` и сборку
+ *  `HOME_SECTIONS` ниже), и литеральные номера девятой/десятой секции
+ *  разошлись бы с их фактической позицией в день, когда массив пуст. Номер
+ *  всегда остаётся отчётным полем — он не определяет разметку и раньше не
+ *  определял, — но теперь он выводится из позиции в итоговом массиве, а не
+ *  переписывается руками на каждую вставку/снятие секции. */
+type HomeSectionInput = Omit<HomeSection, 'order'>;
+
+const BASE_SECTIONS: readonly HomeSectionInput[] = [
+  { id: 'hero', title: 'Секция 1 — Первый экран', railLabel: 'НАЧАЛО', railFirst: true, act: 'in' },
+  { id: 'pain', title: 'Секция 2 — Как обычно бывает', railLabel: 'КАК БЫВАЕТ', railFirst: true, act: 'in' },
+  { id: 'services', title: 'Секция 3 — Что я делаю', railLabel: 'УСЛУГИ', railFirst: true, act: 'in' },
+  { id: 'pricing', title: 'Секция 4 — Цены', railLabel: 'ЦЕНЫ', railFirst: true, act: 2 },
+  { id: 'cases', title: 'Секция 5 — Кейсы', railLabel: 'КЕЙСЫ', railFirst: true, act: 2 },
+  { id: 'process', title: 'Секция 6 — Как я работаю', railLabel: 'ПРОЦЕСС', railFirst: true, act: 3 },
+  { id: 'guarantees', title: 'Секция 7 — Что я гарантирую', railLabel: 'ГАРАНТИИ', railFirst: true, act: 3 },
+  { id: 'about', title: 'Секция 8 — Обо мне', railLabel: 'ОБО МНЕ', railFirst: true, act: 3 },
 ];
+
+/** Секция «Отзывы» — О-2 (`14-reviews-brief.md`, раздел 4.2/4.4), между
+ *  `about` и `faq`: «автор о себе → посторонний о нём → возражения →
+ *  контакт». Акт 3, сторона `left`, `turn: 'none'` — прямой прогон,
+ *  доказано разделом 3.2 брифа: акт 3 сегодня 3326 px, порог слияния
+ *  (`computeActGroups`, `MIN_RUN`) 900 px, вставка либо снятие секции этого
+ *  не меняет (проверено `backgroundLine.test.ts`, «состав актов не
+ *  меняется»). Запись попадает в `HOME_SECTIONS` ТОЛЬКО когда у владельца
+ *  есть хотя бы один отзыв на главную — `homeReviews().length > 0` ниже —
+ *  из этого одного условия следует отсутствие секции, точки рельса, участка
+ *  линии и якоря разом, пока отзывов нет (раздел 4.2 брифа). */
+const REVIEWS_SECTION: HomeSectionInput = {
+  id: 'reviews',
+  title: 'Секция 9 — Отзывы',
+  railLabel: 'ОТЗЫВЫ',
+  railFirst: true,
+  act: 3,
+};
+
+const TAIL_SECTIONS: readonly HomeSectionInput[] = [
+  { id: 'faq', title: 'Секция 10 — Частые вопросы', railLabel: 'FAQ', railFirst: true, act: 3 },
+  { id: 'contact', title: 'Секция 11 — Контакт', railLabel: 'КОНТАКТ', railFirst: true, act: 'out' },
+];
+
+export const HOME_SECTIONS: readonly HomeSection[] = [
+  ...BASE_SECTIONS,
+  ...(homeReviews().length > 0 ? [REVIEWS_SECTION] : []),
+  ...TAIL_SECTIONS,
+].map((s, i) => ({ ...s, order: i + 1 }));
 
 /** Список якорей в порядке страницы. Читает `pages/index.astro`, чтобы не
  *  перечислять секции руками, и тесты, чтобы сверить разметку со списком. */
@@ -150,6 +188,15 @@ const RAIL_LABELS_EN: Readonly<Record<string, string>> = {
   'ПРОЦЕСС': 'PROCESS',
   'ГАРАНТИИ': 'GUARANTEES',
   'ОБО МНЕ': 'ABOUT',
+  /* Заводится БЕЗУСЛОВНО (раздел 4.2 брифа `14-reviews-brief.md`) — даже
+   *  когда секция «Отзывы» отсутствует из `HOME_SECTIONS` (REVIEWS пуст),
+   *  словарь несёт эту пару. Цикл ниже проверяет полноту только в одну
+   *  сторону (у каждой РИСУЕМОЙ метки есть перевод) — лишняя пара, у которой
+   *  сегодня нет потребителя, эту проверку не ломает. `ОТЗЫВ`/`ОТЗЫВЫ` — 7
+   *  знаков что по-русски, что по-английски (`REVIEWS`), короче действующей
+   *  `ГАРАНТИИ`/`GUARANTEES` (8/10), в полосу `Rail.astro` (`max-width:
+   *  112px`) входит с запасом. */
+  'ОТЗЫВЫ': 'REVIEWS',
   'FAQ': 'FAQ',
   'КОНТАКТ': 'CONTACT',
 };

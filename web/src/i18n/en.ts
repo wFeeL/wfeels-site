@@ -126,7 +126,12 @@ export default {
   aboutLabel: 'WHO BUILDS IT',
   aboutHeading: 'About me',
 
-  /* ── Секция 9, частые вопросы ─────────────────────────────────────────── */
+  /* ── Секция 9, отзывы — рамка переводится, цитата остаётся оригиналом
+   *  (раздел 4.10 брифа `14-reviews-brief.md`) ──────────────────────────── */
+  reviewsLabel: 'REVIEWS',
+  reviewsHeading: 'Feedback',
+
+  /* ── Секция 10, частые вопросы ─────────────────────────────────────────── */
   faqLabel: 'FREQUENT QUESTIONS',
   faqHeading: 'What people usually ask',
 

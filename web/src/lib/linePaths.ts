@@ -417,6 +417,18 @@ const HAND_DRAWN: Readonly<Record<string, LinePathEntry>> = {
     const h = vbHOf('about');
     return buildEntry(h, straightPath(h, DOCK_LEFT), narrowPath(h));
   })(),
+  // reviews — раздел 4.9 брифа `14-reviews-brief.md`: секция стоит между
+  // `about` и `faq`, внутри того же акта 3, на той же стороне (`left`),
+  // `turn: 'none'`. Прямой прогон по тому же доводу, что у `about`/`faq`
+  // (Г-2+Г-4): секция короткая и текстовая, событию здесь не место.
+  // Заводится БЕЗУСЛОВНО — при пустом `REVIEWS` у записи просто нет
+  // потребителя (`Section.astro` не рисует эту секцию, пока её нет в
+  // `HOME_SECTIONS`), тем же приёмом, каким этот же файл уже держит путь
+  // без потребителя (см. шапку файла, «Появится одиннадцатая секция…»).
+  reviews: (() => {
+    const h = vbHOf('reviews');
+    return buildEntry(h, straightPath(h, DOCK_LEFT), narrowPath(h));
+  })(),
   // faq — раздел 12.3 брифа, тот же довод, что у `about`: потолок бокового
   // хода при `R ≥ 272` — 140 vb (14% холста), тоже строго в запретной
   // середине Г-4. Линия не может пересечь панель вопросов и остаётся на

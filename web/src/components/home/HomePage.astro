@@ -25,6 +25,7 @@ import Cases from './Cases.astro';
 import Process from './Process.astro';
 import Guarantees from './Guarantees.astro';
 import About from './About.astro';
+import Reviews from './Reviews.astro';
 import Faq from './Faq.astro';
 import Contact from './Contact.astro';
 
@@ -44,6 +45,12 @@ const HOME_COMPONENTS: Partial<Record<string, typeof Hero>> = {
   process: Process,
   guarantees: Guarantees,
   about: About,
+  /* `reviews` — О-2 (`70-workshop/specs/site-v3/14-reviews-brief.md`).
+   *  `HOME_SECTIONS` не несёт этот `id` вовсе, пока `homeReviews()` пуст
+   *  (`lib/sections.ts`) — запись здесь просто не имеет потребителя в этот
+   *  день, тем же приёмом, каким реестр линии (`lib/linePaths.ts`) держит
+   *  путь без потребителя. */
+  reviews: Reviews,
   faq: Faq,
   contact: Contact,
 };
@@ -128,6 +135,13 @@ const GAP: Record<
   },
   guarantees: { topGap: 'wide', bottomGap: 'none' },
   about: { topGap: 'wide', bottomGap: 'none' },
+  /* `reviews` — та же раскладка, что `faq` (метка+`h2` снаружи, читает
+   *  `home/Reviews.astro`), но БЕЗ `surface`: подложка на главной ровно одна
+   *  (раздел 4.4 брифа `14-reviews-brief.md`, «Частые вопросы»), вторая
+   *  встала бы прямо над первой. Запись остаётся в таблице безусловно —
+   *  `GAP['reviews']` просто не имеет потребителя, пока `reviews` нет в
+   *  `HOME_SECTIONS` (тот же приём, что у `LINE_PATHS.reviews`). */
+  reviews: { topGap: 'wide', bottomGap: 'none', label: t.reviewsLabel, heading: t.reviewsHeading },
   faq: { topGap: 'wide', bottomGap: 'none', surface: true, label: t.faqLabel, heading: t.faqHeading },
   /* У контакта только ВЕРХ: стык `faq → contact` — такой же стык страницы,
      как и семь предыдущих, и до этой правки он держался умолчанием 96, то

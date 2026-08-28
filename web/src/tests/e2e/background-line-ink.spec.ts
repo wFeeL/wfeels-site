@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { LINE_PATHS } from '../../lib/linePaths';
+import { homeReviews } from '../../data/reviews';
 
 /** Тест «чернил» — бриф `70-workshop/specs/site-v3/05-line.md`, раздел 1.1
  *  и раздел 10, шаг 1.
@@ -213,7 +214,18 @@ test.describe('линия на фоне — тест чернил (05-line.md, �
     // реестра, а не переписывается руками на каждый новый `.head`). Число
     // веток и клиньев растёт независимо от числа секций — ожидание
     // выводится из самого реестра (ловушки 15/21/24, `50-code/CLAUDE.md`).
-    const registryKeys = Object.keys(LINE_PATHS);
+    // `reviews` — исключение, поимённое (`70-workshop/specs/site-v3/
+    // 14-reviews-brief.md`, раздел 4.2): запись реестра заведена БЕЗУСЛОВНО,
+    // а секция на странице существует только когда `homeReviews().length >
+    // 0` (`lib/sections.ts`). Читается тем же условием, а не вписывается
+    // числом руками — в день, когда владелец подставит первый отзыв, эта
+    // строка сама включит запись обратно в ожидаемое число вместо того,
+    // чтобы красить тест до следующей правки.
+    const OPTIONAL_CONSUMER_ENTRIES = new Set(['reviews']);
+    const hasOptionalConsumer = homeReviews().length > 0;
+    const registryKeys = Object.keys(LINE_PATHS).filter(
+      (id) => hasOptionalConsumer || !OPTIONAL_CONSUMER_ENTRIES.has(id),
+    );
     const branchCount = registryKeys.filter((id) => Boolean(LINE_PATHS[id].branch)).length;
     const headCount = registryKeys.filter((id) => Boolean(LINE_PATHS[id].head)).length;
     const expectedPathCount = registryKeys.length + branchCount + headCount;

@@ -160,6 +160,17 @@ export interface LineDatum {
  * `computeActGroups` на новых высотах даёт тот же состав актов
  * (`in`: hero+pain+services · 2: pricing+cases · 3: process+guarantees+
  * about+faq · `out`: contact). */
+/* Запись `reviews` (`70-workshop/specs/site-v3/14-reviews-brief.md`, раздел
+ * 4.9) заводится БЕЗУСЛОВНО — при пустом `REVIEWS` у неё просто нет
+ * потребителя (секции нет в `HOME_SECTIONS`, `computeActGroups`/
+ * `computeLineData` её не видят). Число ниже измерено `boundingBox()` на
+ * 1180×900 тем же приёмом, что и вся остальная таблица (свежий запуск
+ * браузера, прокрутка к элементу — замер без прокрутки даёт другое число,
+ * ловушка 2 `50-code/CLAUDE.md`), на сборке с ОДНОЙ временной записью в
+ * `data/reviews.ts` (владелец подставит реальный текст позже и обязан один
+ * раз переизмерить — процедура раздела 4.9 брифа, тот же порядок действий,
+ * каким уже переизмерялись все остальные строки этой таблицы). Временная
+ * запись в сдаваемый `data/reviews.ts` не попадает. */
 export const MEASURED_SECTION_HEIGHT: Readonly<Record<string, number>> = {
   hero: 953,
   pain: 595,
@@ -169,6 +180,7 @@ export const MEASURED_SECTION_HEIGHT: Readonly<Record<string, number>> = {
   process: 1333,
   guarantees: 753,
   about: 666,
+  reviews: 253,
   faq: 574,
   contact: 965,
 };

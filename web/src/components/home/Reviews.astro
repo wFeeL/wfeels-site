@@ -1,0 +1,169 @@
+---
+/* Секция 9 (О-2) — «Отзывы», `70-workshop/specs/site-v3/14-reviews-brief.md`,
+ * раздел 4.4. Рендерится ТОЛЬКО когда `homeReviews().length > 0` —
+ * `lib/sections.ts` не добавляет якорь `reviews` в `HOME_SECTIONS` иначе, и
+ * `home/HomePage.astro` не подставляет этот компонент в `<Content />` для
+ * секции, которой нет в списке. Пустого/заглушечного состояния у этого
+ * компонента не существует: он либо не монтируется вовсе, либо получает
+ * хотя бы одну запись — страховка ниже это утверждает явно.
+ *
+ * Раскрой — та же двухколонка, что у `faq`/`about` (раздел 4.4 брифа,
+ * проверено снимками сборки): метка и `h2` рисует `Section.astro` СНАРУЖИ
+ * (пропы `label`/`heading` из `GAP.reviews`, `home/HomePage.astro`), этот
+ * файл рисует только правую полосу — ОДНУ колонку отзывов, без карточек и
+ * без подложки `--surface` (раздел 4.4: «карточки внутри секции нет»,
+ * «подложки --surface у секции нет» — вторая подложка на главной встала бы
+ * прямо над подложкой «Частых вопросов» и слепила бы две секции в одну
+ * плиту). Разделитель между отзывами — волосяная черта 1px `--border`, шаг
+ * 32px (`--step`); перед первым и после последнего отзыва черты нет.
+ *
+ * Три равные карточки в ряд здесь невозможны по устройству: разметка несёт
+ * ровно одну колонку, а не сетку, — самый узнаваемый шаблон купленных
+ * отзывов исключён структурой, а не соглашением.
+ */
+import { homeReviews } from '../../data/reviews';
+import { localeFromPath } from '../../i18n/locales';
+
+const locale = localeFromPath(Astro.url.pathname);
+const REVIEWS = homeReviews();
+
+if (REVIEWS.length === 0) {
+  throw new Error(
+    'home/Reviews.astro: компонент смонтирован без единой записи. ' +
+    'lib/sections.ts обязан не подставлять эту секцию в HOME_SECTIONS, пока ' +
+    'homeReviews() пуст (раздел 4.2 брифа `14-reviews-brief.md`) — если это ' +
+    'сообщение видно, подавление сломано где-то выше по цепочке.',
+  );
+}
+---
+<div class="list">
+  {REVIEWS.map((r) => (
+    <figure class="item" data-review>
+      {/* Цитата не переводится (раздел 4.10 брифа) — `lang` ставится, только
+          когда язык записи расходится с языком страницы; экранный диктор и
+          перенос слов обязаны знать настоящий язык текста. */}
+      <blockquote lang={r.lang !== locale ? r.lang : undefined}>
+        <p class="t-body-lg">{r.text}</p>
+      </blockquote>
+      {/* Форма подписи — раздел 4.6 брифа: «— {name} · {role} · {project}»,
+          средняя точка с пробелами (тот же разделитель, что у строки стека
+          на странице кейса). `.meta` уходит на отдельную строку только на
+          390px (раздел 4.8: «Подпись переносится на две строки: „— Имя“ /
+          „род занятий · проект“»), явным блоком — не переносом по ширине,
+          чтобы точка разрыва не зависела от длины текста. */}
+      <figcaption class="t-small">
+        <span class="who">— {r.name}</span> <span class="meta">{r.role} · {r.project}</span>
+      </figcaption>
+    </figure>
+  ))}
+</div>
+
+<style>
+  .list {
+    margin: 0;
+    max-width: 60ch;
+  }
+
+  .item + .item {
+    margin-top: 32px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  .item blockquote {
+    margin: 0;
+  }
+
+  /* Цвет — `--text`, никогда `--text-muted`/`--text-faint` (раздел 4.5
+     брифа: «свидетельство — факт наравне со стеком, а не сноска»).
+     `line-height` 1.6 (`.t-body-lg`) — не ниже: цветные эмодзи выше базовой
+     строки и на 1.5 подрезаются сверху (раздел 4.7). `text-wrap: pretty` +
+     `hyphens` — то же правило, что `base.css` несёт для `.t-h1`: перенос по
+     словарю ниже 480px, где длинное слово может не поместиться в колонку
+     целиком, выключен выше. */
+  .item blockquote p {
+    margin: 0;
+    color: var(--text);
+    text-wrap: pretty;
+    hyphens: none;
+    -webkit-hyphens: none;
+  }
+  @media (max-width: 479px) {
+    .item blockquote p {
+      hyphens: auto;
+      -webkit-hyphens: auto;
+    }
+  }
+
+  figcaption {
+    margin-top: 12px;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+  }
+  /* Эмодзи не встречаются в подписи никогда (раздел 4.7 брифа) — она несёт
+     только имя, род занятий и проект, поэтому подписи не нужен собственный
+     `line-height` выше умолчания `.t-small`. */
+  .meta {
+    margin-left: 0.35em;
+  }
+  @media (max-width: 479px) {
+    .meta {
+      display: block;
+      margin-left: 0;
+      margin-top: 2px;
+    }
+  }
+
+  /* Раскладка «заголовок слева — отзывы справа» от 900px — тот же приём,
+     что у `home/Faq.astro`: нацелена через `:global()` на разметку, которую
+     уже рисует `Section.astro` (`.t-label`, `.section-heading`), не
+     переопределяет её. У `faq` колонка 2 несёт `.panel`; здесь подложки нет
+     (раздел 4.4), поэтому колонку 2 несёт сам `.list`. Ниже 900px секция не
+     тронута этим правилом — обычный поток `Section.astro` (метка, заголовок,
+     отбивка 32px, список). */
+  @media (min-width: 900px) {
+    :global(#reviews) {
+      display: grid;
+      grid-template-columns: minmax(min-content, 360px) minmax(0, 1fr);
+      grid-template-rows: auto 1fr;
+      column-gap: 48px;
+      align-items: start;
+    }
+    :global(#reviews > .t-label) { grid-column: 1; grid-row: 1; }
+    :global(#reviews > .section-heading) { grid-column: 1; grid-row: 2; margin: 0; }
+    :global(#reviews > .list) { grid-column: 2; grid-row: 1 / span 2; }
+  }
+
+  /* Появление блока при прокрутке (раздел 4.9 брифа) — ЦЕЛИКОМ, одним
+     движением, без каскада по отзывам: класс стоит на обёртке `.list`, а не
+     на каждой `.item`, и `--reveal-i` здесь не задаётся ни разу — вторая
+     карточка не может уйти в свой столбец, потому что столбца у неё нет.
+     Приём (view()-таймлайн, фиксированный `animation-range`, `1ms`-
+     заглушка длительности) — тот же, что уже несёт `:global(.badge)` в
+     `home/Pricing.astro`: реальная длительность и кривая читаются не из
+     `animation-duration`, а из ширины диапазона и `animation-timing-
+     function`; `var(--dur-reveal)`/`var(--ease)` — те же 320ms/кривая,
+     которыми размечена спека (раздел 4.9), поставленные в единственные
+     работающие в этой механике места. `translate` 12px, не 32px `.reveal` —
+     число брифа, отдельное от каскада карточек: секция короткая и
+     текстовая, крупный ход здесь не нужен. Ноль JavaScript — вне `@supports`
+     и `reduce` блок виден целиком и без сдвига (раздел 4.9, «состояния»,
+     `40-portfolio/CLAUDE.md` — состояние по умолчанию всегда конечное). */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .list {
+        opacity: 0;
+        translate: 0 12px;
+        animation-name: reviews-reveal;
+        animation-duration: var(--dur-reveal);
+        animation-timing-function: var(--ease);
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 40%;
+      }
+    }
+  }
+  @keyframes reviews-reveal {
+    to { opacity: 1; translate: 0 0; }
+  }
+</style>
