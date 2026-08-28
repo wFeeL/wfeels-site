@@ -55,12 +55,16 @@ interface Props {
    *  компонентом. */
   line?: boolean;
   /** Полоса действия подвала (`.footer-cta`) — спека `09-footer-brief.md`,
-   *  раздел 3.1. По умолчанию ВЫВОДИТСЯ ИЗ АДРЕСА (`showFooterCta`), тем же
-   *  приёмом, что уже даёт умолчание `lang` из `localeFromPath` выше:
-   *  страница сама этот проп не задаёт, а решение о том, есть ли у неё
-   *  собственная форма внизу, принимает одна чистая функция на весь сайт.
-   *  Проп остаётся как перекрытие для случая, когда адрес и содержание
-   *  страницы разойдутся намеренно. */
+   *  раздел 3.1. По умолчанию ВЫВОДИТСЯ ИЗ АДРЕСА И РОЛИ СТРАНИЦЫ
+   *  (`showFooterCta(pathname, nofollow)`), тем же приёмом, что уже даёт
+   *  умолчание `lang` из `localeFromPath` выше: страница сама этот проп не
+   *  задаёт. Признак 1 (своя форма внизу) читается из адреса; признак 2
+   *  (страница — служебный конечный экран) приходит вторым аргументом из
+   *  уже объявленного пропа `nofollow` этого же компонента — поэтому
+   *  `nofollow` обязан стоять в разборе пропсов ВЫШЕ `cta`: умолчание `cta`
+   *  читает его значение, и перестановка уронит сборку на TDZ. Проп `cta`
+   *  остаётся как перекрытие для случая, когда адрес и содержание страницы
+   *  разойдутся намеренно. */
   cta?: boolean;
   /** Структурированная разметка страницы, если она у страницы есть. */
   schema?: SchemaKind;
@@ -72,7 +76,7 @@ interface Props {
 const {
   title, description, lang = localeFromPath(Astro.url.pathname), noindex = false,
   nofollow = false, progress = true, rail = false, line = false,
-  cta = showFooterCta(Astro.url.pathname), schema, structuredData,
+  cta = showFooterCta(Astro.url.pathname, nofollow), schema, structuredData,
 } = Astro.props;
 const t = dict(lang);
 

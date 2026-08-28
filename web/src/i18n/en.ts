@@ -162,4 +162,11 @@ export default {
   formOkText: 'Your message is on its way. I’ll reply within a day.',
   formFailTitle: 'Not sent',
   formFailText: 'That didn’t go through. Write to me directly: ',
+
+  /* ── Short pages ────────────────────────────────────────────────────────
+     Variant A "Signpost" (spec `13-short-pages-brief.md`, section 4.9,
+     D-129) — exactly two new strings, both service labels of the right
+     column on `/404` and `/thanks`. */
+  shortSectionsLabel: 'Sections',
+  shortFallbackLabel: 'Fallback channel',
 } as const;

@@ -10,42 +10,40 @@ import { test, expect } from '@playwright/test';
  *  Б-3 этого же захода — вертикальное центрирование на высоких мониторах)
  *  трогает ровно тот же бюджет 11 px.
  *
- *  Проверка — `document.documentElement.scrollHeight` не больше
- *  `window.innerHeight` на 1440×900, то есть полосы прокрутки нет вовсе
- *  (страница помещается в высоту окна без остатка). Обе страницы, у которых
- *  есть свой `siteTagline` (раздел 7.5 брифа): `/404` и `/en/404` — список
- *  не выведен из сборки (страниц с этим маркером ровно две и они названы в
- *  самом брифе, ловушка 15 `50-code/CLAUDE.md` про перечисление вручную
- *  здесь неприменима: множество страниц-адресатов этой конкретной правки
- *  зафиксировано брифом, а не совпадает с «все страницы сборки»).
- *
- *  Красный прогон, которым это доказано (см. отчёт исполнителя): временный
- *  откат Б-3 (`.short-page`/`main:has()` убраны, а `.ways`/`.tagline`
- *  возвращены на числа ДО П-8 — `margin-top: 24px`/`24px`) даёт `docH` 911
- *  против `innerH` 900 на `/404` — тот же дефект, что чинил П-8 изначально,
- *  и тест падает. */
+ *  ПРАВКА 2026-08-28 (`70-workshop/specs/site-v3/13-short-pages-brief.md`,
+ *  раздел 4.10, критерий приёмки 2, вариант A «Указатель», D-129): список
+ *  страниц вырос с двух до четырёх — `/thanks` и `/en/thanks` несут тот же
+ *  маркер `[data-short-page]` и ту же правку вертикали (раздел 4.5 брифа),
+ *  и полоса прокрутки у них по факту снята той же самой правкой, поэтому
+ *  их отсутствие в списке было бы дырой покрытия, а не экономией. Список
+ *  высот вырос с одной точки до двух: 1440×900 — точка, где запас всегда
+ *  был минимальным (1 px до правки этого захода), и 1440×860 — новая точка
+ *  раздела 4.10 (сегодня `/404` там даёт +39 px без полосы действия). */
 
-const PAGES = ['/404', '/en/404'] as const;
+const PAGES = ['/404', '/en/404', '/thanks', '/en/thanks'] as const;
+const HEIGHTS = [900, 860] as const;
 
 for (const path of PAGES) {
-  test(`${path} @ 1440×900 не даёт полосы прокрутки`, async ({ browser }) => {
-    const ctx = await browser.newContext({
-      viewport: { width: 1440, height: 900 },
-      deviceScaleFactor: 1,
+  for (const height of HEIGHTS) {
+    test(`${path} @ 1440×${height} не даёт полосы прокрутки`, async ({ browser }) => {
+      const ctx = await browser.newContext({
+        viewport: { width: 1440, height },
+        deviceScaleFactor: 1,
+      });
+      const page = await ctx.newPage();
+      await page.goto(path);
+
+      const { docH, innerH } = await page.evaluate(() => ({
+        docH: document.documentElement.scrollHeight,
+        innerH: window.innerHeight,
+      }));
+
+      expect(
+        docH,
+        `${path} @ 1440×${height}: document.documentElement.scrollHeight=${docH}px, window.innerHeight=${innerH}px — полоса прокрутки появляется, когда первое больше второго`,
+      ).toBeLessThanOrEqual(innerH);
+
+      await ctx.close();
     });
-    const page = await ctx.newPage();
-    await page.goto(path);
-
-    const { docH, innerH } = await page.evaluate(() => ({
-      docH: document.documentElement.scrollHeight,
-      innerH: window.innerHeight,
-    }));
-
-    expect(
-      docH,
-      `${path} @ 1440×900: document.documentElement.scrollHeight=${docH}px, window.innerHeight=${innerH}px — полоса прокрутки появляется, когда первое больше второго`,
-    ).toBeLessThanOrEqual(innerH);
-
-    await ctx.close();
-  });
+  }
 }

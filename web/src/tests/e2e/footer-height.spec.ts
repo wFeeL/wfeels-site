@@ -11,8 +11,13 @@ import { test, expect } from '@playwright/test';
  *  ронял приёмку, а лишний блок содержимого — ронял (раздел 11 брифа).
  *  Ширины и страницы — не любые под руку, а КОНКРЕТНЫЕ точки таблицы брифа:
  *  на `/` полосы действия нет никогда (`FOOTER_CTA_HIDDEN_EXACT`, `nav.ts`),
- *  на `/cases` и `/404` она есть всегда — обе разновидности подвала
- *  проверяются каждая своим потолком.
+ *  на `/cases` она есть всегда — обе разновидности подвала проверяются
+ *  каждая своим потолком. `/404` здесь НЕ используется намеренно: правка
+ *  2026-08-26 (`13-short-pages-brief.md`, раздел 3.1 брифа `09-footer-
+ *  brief.md`, D-129) сняла с неё полосу вторым признаком (`nofollow`) —
+ *  сегодня она разновидность «полосы нет», а не «полосы есть», и своего
+ *  теста для неё эта таблица не заводит, ту же ветку `showFooterCta`
+ *  проверяет `/`.
  *
  *  Мерится в Chromium (проект по умолчанию), `deviceScaleFactor: 1`, на
  *  ПОСТРОЕННОМ `dist` (`npm run build` перед `npm run test:e2e` —
@@ -101,9 +106,13 @@ for (const scheme of THEMES) {
  *  Знаменатель — `document.documentElement.scrollHeight`, НЕ «содержимое
  *  плюс подвал»: `base.css` даёт `body { min-height: 100dvh }` и
  *  `main { flex: 1 0 auto }`, и на короткой странице документ упирается в
- *  высоту окна, а не в сумму содержимого. `/thanks` полосы не несёт
- *  никогда (`FOOTER_CTA_HIDDEN_EXACT`), `/404` несёт её всегда (не входит
- *  ни в один список исключений `showFooterCta`). */
+ *  высоту окна, а не в сумму содержимого. `/thanks` и `/404` теперь ОБА не
+ *  несут полосу (правка 2026-08-26/28, второй признак `showFooterCta`,
+ *  D-129) — строки `polosa: true` ниже описывают состояние ДО этой правки
+ *  и остаются как верхняя граница с запасом, не как точное ожидание;
+ *  раздел 4.10 брифа `13-short-pages-brief.md`, критерий 8, проверяет
+ *  точное число (≤ 34% на 1440×900) отдельным сторожем
+ *  (`short-pages.spec.ts`). */
 interface ShareCeiling {
   width: number;
   height: number;
@@ -114,9 +123,9 @@ interface ShareCeiling {
 
 const SHARE_CEILINGS: ShareCeiling[] = [
   { width: 1440, height: 900, path: '/thanks', polosa: false, ceilingPct: 45 },
-  { width: 1440, height: 900, path: '/404', polosa: true, ceilingPct: 50 },
+  { width: 1440, height: 900, path: '/404', polosa: false, ceilingPct: 50 },
   { width: 390, height: 844, path: '/thanks', polosa: false, ceilingPct: 63 },
-  { width: 390, height: 844, path: '/404', polosa: true, ceilingPct: 65 },
+  { width: 390, height: 844, path: '/404', polosa: false, ceilingPct: 65 },
 ];
 
 for (const scheme of THEMES) {

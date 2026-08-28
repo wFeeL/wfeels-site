@@ -3,29 +3,72 @@ import Base from '../layouts/Base.astro';
 import Container from '../components/Container.astro';
 import Section from '../components/Section.astro';
 import Button from '../components/Button.astro';
+import ShortPageGrid from '../components/ShortPageGrid.astro';
+import ShortPageSections from '../components/ShortPageSections.astro';
+import { dict } from '../i18n/locales';
 import { TELEGRAM_URL } from '../lib/contacts';
+
+/* ПРАВКА 2026-08-28 (`70-workshop/specs/site-v3/13-short-pages-brief.md`,
+ * раздел 4.2, вариант A «Указатель», D-129): список разделов сайта выведен
+ * и здесь тоже — решение ИСПОЛНИТЕЛЯ брифа по прямому разрешению владельца
+ * («делай как знаешь»), а не выбор владельца (раздел 2.4 брифа, «третий
+ * вопрос»). Страница успеха без единой двери была тупиком — человеку, чья
+ * заявка уже ушла, есть куда пойти дальше; вторым призывом список не
+ * является — целью `/thanks` остаётся подтверждение, а не конверсия
+ * (раздел 2.1). Запасной канал (`.fallback`) переезжает из левой колонки в
+ * правую целиком, ни одного слова не меняя. */
+const t = dict('ru');
 ---
 <Base title="Заявка отправлена — wfeels" description="Заявка получена." noindex={true} nofollow={true}>
   <Container>
     <Section label="Контакт">
-      <h1 class="t-h1" data-short-page>Заявка ушла</h1>
-      <p class="t-body-lg lead">Отвечу в течение дня.</p>
-      <!-- Запасной канал был дан тому, у кого отправка не получилась, и не дан
-           тому, у кого получилась. Адрес тот же, что в сообщении об ошибке. -->
-      <!-- Ссылка стоит на той же строке намеренно: перенос строки перед тегом
-           компилятор Astro съедает вместе с пробелом, и выходит «напрямую:Telegram». -->
-      <p class="fallback">Если за сутки ответа не будет — напишите напрямую: <a href={TELEGRAM_URL}>Telegram</a></p>
-      <Button href="/" variant="secondary">На главную</Button>
+      <ShortPageGrid>
+        <Fragment slot="main">
+          <h1 class="t-h1" data-short-page>Заявка ушла</h1>
+          <p class="t-body-lg lead">Отвечу в течение дня.</p>
+          <div class="ways">
+            <Button href="/" variant="secondary">На главную</Button>
+          </div>
+        </Fragment>
+        <Fragment slot="aside">
+          <div class="short-fallback">
+            <p class="short-fallback-label">{t.shortFallbackLabel}</p>
+            <!-- Ссылка стоит на той же строке намеренно: перенос строки перед
+                 тегом компилятор Astro съедает вместе с пробелом, и выходит
+                 «напрямую:Telegram». -->
+            <p class="fallback">Если за сутки ответа не будет — напишите напрямую: <a href={TELEGRAM_URL}>Telegram</a></p>
+          </div>
+          <ShortPageSections lang="ru" />
+        </Fragment>
+      </ShortPageGrid>
     </Section>
   </Container>
 </Base>
 
 <style>
-  /* Ритм по шкале отступов 24/32/48: до правки заголовок, строка и кнопка
+  /* Ритм по шкале отступов 24/32: до правки заголовок, строка и кнопка
      стояли слипшимися блоком. */
-  .lead { margin: 24px 0 0; }
+  .lead { margin: 24px 0 0 0; }
+  .ways { margin-top: 32px; }
+
+  /* Метка «Запасной канал» — та же ступень `label`, что и список разделов
+     ниже (`ShortPageSections.astro`, `.short-sections-label`), то же
+     собственное правило цвета вместо `.t-label`/`--accent`. Второе
+     определение здесь, а не общий класс: строка живёт только на `/thanks`
+     и её английской паре, делить с списком разделов ей нечего, кроме
+     чисел — а числа те же самые не потому, что стилевой класс общий, а
+     потому что это одна и та же ступень шкалы (раздел 4.6 брифа). */
+  .short-fallback-label {
+    margin: 0 0 12px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
   .fallback {
-    margin: 24px 0 32px;
+    margin: 0;
     /* Было 15 px — самовольный кегль, вне шкалы. Запасной путь — второстепенная
        строка под ведущим `body-lg`, ступень `small` (14 px), правка
        2026-08-13, свод к семи объявленным. */
@@ -36,17 +79,31 @@ import { TELEGRAM_URL } from '../lib/contacts';
     color: var(--accent);
     text-decoration-line: underline;
   }
+  /* 16 — «внутренние отбивки» (раздел 4.6 брифа `13-short-pages-brief.md`):
+     зазор между блоком запасного канала и списком разделов ниже него внутри
+     правой колонки. */
+  :global(.short-fallback + .short-sections) { margin-top: 16px; }
 
   /* Б-3 (решение исполнителя, обоснование и разбор дефекта первого захода —
-     `pages/404.astro`, тот же приём дословно): на высоких мониторах тело
-     `/thanks` стояло прижатым к верху, подвал — к низу, между ними пустой
-     фон. Маркер `data-short-page` — на уже существующем `h1`, без новой
-     обёртки; авто-поля — на `.container`, не `justify-content: center`. */
+     `pages/404.astro`, тот же приём дословно). */
   :global(main:has([data-short-page])) {
     display: flex;
     flex-direction: column;
   }
   :global(main:has([data-short-page]) > .container) {
-    margin-block: auto;
+    margin-block: 0 auto;
+  }
+  @media (min-width: 1100px) {
+    :global(main:has([data-short-page]) > .container) {
+      margin-block-start: clamp(0px, calc((100dvh - 900px) * 0.5), 160px);
+    }
+  }
+  :global(main:has([data-short-page]) > .container > section) {
+    padding-block: 32px 48px;
+  }
+  @media (min-width: 1100px) {
+    :global(main:has([data-short-page]) > .container > section) {
+      padding-block: 48px 64px;
+    }
   }
 </style>

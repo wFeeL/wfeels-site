@@ -171,25 +171,25 @@ describe('headerCtaHref', () => {
 
 /* Полоса действия подвала (`.footer-cta`) — спека
  * `70-workshop/specs/site-v3/09-footer-brief.md`, раздел 3. Правило одной
- * фразой (3.1): полосы нет там, где у страницы есть СВОЙ призыв внизу.
+ * фразой (3.1): полосы нет там, где у страницы есть СВОЁ названное действие
+ * внизу, и признаков этому теперь два, оба вычисляемые.
  *
- * Список путей ниже снят С ФАКТА, а не выписан из головы и не переписан из
- * раздела 1 брифа (там названо «24 страницы» — это число уже устарело на
- * момент брифа: не учитывает пять английских юридических и служебных
- * страниц, заведённых тем же днём, `50-code/CLAUDE.md`, ловушка 21). Снято
- * командой `find dist -name "*.html" | wc -l` по `npm run build` в этом же
- * ворктри 2026-08-26 — **29** собранных страниц, не 24. Список путей ниже —
- * результат того же обхода, переведённый в маршруты.
+ * Список путей ниже снят С ФАКТА, а не выписан из головы. Снято командой
+ * `find dist -name "*.html" | wc -l` по `npm run build` в этом же ворктри —
+ * **29** собранных страниц. Список путей ниже — результат того же обхода,
+ * переведённый в маршруты.
  *
  * Ожидание для каждого пути не переписано вторым ручным перечнем «где полоса
  * есть/нет» — это повторило бы ошибку раздела 3.2 (список из варианта был
  * неполон) на новом месте. Вместо этого ожидание читается из СОДЕРЖИМОГО
- * уже собранной страницы: есть ли внутри `<main>` тег `<form>` — это и есть
- * признак раздела 3.3 («страница, содержащая `main form`, полосы не
- * получает»). `/thanks` и его английская пара — особый случай той же
- * секции: формы там уже нет (заявка отправлена), но полоса всё равно не
- * положена по отдельной причине, и это явное исключение, а не самая
- * страница, угаданная по имени. */
+ * уже собранной страницы: признак 1 — есть ли внутри `<main>` тег `<form>`
+ * (раздел 3.3, «страница, содержащая `main form`, полосы не получает»);
+ * признак 2 — несёт ли `<meta name="robots">` страницы `nofollow` (та же
+ * функция `showFooterCta`, второй аргумент). Правка 2026-08-26 сняла с
+ * `/thanks` последний путь-литерал этого теста: он снимался прежде особым
+ * случаем «формы уже нет, но исключение по имени», теперь скрывается тем же
+ * признаком 2, что и `/404`, — обходом читается функцией, а не угадывается
+ * по имени. */
 describe('showFooterCta', () => {
   const DIST = fileURLToPath(new URL('../../dist/', import.meta.url));
 
@@ -215,11 +215,19 @@ describe('showFooterCta', () => {
     return `/${withoutIndex}`;
   }
 
-  /** Есть ли в собранной странице своя форма внизу — признак раздела 3.3,
+  /** Есть ли в собранной странице своя форма внизу — признак 1 раздела 3.1,
    *  проверенный содержимым, а не названием пути. */
   function hasOwnMainForm(html: string): boolean {
     const main = html.match(/<main[\s>][\s\S]*?<\/main>/);
     return !!main && main[0].includes('<form');
+  }
+
+  /** Объявлена ли страница служебным конечным экраном — признак 2
+   *  раздела 3.1, тот же самый, что читает `dist-footer-cta.test.ts`:
+   *  `<meta name="robots">` несёт `nofollow`. */
+  function isServiceScreen(html: string): boolean {
+    const match = html.match(/<meta name="robots" content="([^"]*)"/);
+    return !!match && match[1].includes('nofollow');
   }
 
   if (!existsSync(DIST)) {
@@ -240,28 +248,29 @@ describe('showFooterCta', () => {
   });
 
   for (const { path, html } of pages) {
-    const delocalized = normalizePath(path).replace(/^\/en(\/|$)/, '/');
-    const expectHidden = delocalized === '/thanks' || hasOwnMainForm(html);
+    const mainForm = hasOwnMainForm(html);
+    const serviceScreen = isServiceScreen(html);
+    const expectHidden = mainForm || serviceScreen;
 
-    it(`${path} — полоса ${expectHidden ? 'скрыта' : 'показана'} (main form: ${hasOwnMainForm(html)}${delocalized === '/thanks' ? ', /thanks' : ''})`, () => {
-      expect(showFooterCta(path)).toBe(!expectHidden);
+    it(`${path} — полоса ${expectHidden ? 'скрыта' : 'показана'} (main form: ${mainForm}, служебный экран: ${serviceScreen})`, () => {
+      expect(showFooterCta(path, serviceScreen)).toBe(!expectHidden);
     });
   }
 
-  it('посчитано верное число страниц с полосой и без — 15 и 14 из 29', () => {
-    const shown = pages.filter(({ path }) => showFooterCta(path)).length;
-    expect(shown).toBe(15);
-    expect(pages.length - shown).toBe(14);
+  it('посчитано верное число страниц с полосой и без — 13 и 16 из 29', () => {
+    const shown = pages.filter(({ path, html }) =>
+      showFooterCta(path, isServiceScreen(html))).length;
+    expect(shown).toBe(13);
+    expect(pages.length - shown).toBe(16);
   });
 
   // Отдельно, без обращения к dist: сама формула читается по путям из
-  // раздела 3.1 буквально — эти пять примеров называют правило по имени,
-  // а обход выше проверяет его на каждой реальной странице.
-  it('правило по имени: главная, /contact, /thanks и посадочная услуги — без полосы', () => {
+  // раздела 3.1 буквально — эти примеры называют правило по имени (признак
+  // 1), а обход выше проверяет оба признака на каждой реальной странице.
+  it('правило по имени: главная, /contact и посадочная услуги — без полосы', () => {
     expect(showFooterCta('/')).toBe(false);
     expect(showFooterCta('/contact')).toBe(false);
     expect(showFooterCta('/contact/')).toBe(false);
-    expect(showFooterCta('/thanks')).toBe(false);
     expect(showFooterCta('/services/website')).toBe(false);
   });
 
@@ -272,9 +281,22 @@ describe('showFooterCta', () => {
 
   it('локаль снимается так же, как у showHeaderCta', () => {
     expect(showFooterCta('/en')).toBe(false);
-    expect(showFooterCta('/en/thanks')).toBe(false);
     expect(showFooterCta('/en/contact')).toBe(false);
     expect(showFooterCta('/en/privacy')).toBe(true);
     expect(showFooterCta('/en/404')).toBe(true);
+  });
+
+  // Признак 2 — признак, а не переименованный список путей: без пути `/404`
+  // получал бы полосу как обычная страница, а с ним снимает её только тогда,
+  // когда САМА СТРАНИЦА объявила себя служебным конечным экраном. `/thanks`
+  // без пути в перечне `FOOTER_CTA_HIDDEN_EXACT` ведёт себя так же —
+  // разница целиком в аргументе, а не в адресе.
+  it('второй признак — параметр, а не список: страница без nofollow получает полосу', () => {
+    expect(showFooterCta('/404', true)).toBe(false);
+    expect(showFooterCta('/404', false)).toBe(true);
+    expect(showFooterCta('/thanks', true)).toBe(false);
+    expect(showFooterCta('/thanks', false)).toBe(true);
+    expect(showFooterCta('/en/thanks', true)).toBe(false);
+    expect(showFooterCta('/en/thanks', false)).toBe(true);
   });
 });

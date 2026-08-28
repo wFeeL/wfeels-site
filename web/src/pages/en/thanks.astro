@@ -3,6 +3,9 @@ import Base from '../../layouts/Base.astro';
 import Container from '../../components/Container.astro';
 import Section from '../../components/Section.astro';
 import Button from '../../components/Button.astro';
+import ShortPageGrid from '../../components/ShortPageGrid.astro';
+import ShortPageSections from '../../components/ShortPageSections.astro';
+import { dict } from '../../i18n/locales';
 import { TELEGRAM_URL } from '../../lib/contacts';
 
 /* Английский двойник `/thanks`, построен 2026-08-26. Сегодня на него не ведёт
@@ -11,24 +14,50 @@ import { TELEGRAM_URL } from '../../lib/contacts';
  * `/thanks` (правка Python — за пределами этого захода, отмечено в отчёте).
  * Страница построена заранее, чтобы адрес отвечал настоящим содержимым в
  * тот день, когда редирект научится выбирать язык по `consent_locale`, и
- * чтобы прямой переход по `/en/thanks` уже сегодня не был потерян. */
+ * чтобы прямой переход по `/en/thanks` уже сегодня не был потерян.
+ *
+ * ПРАВКА 2026-08-28 — вариант A «Указатель», тот же приём, что у русской
+ * `pages/thanks.astro`, обоснование там же. */
+const t = dict('en');
 ---
 <Base title="Message Sent — wfeels" description="Your enquiry has been received." noindex={true} nofollow={true}>
   <Container>
     <Section label="Contact">
-      <h1 class="t-h1" data-short-page>Your message is on its way</h1>
-      <p class="t-body-lg lead">I'll reply within a day.</p>
-      <p class="fallback">If you haven't heard back within a day, write to me directly: <a href={TELEGRAM_URL}>Telegram</a></p>
-      <Button href="/en" variant="secondary">Home</Button>
+      <ShortPageGrid>
+        <Fragment slot="main">
+          <h1 class="t-h1" data-short-page>Your message is on its way</h1>
+          <p class="t-body-lg lead">I'll reply within a day.</p>
+          <div class="ways">
+            <Button href="/en" variant="secondary">Home</Button>
+          </div>
+        </Fragment>
+        <Fragment slot="aside">
+          <div class="short-fallback">
+            <p class="short-fallback-label">{t.shortFallbackLabel}</p>
+            <p class="fallback">If you haven't heard back within a day, write to me directly: <a href={TELEGRAM_URL}>Telegram</a></p>
+          </div>
+          <ShortPageSections lang="en" />
+        </Fragment>
+      </ShortPageGrid>
     </Section>
   </Container>
 </Base>
 
 <style>
-  /* Тот же ритм 24/32/48, что у русской страницы (`pages/thanks.astro`). */
-  .lead { margin: 24px 0 0; }
+  /* Тот же ритм, что у русской страницы (`pages/thanks.astro`). */
+  .lead { margin: 24px 0 0 0; }
+  .ways { margin-top: 32px; }
+  .short-fallback-label {
+    margin: 0 0 12px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
   .fallback {
-    margin: 24px 0 32px;
+    margin: 0;
     font-size: 1rem;
     color: var(--text-muted);
   }
@@ -36,14 +65,26 @@ import { TELEGRAM_URL } from '../../lib/contacts';
     color: var(--accent);
     text-decoration-line: underline;
   }
+  :global(.short-fallback + .short-sections) { margin-top: 16px; }
 
-  /* Б-3 — тот же приём, что у русской `pages/thanks.astro`, обоснование и
-     разбор дефекта первого захода — там же и в `pages/404.astro`. */
   :global(main:has([data-short-page])) {
     display: flex;
     flex-direction: column;
   }
   :global(main:has([data-short-page]) > .container) {
-    margin-block: auto;
+    margin-block: 0 auto;
+  }
+  @media (min-width: 1100px) {
+    :global(main:has([data-short-page]) > .container) {
+      margin-block-start: clamp(0px, calc((100dvh - 900px) * 0.5), 160px);
+    }
+  }
+  :global(main:has([data-short-page]) > .container > section) {
+    padding-block: 32px 48px;
+  }
+  @media (min-width: 1100px) {
+    :global(main:has([data-short-page]) > .container > section) {
+      padding-block: 48px 64px;
+    }
   }
 </style>

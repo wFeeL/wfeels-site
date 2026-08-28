@@ -1,0 +1,104 @@
+---
+/* Правая колонка короткой страницы — список разделов сайта, вариант A
+ * «Указатель» (`70-workshop/specs/site-v3/13-short-pages-brief.md`,
+ * раздел 4.2/4.6, D-129). Главное действие `/404` и второй, не конкурирующий
+ * с конверсией, выход `/thanks` (раздел 2.1 брифа).
+ *
+ * Источник пунктов — `sections(lang)`, тот же самый, что уже питает шапку:
+ * второго перечня подписей или адресов не заводится (критерий приёмки 12).
+ * Пустой список (сегодня не бывает ни на одном языке — `lib/nav.ts`) не
+ * рисует ни метки, ни пустой рамки (раздел 4.7 брифа). */
+import { dict, type Locale } from '../i18n/locales';
+import { sections } from '../lib/nav';
+
+interface Props {
+  lang: Locale;
+}
+const { lang } = Astro.props;
+const t = dict(lang);
+const items = sections(lang);
+---
+{items.length > 0 && (
+  <nav class="short-sections" aria-label={t.shortSectionsLabel}>
+    <p class="short-sections-label">{t.shortSectionsLabel}</p>
+    <ul>
+      {items.map((item) => (
+        <li><a href={item.href} class="t-body">{item.text}</a></li>
+      ))}
+    </ul>
+  </nav>
+)}
+
+<style>
+  /* Ступень `label` (`base.css`, `.t-label`), но со своим цветом — тем же
+     приёмом, что уже стоит в `Footer.astro` (`.cta-label`): взятая как есть,
+     `.t-label` красит текст в `--accent`, а палитра этого варианта (раздел
+     4.6 брифа) отдаёт моно-меткам `--text-muted`, акцент остаётся
+     состоянием наведения/фокуса строки (раздел 4.7), а не цветом метки. */
+  .short-sections-label {
+    /* 12 — «метка → список» (раздел 4.6 брифа). */
+    margin: 0 0 12px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .short-sections ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--border);
+  }
+  .short-sections li {
+    border-bottom: 1px solid var(--border);
+  }
+  /* Плотность строки (раздел 4.6 брифа): цель нажатия — вся строка, не
+     только слово, поэтому `<a>` растянут на ширину `<li>` и несёт свой
+     `justify-content` вместо инлайновой стрелки соседним узлом. */
+  .short-sections a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 44px;
+    padding-block: 4px;
+    color: var(--text);
+    text-decoration: none;
+  }
+  /* Стрелка — `::after` тем же начертанием, что строка (аудит
+     `redesign-existing-projects`, раздел 7.6 брифа): текстовый символ
+     наследует начертание текста и по толщине штриха не смешивается со
+     значками подвала (`.icon-links`), второй набор иконок не заводится. */
+  .short-sections a::after {
+    content: '→';
+    color: var(--text-muted);
+  }
+  /* Наведение и фокус (раздел 4.7 брифа): текст и стрелка → `--accent`,
+     никакой заливки, никакого сдвига коробки. Переход берёт общее правило
+     `*, *::before, *::after` (`base.css`) — своего не заводится, оно же
+     гасится `prefers-reduced-motion: reduce` тем же общим правилом. Своего
+     `:focus-visible` тоже не заводится — общее правило фокуса действует
+     без переопределения. */
+  .short-sections a:hover,
+  .short-sections a:focus-visible {
+    color: var(--accent);
+  }
+  .short-sections a:hover::after,
+  .short-sections a:focus-visible::after {
+    color: var(--accent);
+  }
+
+  /* 768…1099: список в две колонки (раздел 4.4 брифа) — раскладка тела уже
+     одна колонка (`ShortPageGrid.astro`), но список внутри неё делится
+     сам, а не растягивается в одну длинную ленту. */
+  @media (min-width: 768px) and (max-width: 1099.98px) {
+    .short-sections ul {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 32px;
+    }
+  }
+</style>
