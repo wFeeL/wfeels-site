@@ -270,10 +270,20 @@ const isInset = spread.kind === 'weight' || spread.kind === 'checklist';
   /* Область грида назначается узлу, который ДЕЙСТВИТЕЛЬНО стоит прямым
      потомком `.shots.trio` — с подписью это `<figure class="shot">`, без
      неё (кадр без `img.caption`, сегодня таких нет) — сам `<img>`; оба
-     случая покрыты общим селектором `:is()`. */
-  .shots.trio :is(img, .shot):nth-of-type(1) { grid-area: big; }
-  .shots.trio :is(img, .shot):nth-of-type(2) { grid-area: s1; }
-  .shots.trio :is(img, .shot):nth-of-type(3) { grid-area: s2; }
+     случая покрыты общим селектором `:is()`. Ограничено `:not(.row3)`:
+     у раскроя «три в ряд» `grid-template-areas: none` (ниже), и присвоение
+     `grid-area: big/s1/s2` РЕАЛЬНОМУ грид-элементу (`.shot`, а не только
+     вложенному в него `<img>`, как было до подписей под кадром) без
+     совпадающей именованной области трактуется браузером как имя линии,
+     плодит четыре лишних неявных колонки (замер:
+     `grid-template-columns: 0px 0px 0px 0px 586px`) и даёт каждому кадру
+     ряда ~100% ширины панели вместо трети — сумма кадров+зазоров ряда
+     264.8% вместо ожидаемых ~100%. До подписей это не проявлялось: правило
+     било по вложенному `<img>`, который не был грид-элементом, и потому
+     ничего не значило. */
+  .shots.trio:not(.row3) :is(img, .shot):nth-of-type(1) { grid-area: big; }
+  .shots.trio:not(.row3) :is(img, .shot):nth-of-type(2) { grid-area: s1; }
+  .shots.trio:not(.row3) :is(img, .shot):nth-of-type(3) { grid-area: s2; }
 
   /* `photo-row-3` (раздел 4.1 брифа, «три витрины в Telegram»): три РАВНЫХ
      кадра в ряд — не крупный + два подкадра. Named-area раскрой выше рассчитан
