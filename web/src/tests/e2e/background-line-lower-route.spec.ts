@@ -351,7 +351,7 @@ test.describe('линия — маршрут нижней половины гл�
             curLen = y - curStart;
             curMaxDx = Math.max(curMaxDx, Math.abs((xa as number) - (xb as number)));
           }
-          if (!aligned || y === hi) {
+          if (!aligned) {
             if (runActive && curLen > bestLen) {
               bestLen = curLen;
               maxDxInBest = curMaxDx;
@@ -360,6 +360,17 @@ test.describe('линия — маршрут нижней половины гл�
             curLen = 0;
             curMaxDx = 0;
           }
+        }
+        // Финализация ПОСЛЕ цикла, не условием `y === hi` внутри него: `y`
+        // растёт от дробного `lo` целочисленным шагом и почти никогда не
+        // попадает точно на дробный `hi` — если полоса выровненности тянется
+        // до самого конца диапазона, `!aligned` внутри цикла ни разу не
+        // срабатывает, и последний, часто наибольший, отрезок не попадал бы
+        // в `bestLen` вовсе (найдено на живом прогоне: about→faq на 1440 и
+        // 1180 — полоса выровнена ВЕСЬ диапазон [lo,hi], `bestLen` был 0).
+        if (runActive && curLen > bestLen) {
+          bestLen = curLen;
+          maxDxInBest = curMaxDx;
         }
 
         expect(
