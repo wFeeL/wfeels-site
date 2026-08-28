@@ -27,8 +27,29 @@ describe('casePages.ts — опубликованные кейсы и честн
       expect(narrative.task.length, item.slug).toBeGreaterThan(80);
       expect(narrative.approach.length, item.slug).toBeGreaterThan(100);
       expect(narrative.result.length, item.slug).toBeGreaterThan(80);
-      expect(narrative.disclosure.length, item.slug).toBeGreaterThan(70);
-      expect(narrative.disclosure, item.slug).not.toMatch(/оплаченный клиент|реальный клиент/i);
+      // `disclosure` необязательна (D-137, storefront её больше не несёт) —
+      // проверка длины и запрещённых слов действует только там, где оговорка есть.
+      if (narrative.disclosure) {
+        expect(narrative.disclosure.length, item.slug).toBeGreaterThan(70);
+        expect(narrative.disclosure, item.slug).not.toMatch(/оплаченный клиент|реальный клиент/i);
+      }
+    }
+  });
+
+  it('storefront: оговорка происхождения снята решением владельца (2026-08-28, D-137) — витрины настоящие', () => {
+    const narrative = caseNarrative('storefront');
+    expect(narrative.disclosure).toBeUndefined();
+    // Снятие неверного утверждения не значит заявление оплаченного клиента:
+    // слова «клиент»/«заказчик»/«для компании» не появляются нигде в разборе.
+    const forbidden = /клиент(?!ск)|заказчик|для компании/i;
+    expect(narrative.task).not.toMatch(forbidden);
+    expect(narrative.approach).not.toMatch(forbidden);
+    expect(narrative.result).not.toMatch(forbidden);
+  });
+
+  it('остальные опубликованные кейсы сохраняют оговорку происхождения', () => {
+    for (const slug of ['site-v3', 'websites', 'ai-consultant', 'zayavka-hub']) {
+      expect(caseNarrative(slug).disclosure, slug).toBeTruthy();
     }
   });
 
