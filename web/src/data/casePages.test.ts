@@ -27,7 +27,7 @@ describe('casePages.ts — опубликованные кейсы и честн
       expect(narrative.task.length, item.slug).toBeGreaterThan(80);
       expect(narrative.approach.length, item.slug).toBeGreaterThan(100);
       expect(narrative.result.length, item.slug).toBeGreaterThan(80);
-      // `disclosure` необязательна (D-137, storefront её больше не несёт) —
+      // `disclosure` необязательна (D-138, storefront её больше не несёт) —
       // проверка длины и запрещённых слов действует только там, где оговорка есть.
       if (narrative.disclosure) {
         expect(narrative.disclosure.length, item.slug).toBeGreaterThan(70);
@@ -36,7 +36,7 @@ describe('casePages.ts — опубликованные кейсы и честн
     }
   });
 
-  it('storefront: оговорка происхождения снята решением владельца (2026-08-28, D-137) — витрины настоящие', () => {
+  it('storefront: оговорка происхождения снята решением владельца (2026-08-28, D-138) — витрины настоящие', () => {
     const narrative = caseNarrative('storefront');
     expect(narrative.disclosure).toBeUndefined();
     // Снятие неверного утверждения не значит заявление оплаченного клиента:

@@ -36,7 +36,7 @@ describe('dist/cases — индексируемый каталог и detail-с�
       expect(html).toContain(narrative.task);
       expect(html).toContain(narrative.approach);
       expect(html).toContain(narrative.result);
-      // `disclosure` необязательна (D-137) — у `storefront` её больше нет,
+      // `disclosure` необязательна (D-138) — у `storefront` её больше нет,
       // и страница не обязана содержать её текст.
       if (narrative.disclosure) {
         expect(html).toContain(narrative.disclosure);
@@ -98,7 +98,7 @@ describe('dist/cases — индексируемый каталог и detail-с�
     expect(html).toContain('width="780" height="1688"');
   });
 
-  it('storefront: оговорка происхождения снята (D-137) и не заменена заявлением о клиенте', () => {
+  it('storefront: оговорка происхождения снята (D-138) и не заменена заявлением о клиенте', () => {
     const html = read('cases/storefront/index.html');
     expect(html).not.toContain('не выдаются за оплаченных клиентов');
     expect(html).not.toContain('демонстрационный проект');
