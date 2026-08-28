@@ -289,8 +289,38 @@ test.describe('линия — маршрут нижней половины гл�
     ).toEqual([gi, gi + 1, gi + 2, gi + 3]);
   });
 
+  /** ПРАВКА `2026-08-28` (раздвоение на стыке `guarantees → about`, ловушка
+   *  44/45 `50-code/CLAUDE.md`, D-145): прежняя версия этого блока искала
+   *  «где-нибудь внутри [lo,hi] НАЙДЁТСЯ непрерывный кусок ≥60px, где
+   *  `|xA(y)−xB(y)|≤2px`» (`bestLen`, снята ниже) — критерий пройден
+   *  ЛЮБЫМ куском полосы, даже если остаток полосы разъезжается: на живой
+   *  геометрии до этой правки кусок `[about-локальный −260…−150]` (обе
+   *  краски вертикальны) давал `bestLen≈130px` на 1180 и `≈152px` на 1440 —
+   *  оба ЗНАЧИТЕЛЬНО больше порога 60, тест ЗЕЛЁНЫЙ, — а дальше, до самого
+   *  конца полосы (`about-локальный −150…−30`), `about` уже сворачивала к
+   *  фотографии, пока `guarantees` стояла на доке: две краски на разных `x`
+   *  на трети полосы, и владелец увидел это как «раздвоение» уже ПОСЛЕ
+   *  того, как сторож был зелёным. Найдено «полоса ≥60 существует», а
+   *  проверяться обязано было «ВСЯ полоса перекрытия выровнена» — раздел
+   *  5.1 брифа `18-…` требует именно этого («обе краски ВЕРТИКАЛЬНЫ И СТОЯТ
+   *  НА ОДНОМ x»), не «где-то есть подходящий кусок».
+   *
+   *  Новая форма — БЕЗ поиска лучшего куска: полоса перекрытия `[lo,hi]`
+   *  сама обязана быть ≥60px (структурное требование — есть о чём вообще
+   *  говорить), И максимальное расхождение `|xA(y)−xB(y)|` ПО ВСЕЙ полосе
+   *  `[lo,hi]` (не по найденному куску) обязано быть ≤2px — тот же порог
+   *  «выровнено», что раньше использовался только для отбора кусков.
+   *  Красное доказательство (замер прогоном ЭТОГО ЖЕ теста с временно
+   *  возвращённой геометрией `guarantees.wide` до правки — хвост кончался
+   *  на `about`-локальном `−30`, не `−150`): падает на паре
+   *  `guarantees→about` с сообщением `максимальное расхождение на ВСЕЙ
+   *  полосе перекрытия=16.92px @1180` / `=19.79px @1440` (оба > 2px) при
+   *  полосе `271.4px` на обеих ширинах (≥60, структурная часть одна
+   *  проходит бы и её не заметила) — то есть именно то раздвоение, что
+   *  видел владелец. С правкой (хвост кончается на `about`-локальном
+   *  `−150`, где `about` сама ещё вертикальна) оба падения уходят в 0px. */
   for (const width of WIDTHS) {
-    test(`${width}×900: полосы перекрытия ≥60px на стыках guarantees/about, about/faq, faq/contact`, async ({
+    test(`${width}×900: вся полоса перекрытия ≥60px и выровнена (≤2px) на стыках guarantees/about, about/faq, faq/contact`, async ({
       browser,
     }) => {
       const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: { width, height: 900 } });
@@ -328,55 +358,30 @@ test.describe('линия — маршрут нижней половины гл�
         const lo = Math.max(sortedA[0].y, sortedB[0].y);
         const hi = Math.min(sortedA[sortedA.length - 1].y, sortedB[sortedB.length - 1].y);
         expect(hi, `${aSel}→${bSel}: пути не пересекаются по y вовсе @${width}`).toBeGreaterThan(lo);
+        expect(
+          hi - lo,
+          `${aSel}→${bSel}: полоса перекрытия=${(hi - lo).toFixed(1)}px @${width} короче 60px`,
+        ).toBeGreaterThanOrEqual(60);
 
-        // Полоса перекрытия — раздел 5.1 брифа `18-…»: НЕ «где обе краски
-        // хоть как-то существуют», а «где обе краски ВЕРТИКАЛЬНЫ И СТОЯТ НА
-        // ОДНОМ x» — максимальный НЕПРЕРЫВНЫЙ участок внутри [lo,hi], где
-        // |xA(y)-xB(y)| ≤ 2px, шаг сканирования 1px.
-        let bestLen = 0;
-        let curLen = 0;
-        let curStart = lo;
-        let runActive = false;
-        let maxDxInBest = 0;
-        let curMaxDx = 0;
+        // Расхождение НА ВСЕЙ полосе — не в лучшем найденном куске: шаг 1px,
+        // максимум |xA(y)-xB(y)| по всему [lo,hi] обязан остаться ≤2px.
+        let maxDx = 0;
+        let maxDxAtY = lo;
         for (let y = lo; y <= hi; y += 1) {
           const xa = xAtY(sortedA, y);
           const xb = xAtY(sortedB, y);
-          const aligned = xa !== null && xb !== null && Math.abs(xa - xb) <= 2;
-          if (aligned) {
-            if (!runActive) {
-              runActive = true;
-              curStart = y;
-            }
-            curLen = y - curStart;
-            curMaxDx = Math.max(curMaxDx, Math.abs((xa as number) - (xb as number)));
+          if (xa === null || xb === null) continue;
+          const dx = Math.abs(xa - xb);
+          if (dx > maxDx) {
+            maxDx = dx;
+            maxDxAtY = y;
           }
-          if (!aligned) {
-            if (runActive && curLen > bestLen) {
-              bestLen = curLen;
-              maxDxInBest = curMaxDx;
-            }
-            runActive = false;
-            curLen = 0;
-            curMaxDx = 0;
-          }
-        }
-        // Финализация ПОСЛЕ цикла, не условием `y === hi` внутри него: `y`
-        // растёт от дробного `lo` целочисленным шагом и почти никогда не
-        // попадает точно на дробный `hi` — если полоса выровненности тянется
-        // до самого конца диапазона, `!aligned` внутри цикла ни разу не
-        // срабатывает, и последний, часто наибольший, отрезок не попадал бы
-        // в `bestLen` вовсе (найдено на живом прогоне: about→faq на 1440 и
-        // 1180 — полоса выровнена ВЕСЬ диапазон [lo,hi], `bestLen` был 0).
-        if (runActive && curLen > bestLen) {
-          bestLen = curLen;
-          maxDxInBest = curMaxDx;
         }
 
         expect(
-          bestLen,
-          `${aSel}→${bSel}: наибольшая выровненная полоса=${bestLen.toFixed(1)}px @${width} (max|Δx| в ней=${maxDxInBest.toFixed(2)}px)`,
-        ).toBeGreaterThanOrEqual(60);
+          maxDx,
+          `${aSel}→${bSel}: максимальное расхождение на ВСЕЙ полосе перекрытия=${maxDx.toFixed(2)}px @${width} (в точке y=${maxDxAtY.toFixed(1)}, полоса ${(hi - lo).toFixed(1)}px) — краски разъезжаются внутри полосы, а не только на её конце`,
+        ).toBeLessThanOrEqual(2);
       }
 
       await ctx.close();
