@@ -84,6 +84,32 @@ describe('data/reviews.ts — assertReviewsValid, раздел 4.1 брифа', 
     expect(() => assertReviewsValid([review], PUBLISHED_CASES)).not.toThrow();
   });
 
+  it.each([
+    'устно договорились',
+    'на словах согласилась',
+    'в переписке подтвердила',
+    'в чате написала «да»',
+    'скрин переписки в телеграме',
+  ])('падает на consent «%s» — не документ, а устная договорённость', (consent) => {
+    const review = validReview({ consent });
+    expect(() => assertReviewsValid([review], PUBLISHED_CASES)).toThrow(/согласи/);
+  });
+
+  it('падает на consent вне `20-sales/legal/`', () => {
+    const review = validReview({ consent: '30-clients/yasmina/consent.md' });
+    expect(() => assertReviewsValid([review], PUBLISHED_CASES)).toThrow(/согласи/);
+  });
+
+  it('сообщение о недостающем consent называет и оплату (D-138), и отсутствие письменного согласия', () => {
+    const review = validReview({ consent: 'устно договорились' });
+    expect(() => assertReviewsValid([review], PUBLISHED_CASES)).toThrow(/D-138/);
+  });
+
+  it('не падает на consent — пути внутри `20-sales/legal/` без запрещённых слов', () => {
+    const review = validReview({ consent: '20-sales/legal/contracts/case-publication-consent.md' });
+    expect(() => assertReviewsValid([review], PUBLISHED_CASES)).not.toThrow();
+  });
+
   it('падает на дублирующемся id', () => {
     const reviews = [validReview({ id: 'dup' }), validReview({ id: 'dup', name: 'Другое Имя' })];
     expect(() => assertReviewsValid(reviews, PUBLISHED_CASES)).toThrow(/dup/);
