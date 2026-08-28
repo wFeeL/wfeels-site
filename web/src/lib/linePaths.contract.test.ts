@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { LINE_PATHS, LINE_STROKE_WIDTH_VB, type LinePathEntry } from './linePaths';
 import {
-  clippedLength,
   flattenPath,
   lateralPercent,
   minRadius,
-  overhang,
+  parsePath,
   resampleByLength,
   verticalRunLength,
 } from './pathGeometry';
+import { homeSectionIds } from './sections';
 
 /** Контракт-тест реестра `lib/linePaths.ts` — бриф `70-workshop/specs/
  *  site-v3/05-line.md`, раздел 10 шаг 3, раздел 3 (Г-1…Г-4), раздел 11
@@ -73,25 +73,73 @@ import {
  *  Список исключений — здесь и только здесь; смягчения порога `VERTICAL_END_
  *  MIN` для всех остальных записей эта правка не касается.
  *
- *  **П-Б (Г-3).** Порог `1,6 · vbH` выведен в `05-line` из диагонали ВНУТРИ
- *  коробки секции. Мера ДО этой правки (`polylineLength` на ломаной целиком)
- *  считала вместе с двумя обязательными выносами по 60 vb за пределы бокса —
- *  для прямых путей незаметно, для диагонали во всю ширину короткой секции
- *  превращает «проходит» в «падает» безосновательно (пример брифа: `hero`
- *  целиком 1384 при пределе 1293, внутри бокса — 1252 — с запасом). Мера
- *  теперь — `clippedLength` (`pathGeometry.ts`): та же ломаная, обрезанная
- *  сегментами по `y ∈ [0, vbH]`, а не байтовая замена. Ни одна прежняя
- *  запись от поправки не портится — мера строго меньше при том же пороге. */
-const NAMED_VERTICAL_START_EXCEPTIONS = new Set(['hero']);
-const NAMED_VERTICAL_END_EXCEPTIONS = new Set(['footer']);
+ *  **П-Б (Г-3), СНЯТО ЦЕЛИКОМ `2026-08-28`** — см. блок ниже, «Г-2/Г-3
+ *  переписаны». `clippedLength` (`pathGeometry.ts`) остаётся экспортом
+ *  файла-инструмента (могла бы пригодиться другому сторожу), но эта проверка
+ *  её больше не вызывает. */
 
+/** Г-2 И Г-3 ПЕРЕПИСАНЫ `2026-08-28` (`70-workshop/specs/site-v3/
+ *  18-line-lower-route-brief.md`, раздел 5, П-7) — обе замены, а не
+ *  ослабления: обоснование прежней формы каждой из них не работает на
+ *  маршруте варианта А (владелец `2026-08-28`: переход через стык `about →
+ *  faq → contact` разрешён явно, Р-1/Р-4).
+ *
+ *  **Г-2, было → стало.** Прежняя форма («каждый путь САМ несёт вертикаль
+ *  ≥96 и вынос ≥60 на КАЖДОМ конце») предполагала, что переход помещается
+ *  целиком внутри одной коробки. Маршрут это предположение ломает намеренно:
+ *  `about` заходит на 273,8 px в коробку `faq`, `contact` начинается на 160
+ *  единиц выше собственной коробки (внутри `faq`) — `faq` сам не несёт НИ
+ *  ОДНОГО из двух вынесенных концов (сторож 2026-08-27 честно упал на этом,
+ *  см. отчёт исполнителя), потому что оба края её полосы прикрывают СОСЕДИ.
+ *  Новая форма проверяет то же самое СВОЙСТВО («торец спрятан, стык не
+ *  виден») ПОПАРНО, по факту `d`-строк реестра, а не поштучно на каждой
+ *  записи: для соседей `(A, B)` — последняя точка `A.wide` и первая точка
+ *  `B.wide` обязаны стоять на ОДНОМ `x` (общий док `DOCK_LEFT`/`DOCK_RIGHT`,
+ *  `linePaths.ts`) — тогда переход между ними геометрически непрерывен по
+ *  горизонтали; и хотя бы ОДНА из двух смежных сторон обязана нести прямой
+ *  вертикальный участок ≥96 единиц `viewBox` (`verticalRunLength`) — этого
+ *  участка достаточно, чтобы спрятать круглый торец соседа и дать полосе
+ *  перекрытия ≥60 экранных px с большим запасом (96 vb × ≈1,18 px/vb ≈
+ *  113 px). Порог не «≥96 у КАЖДОЙ», а «≥96 хотя бы у ОДНОЙ из двух» —
+ *  именно это допускает `faq` (0 у самой `faq лично`, зато 96/340 у соседей).
+ *  Пары строятся из `[...homeSectionIds(), 'footer']` — выведены из
+ *  `lib/sections.ts` (ловушка 15/21/24, `50-code/CLAUDE.md`: список не
+ *  вписывается руками), а не из фиксированного перечня секций: если завтра
+ *  `reviews` появится в составе (первый настоящий отзыв), пара автоматически
+ *  станет `about→reviews`/`reviews→faq` — что и обязано случиться (раздел
+ *  3.2 брифа `18-…`, П-6 отдельно проверяет само это соседство на живой
+ *  странице).
+ *
+ *  ДВА ИМЕНОВАННЫХ ИСКЛЮЧЕНИЯ (верх `hero`, низ `footer`) остаются В СИЛЕ
+ *  ровно в том смысле, в каком их называет раздел 5.1 брифа `18-…»: там
+ *  стыка нет вовсе, и в новой попарной форме это ИСКЛЮЧЕНИЕ НЕ ТРЕБУЕТ
+ *  СПИСКА — `hero` не имеет ПРЕДШЕСТВЕННИКА, `footer` не имеет ПРЕЕМНИКА в
+ *  списке `[...homeSectionIds(), 'footer']`, и пары просто не порождаются
+ *  для несуществующего соседа. Раньше исключения нужно было вписывать
+ *  явно, потому что старая проверка была per-path («ЭТОТ путь сам несёт
+ *  оба конца»); теперь она per-pair, и у списка попросту нет элемента ДО
+ *  первого и ПОСЛЕ последнего — тот же факт, выраженный формой проверки, а
+ *  не отдельной записью.
+ *
+ *  **Г-3, было → стало.** Прежний порог «длина внутри коробки ≤ 1,6·vbH»
+ *  умер вместе с посекционными окнами раскрытия (`clippedLength`
+ *  добавлялась 2026-08-27 именно чтобы срезать вынос за пределы бокса из
+ *  меры — но с маршрутом вариант А ВЫНОС ЗА ПРЕДЕЛЫ БОКСА — это САМ
+ *  переход, не хвост на границе: `about` внутри своей коробки даёт 1057 при
+ *  пределе 902 и не может пройти НИКАКОЙ вариант этой меры, оставаясь при
+ *  этом визуально правильным путём — контрольная точка брифа). Новая мера —
+ *  локальный `|dx/dy|` на `LOCAL_SLOPE_SAMPLES` точках после
+ *  `resampleByLength`, максимум по пути ≤ `LOCAL_SLOPE_MAX`. Порог 3,5 взят
+ *  ПО САМОЙ БЫСТРОЙ краске маршрута — `about`, замер 3,459 (раздел 5.2
+ *  брифа `18-…`: «осознанно верхняя граница, а не запас»). */
 const SAMPLE_COUNT = 200;
 const R_MIN_FACTOR = 8; // Г-1: R_min ≥ 8·w
-const VERTICAL_END_MIN = 96; // Г-2: вертикальный отрезок ≥ 96 px (единиц viewBox)
-const OVERHANG_MIN = 60; // Г-2: вынос за viewBox ≥ 60 единиц
-const LENGTH_FACTOR = 1.6; // Г-3: длина ВНУТРИ КОРОБКИ ≤ 1,6 · vbH (12.2, П-Б)
 const LATERAL_STRAIGHT_MAX = 2; // Г-4: «прямая» — боковой ход ≤ 2 %
 const LATERAL_EVENT_MIN = 25; // Г-4: «событие» — боковой ход ≥ 25 %
+const PAIR_ANCHOR_TOLERANCE = 0.5; // Г-2: «один и тот же x» — допуск на округление контрольных точек
+const PAIR_MIN_RUN = 96; // Г-2: хотя бы одна из двух смежных сторон несёт вертикаль ≥96 vb (раздел 5.1 брифа `18-…`)
+const LOCAL_SLOPE_SAMPLES = 400; // Г-3: 400 точек, раздел 5.2 брифа `18-…`
+const LOCAL_SLOPE_MAX = 3.5; // Г-3: |dx/dy| ≤ 3,5 — потолок по `about` (3,459), не запас
 
 function sampled(entry: LinePathEntry) {
   const flat = flattenPath(entry.wide);
@@ -120,45 +168,56 @@ describe('реестр линии — Г-1: минимальный радиус 
   });
 });
 
-describe('реестр линии — Г-2: вертикальные концы ≥ 96 px и вынос ≥ 60 (раздел 3 брифа `05-line`)', () => {
-  it.each(Object.keys(LINE_PATHS))('%s: начало — прямой вертикальный участок ≥ 96', (id) => {
-    if (NAMED_VERTICAL_START_EXCEPTIONS.has(id)) return; // 12.2, П-А1 — hero: соседа сверху нет
-    const entry = LINE_PATHS[id];
-    const { flat } = sampled(entry);
-    const vStart = verticalRunLength(flat, true);
-    expect(vStart, `${id}: вертикальный участок на начале = ${vStart.toFixed(1)}`).toBeGreaterThanOrEqual(
-      VERTICAL_END_MIN,
-    );
-  });
+/** Пары соседей реестра — выведены из `homeSectionIds()` (`lib/sections.ts`,
+ *  ЕДИНСТВЕННЫЙ источник состава/порядка секций главной) плюс `footer` в
+ *  конце (подвал не входит в `HOME_SECTIONS`, но несёт свою запись реестра
+ *  и стоит последним в документе, `Footer.astro`). НЕ вписаны руками —
+ *  ловушка 15/21/24 (`50-code/CLAUDE.md`). Список меняется САМ, когда
+ *  `homeReviews()` перестанет быть пустым (раздел 3.2 брифа `18-…»`) — тогда
+ *  `reviews` окажется между `about` и `faq`, и эти проверки станут судить
+ *  ПРАВИЛЬНУЮ, тогда уже другую пару стыков. */
+function registryPairs(): Array<[string, string]> {
+  const ids = [...homeSectionIds(), 'footer'];
+  const pairs: Array<[string, string]> = [];
+  for (let i = 1; i < ids.length; i++) pairs.push([ids[i - 1], ids[i]]);
+  return pairs;
+}
 
-  it.each(Object.keys(LINE_PATHS))('%s: конец — прямой вертикальный участок ≥ 96', (id) => {
-    if (NAMED_VERTICAL_END_EXCEPTIONS.has(id)) return; // 12.2, П-А2 — footer: соседа снизу нет, последний в документе (перееxало с contact, брифа 16-…, раздел 3.3)
-    const entry = LINE_PATHS[id];
-    const { flat } = sampled(entry);
-    const vEnd = verticalRunLength(flat, false);
-    expect(vEnd, `${id}: вертикальный участок на конце = ${vEnd.toFixed(1)}`).toBeGreaterThanOrEqual(
-      VERTICAL_END_MIN,
-    );
-  });
+describe('реестр линии — Г-2: полоса перекрытия на стыке соседей (раздел 5.1 брифа `18-line-lower-route-brief.md`)', () => {
+  it.each(registryPairs())('%s → %s: один `x`, вертикаль ≥96 vb хотя бы с одной стороны', (a, b) => {
+    const entryA = LINE_PATHS[a];
+    const entryB = LINE_PATHS[b];
+    const lastA = parsePath(entryA.wide).at(-1)!.to;
+    const firstB = parsePath(entryB.wide)[0].to;
+    expect(
+      Math.abs(lastA.x - firstB.x),
+      `${a}→${b}: конец ${a} стоит на x=${lastA.x}, начало ${b} — на x=${firstB.x} (не один и тот же док)`,
+    ).toBeLessThanOrEqual(PAIR_ANCHOR_TOLERANCE);
 
-  it.each(Object.keys(LINE_PATHS))('%s: оба конца вынесены за viewBox ≥ 60 единиц', (id) => {
-    const entry = LINE_PATHS[id];
-    const { flat } = sampled(entry);
-    const { start, end } = overhang(flat, entry.vbH);
-    expect(start, `${id}: вынос на начале = ${start.toFixed(1)}`).toBeGreaterThanOrEqual(OVERHANG_MIN);
-    expect(end, `${id}: вынос на конце = ${end.toFixed(1)}`).toBeGreaterThanOrEqual(OVERHANG_MIN);
+    const runA = verticalRunLength(flattenPath(entryA.wide), false); // конец A
+    const runB = verticalRunLength(flattenPath(entryB.wide), true); // начало B
+    const best = Math.max(runA, runB);
+    expect(
+      best,
+      `${a}→${b}: вертикаль на стыке = ${runA.toFixed(1)} (конец ${a}) / ${runB.toFixed(1)} (начало ${b}) — ни одна не даёт ≥${PAIR_MIN_RUN}`,
+    ).toBeGreaterThanOrEqual(PAIR_MIN_RUN);
   });
 });
 
-describe('реестр линии — Г-3: длина ВНУТРИ КОРОБКИ ≤ 1,6 · vbH (раздел 3 брифа `05-line`, поправка 12.2 П-Б)', () => {
-  it.each(Object.keys(LINE_PATHS))('%s: длина в боксе ≤ 1,6·vbH', (id) => {
+describe('реестр линии — Г-3: локальный наклон |dx/dy| ≤ 3,5 (раздел 5.2 брифа `18-line-lower-route-brief.md`)', () => {
+  it.each(Object.keys(LINE_PATHS))('%s: max |dx/dy| на 400 точках ≤ 3,5', (id) => {
     const entry = LINE_PATHS[id];
-    const { flat } = sampled(entry);
-    const length = clippedLength(flat, entry.vbH);
-    const limit = LENGTH_FACTOR * entry.vbH;
-    expect(length, `${id}: длина в боксе=${length.toFixed(1)}, предел=${limit.toFixed(1)} (vbH=${entry.vbH})`).toBeLessThanOrEqual(
-      limit,
-    );
+    const flat = flattenPath(entry.wide);
+    const points = resampleByLength(flat, LOCAL_SLOPE_SAMPLES);
+    let maxSlope = 0;
+    for (let i = 1; i < points.length; i++) {
+      const dx = points[i].x - points[i - 1].x;
+      const dy = points[i].y - points[i - 1].y;
+      if (Math.abs(dy) < 1e-6) continue; // путь монотонен по y по построению — горизонтали не бывает
+      const slope = Math.abs(dx / dy);
+      if (slope > maxSlope) maxSlope = slope;
+    }
+    expect(maxSlope, `${id}: max |dx/dy| = ${maxSlope.toFixed(3)}`).toBeLessThanOrEqual(LOCAL_SLOPE_MAX);
   });
 });
 
