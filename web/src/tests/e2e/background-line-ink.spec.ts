@@ -206,14 +206,19 @@ test.describe('линия на фоне — тест чернил (05-line.md, �
     // Число путей на странице не вписано числом: на каждую запись реестра
     // (после решения В-4, раздел 12.1 брифа `11-line-narrator-brief.md`,
     // запись `footer` снята — секций 10, без «хвоста подвала») запись может
-    // нести второй путь `.line-branch` (раздел 3 П4 брифа
-    // `11-line-narrator-brief.md`, решение D-125, `linePaths.ts` —
-    // `LINE_PATHS[id].branch`) и/или клин `.line-head` (раздел 12.4 брифа —
-    // `LINE_PATHS.hero.head`, второй `<path>` в той же коробке, второй
-    // заливаемой фигурой; сегодня это только `hero`, но число выводится из
-    // реестра, а не переписывается руками на каждый новый `.head`). Число
-    // веток и клиньев растёт независимо от числа секций — ожидание
-    // выводится из самого реестра (ловушки 15/21/24, `50-code/CLAUDE.md`).
+    // нести клин `.line-head` (раздел 12.4 брифа — `LINE_PATHS.hero.head`,
+    // второй `<path>` в той же коробке, заливаемой фигурой; сегодня это
+    // только `hero`, но число выводится из реестра, а не переписывается
+    // руками на каждый новый `.head`). Число клиньев растёт независимо от
+    // числа секций — ожидание выводится из самого реестра (ловушки 15/21/24,
+    // `50-code/CLAUDE.md`).
+    //
+    // ПРАВКА `2026-08-28`: поле `branch` (`.line-branch`, второй путь того
+    // же рода) СНЯТО целиком из `LinePathEntry` — прямое указание владельца,
+    // последний оставшийся отвод (`cases`) читался на снимке как случайная
+    // линейка. Слагаемое `branchCount` снято из формулы вместе с полем, а
+    // не оставлено считать вечный ноль.
+    //
     // `reviews` — исключение, поимённое (`70-workshop/specs/site-v3/
     // 14-reviews-brief.md`, раздел 4.2): запись реестра заведена БЕЗУСЛОВНО,
     // а секция на странице существует только когда `homeReviews().length >
@@ -226,13 +231,12 @@ test.describe('линия на фоне — тест чернил (05-line.md, �
     const registryKeys = Object.keys(LINE_PATHS).filter(
       (id) => hasOptionalConsumer || !OPTIONAL_CONSUMER_ENTRIES.has(id),
     );
-    const branchCount = registryKeys.filter((id) => Boolean(LINE_PATHS[id].branch)).length;
     const headCount = registryKeys.filter((id) => Boolean(LINE_PATHS[id].head)).length;
-    const expectedPathCount = registryKeys.length + branchCount + headCount;
+    const expectedPathCount = registryKeys.length + headCount;
     expect(
       results.length,
       `на странице должно быть ${expectedPathCount} путей линии: ${registryKeys.length} записей ` +
-      `реестра (секции) + ${branchCount} со своей .line-branch + ${headCount} со своим .line-head`,
+      `реестра (секции) + ${headCount} со своим .line-head`,
     ).toBe(expectedPathCount);
 
     const failing = results.filter((r) => !r.hasInk);

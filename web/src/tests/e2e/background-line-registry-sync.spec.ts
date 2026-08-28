@@ -22,22 +22,28 @@ import { HOME_SECTIONS } from '../../lib/sections';
  *  потому что сборка не трансформирует `d` никак между TS-строкой и HTML.
  *
  *  ПРАВКА `70-workshop/specs/site-v3/11-line-narrator-brief.md`, раздел 3
- *  П4 (решение D-125): секция может нести ВТОРОЙ `<path class="line-
- *  branch">` в той же коробке — селектор основной проверки сужен до
- *  `:not(.line-branch)` (раздел 4 брифа: «ломается и правится»), а ветви
- *  проверяются СИММЕТРИЧНО отдельным блоком ниже — против
- *  `LINE_PATHS[id].branch`, тем же приёмом («страница рисует не тот путь,
- *  что нарисован реестром» — и обратно).
+ *  П4 (решение D-125): секция могла нести ВТОРОЙ `<path class="line-
+ *  branch">` в той же коробке — селектор основной проверки был сужен до
+ *  `:not(.line-branch)` (раздел 4 брифа: «ломается и правится»).
  *
  *  ПРАВКА `2026-08-27` (раздел 12.4/12.7 того же брифа): у `hero` появился
  *  ТРЕТИЙ `<path class="line-head">` (клин) в той же коробке — той же
- *  природы, что `.line-branch`, и по той же причине основной селектор сужен
- *  ещё раз, до `:not(.line-branch):not(.line-head)`; клин проверяется своим
- *  отдельным блоком ниже, симметрично блоку ветвей. Без этого сужения `hero`
- *  давал бы ДВЕ строки на одну секцию (`wide` и `head`), и вторая красила бы
- *  тест ложным несовпадением с `LINE_PATHS.hero.wide` — ровно так это и
- *  падало здесь до правки: «Received» показывал `d` клина, а не основной
- *  обводки.
+ *  природы, что несла `.line-branch`, и по той же причине основной селектор
+ *  сужен ещё раз, до `:not(.line-branch):not(.line-head)`; клин проверяется
+ *  своим отдельным блоком ниже. Без этого сужения `hero` давал бы ДВЕ строки
+ *  на одну секцию (`wide` и `head`), и вторая красила бы тест ложным
+ *  несовпадением с `LINE_PATHS.hero.wide` — ровно так это и падало здесь до
+ *  правки: «Received» показывал `d` клина, а не основной обводки.
+ *
+ *  ПРАВКА `2026-08-28`: поле `branch` в `LinePathEntry` СНЯТО целиком
+ *  (прямое указание владельца — последний оставшийся отвод, `cases`,
+ *  читался на снимке как случайная линейка). Блок «ветви рисуются из
+ *  реестра», проверявший `LINE_PATHS[id].branch` против `.line-branch` на
+ *  странице, удалён вместе с предметом — не оставлен ослабленной проверкой
+ *  на пустом множестве. Основной селектор `:not(.line-branch)` в блоках
+ *  ниже НЕ сужается обратно: класс `.line-branch` на странице больше не
+ *  появляется никогда, но защитное исключение остаётся дёшево и безопасно
+ *  на случай, если отвод вернётся к какой-то секции в будущем.
  *
  *  ПРАВКА `2026-08-27`, тем же днём, позже (`70-workshop/specs/site-v3/
  *  16-line-digits-and-finale-brief.md`, раздел 3.3, вариант Б «Разгон»,
@@ -117,56 +123,6 @@ test.describe('линия на фоне — страница рисует пут
       expect(ownerIds, `запись LINE_PATHS['${key}'] не соответствует ни одной секции на странице`).toContain(
         key,
       );
-    }
-  });
-});
-
-test.describe('линия на фоне — ветви рисуются из реестра (11-line-narrator-brief.md, раздел 3 П4, решение D-125)', () => {
-  test('атрибут d каждого svg.line path.line-branch совпадает с LINE_PATHS[id].branch', async ({ page }) => {
-    // От 900px — .line-branch видим только там (BackgroundLine.astro),
-    // а видимость через `display:none` не снимает узел из DOM, значит
-    // локатор находит его при любой ширине; ширина берётся ≥900px просто
-    // для единообразия с остальными сторожами линии.
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/');
-
-    const rendered = await page.locator('[data-line-side] > svg.line > path.line-branch').evaluateAll((paths) =>
-      paths.map((p) => {
-        const owner = p.closest('[data-line-side]') as HTMLElement;
-        const ownerId = owner.id || owner.tagName.toLowerCase();
-        return { ownerId, d: p.getAttribute('d') };
-      }),
-    );
-
-    const branchIds = Object.keys(LINE_PATHS).filter((id) => Boolean(LINE_PATHS[id].branch));
-    expect(rendered.length, 'число нарисованных .line-branch разошлось с числом записей реестра с полем branch').toBe(
-      branchIds.length,
-    );
-
-    for (const { ownerId, d } of rendered) {
-      const entry = LINE_PATHS[ownerId];
-      expect(entry?.branch, `в LINE_PATHS['${ownerId}'] нет поля branch, а страница рисует .line-branch`).toBeTruthy();
-      expect(
-        d,
-        `«${ownerId}»: атрибут d у .line-branch разошёлся с LINE_PATHS['${ownerId}'].branch`,
-      ).toBe(entry!.branch);
-    }
-  });
-
-  test('в LINE_PATHS нет поля branch, которое не нарисовано ни на одной секции страницы', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/');
-
-    const ownerIdsWithBranch = await page.locator('[data-line-side]:has(> svg.line > path.line-branch)').evaluateAll((els) =>
-      els.map((el) => el.id || el.tagName.toLowerCase()),
-    );
-
-    for (const [key, entry] of Object.entries(LINE_PATHS)) {
-      if (!entry.branch) continue;
-      expect(
-        ownerIdsWithBranch,
-        `LINE_PATHS['${key}'].branch задан, но на странице у «${key}» нет .line-branch`,
-      ).toContain(key);
     }
   });
 });
