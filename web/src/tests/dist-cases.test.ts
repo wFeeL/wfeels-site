@@ -101,6 +101,37 @@ describe('dist/cases — индексируемый каталог и detail-с�
     expect(html).toContain('width="1586" height="992"');
   });
 
+  /* Пункт 6 очереди: подпись под кадром распространена со `storefront`
+   * (единственного кейса, где приём уже жил) на остальных три кейса с
+   * настоящими кадрами. `site-v3` в этот список не входит — у него кадров
+   * нет по замыслу (раздел 4.5 брифа), проверено выше циклом
+   * `if (slides.length === 0) continue`. */
+  it('websites: подпись у каждого из девяти кадров', () => {
+    const html = read('cases/websites/index.html');
+    const slides = caseSpreads('websites').flatMap((spread) => spread.images ?? []);
+    for (const slide of slides) {
+      expect(html, `websites: подпись ${slide.caption}`).toContain(`>${slide.caption}<`);
+    }
+  });
+
+  it('zayavka-hub: подпись у каждого из пяти кадров', () => {
+    const html = read('cases/zayavka-hub/index.html');
+    const slides = caseSpreads('zayavka-hub').flatMap((spread) => spread.images ?? []);
+    expect(slides.length, 'zayavka-hub: пять кадров — разворот 4 законная схема, кадра не несёт').toBe(5);
+    for (const slide of slides) {
+      expect(html, `zayavka-hub: подпись ${slide.caption}`).toContain(`>${slide.caption}<`);
+    }
+  });
+
+  it('ai-consultant: подпись у каждого из трёх кадров', () => {
+    const html = read('cases/ai-consultant/index.html');
+    const slides = caseSpreads('ai-consultant').flatMap((spread) => spread.images ?? []);
+    expect(slides.length, 'ai-consultant: три кадра — по одному на разворот').toBe(3);
+    for (const slide of slides) {
+      expect(html, `ai-consultant: подпись ${slide.caption}`).toContain(`>${slide.caption}<`);
+    }
+  });
+
   it('связанные услуги ссылаются обратно на те же кейсы', () => {
     for (const item of pages) {
       for (const service of caseServiceLinks(item.slug)) {

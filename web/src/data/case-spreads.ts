@@ -93,6 +93,7 @@ const ZAYAVKA_HUB_SPREADS: readonly CaseSpread[] = [
       {
         src: '/cases/zayavka-hub/01-dashboard.avif',
         alt: 'Список заявок в панели Заявка-Хаб с фильтрами и статусами доставки',
+        caption: 'Панель — список заявок',
       },
     ],
   },
@@ -107,14 +108,17 @@ const ZAYAVKA_HUB_SPREADS: readonly CaseSpread[] = [
       {
         src: '/cases/zayavka-hub/02-lead.avif',
         alt: 'Карточка заявки с источником, статусом и историей доставки',
+        caption: 'Карточка заявки',
       },
       {
         src: '/cases/zayavka-hub/02b-lead-api.avif',
         alt: 'Детали попытки доставки заявки через API',
+        caption: 'Попытка доставки — API',
       },
       {
         src: '/cases/zayavka-hub/02c-lead-done.avif',
         alt: 'Заявка со статусом «доставлено»',
+        caption: 'Статус «доставлено»',
       },
     ],
   },
@@ -129,6 +133,7 @@ const ZAYAVKA_HUB_SPREADS: readonly CaseSpread[] = [
       {
         src: '/cases/zayavka-hub/03-settings.avif',
         alt: 'Настройки маршрутов доставки заявок по каналам',
+        caption: 'Настройки маршрутов',
       },
     ],
   },
@@ -161,14 +166,17 @@ const WEBSITES_SPREADS: readonly CaseSpread[] = [
       {
         src: '/cases/websites/relayos/01-home.avif',
         alt: 'Главная страница RelayOS с описанием продукта и таблицей автоматизаций',
+        caption: 'RelayOS — главная',
       },
       {
         src: '/cases/websites/relayos/02-workflow-builder.avif',
         alt: 'Конструктор автоматизаций RelayOS со сценарием обработки заявки',
+        caption: 'RelayOS — конструктор',
       },
       {
         src: '/cases/websites/relayos/03-connections.avif',
         alt: 'Раздел подключений RelayOS с настройкой синхронизации Salesforce',
+        caption: 'RelayOS — подключения',
       },
     ],
   },
@@ -183,14 +191,17 @@ const WEBSITES_SPREADS: readonly CaseSpread[] = [
       {
         src: '/cases/websites/still-house/01-home.avif',
         alt: 'Главная страница бутик-отеля Still House на северном побережье',
+        caption: 'Still House — главная',
       },
       {
         src: '/cases/websites/still-house/02-rooms.avif',
         alt: 'Каталог номеров Still House с фотографиями и ценами',
+        caption: 'Still House — номера',
       },
       {
         src: '/cases/websites/still-house/03-room-booking.avif',
         alt: 'Страница номера Still House с деталями проживания и бронированием',
+        caption: 'Still House — бронирование',
       },
     ],
   },
@@ -205,14 +216,17 @@ const WEBSITES_SPREADS: readonly CaseSpread[] = [
       {
         src: '/cases/websites/forma-editions/01-home.avif',
         alt: 'Главная страница галереи коллекционной мебели Forma Editions',
+        caption: 'Forma Editions — главная',
       },
       {
         src: '/cases/websites/forma-editions/02-collection.avif',
         alt: 'Каталог предметов Forma Editions с креслом, светильником и столом',
+        caption: 'Forma Editions — коллекция',
       },
       {
         src: '/cases/websites/forma-editions/03-product.avif',
         alt: 'Карточка кресла Arc Chair 02 в галерее Forma Editions',
+        caption: 'Forma Editions — предмет',
       },
     ],
   },
@@ -331,6 +345,7 @@ const AI_CONSULTANT_SPREADS: readonly CaseSpread[] = [
       {
         src: '/cases/ai-consultant/widget-answer.avif',
         alt: 'Виджет консультанта отвечает на вопросы о цене педикюра и об отмене записи, под каждым ответом отдельным блоком выделен источник',
+        caption: 'Виджет — ответ с источником',
       },
     ],
   },
@@ -347,6 +362,7 @@ const AI_CONSULTANT_SPREADS: readonly CaseSpread[] = [
       {
         src: '/cases/ai-consultant/widget-refusal.avif',
         alt: 'Виджет консультанта отвечает, что не нашел вопросы о записи на конкретное время и о погоде в материалах салона, и вместо источника явно показывает, что источников нет',
+        caption: 'Виджет — отказ отвечать',
       },
     ],
   },
@@ -361,6 +377,7 @@ const AI_CONSULTANT_SPREADS: readonly CaseSpread[] = [
       {
         src: '/cases/ai-consultant/admin-knowledge-base.avif',
         alt: 'Админ-панель базы знаний со списком файлов и открытым текстом материала об услугах и ценах',
+        caption: 'Админка — база знаний',
       },
     ],
   },

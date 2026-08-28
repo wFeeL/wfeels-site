@@ -126,12 +126,14 @@ const isInset = spread.kind === 'weight' || spread.kind === 'checklist';
               data-defer-weight={eager ? undefined : 'true'}
             />
           );
-          /* `photo-row-3` (раздел 4.1 брифа): «подпись кадра (`<figcaption>`:
-             имя витрины + шаг) остаётся в статической разметке» — три
-             равных кадра не делят одну общую подпись (`.caption` справа),
-             у каждого своя. `photo`/`photo-trio` подписи по кадру не несут —
-             там одна подпись у панели уже есть. */
-          return isRow3 ? (
+          /* Пункт 6 очереди (`70-workshop/plans/site-v3/`): подпись под
+             кадром — «имя источника + шаг» — распространена с
+             `photo-row-3` (`storefront`, где приём уже жил) на `photo` и
+             `photo-trio` (`websites`, `zayavka-hub`, `ai-consultant`):
+             картинка без подписи — иллюстрация, с подписью — экспонат.
+             Кадр без `img.caption` в данных (пока такого нет ни у одного
+             кейса) остаётся голым `<img>` — подпись не рисуется пустой. */
+          return img.caption ? (
             <figure class="shot">
               {frameImg}
               <figcaption class="shot-caption t-small">{img.caption}</figcaption>
@@ -248,15 +250,30 @@ const isInset = spread.kind === 'weight' || spread.kind === 'checklist';
     border-radius: var(--radius-md);
   }
 
+  /* Подпись под кадром (`.shot`/`.shot-caption`, пункт 6 очереди) — общая
+     для одиночного `photo`, `photo-trio` (крупный + два подкадра) и
+     `photo-row-3` (три равных): убирает браузерный отступ `<figure>` и
+     снимает автоматический минимум флекс-элемента на ленте (ловушка 25,
+     `50-code/CLAUDE.md`), без чего кадр в ленте не сжимается до 78%. */
+  .shot { margin: 0; min-width: 0; }
+  .shot-caption {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+  }
+
   .shots.trio {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-areas: "big big" "s1 s2";
     gap: 24px;
   }
-  .shots.trio img:nth-of-type(1) { grid-area: big; }
-  .shots.trio img:nth-of-type(2) { grid-area: s1; }
-  .shots.trio img:nth-of-type(3) { grid-area: s2; }
+  /* Область грида назначается узлу, который ДЕЙСТВИТЕЛЬНО стоит прямым
+     потомком `.shots.trio` — с подписью это `<figure class="shot">`, без
+     неё (кадр без `img.caption`, сегодня таких нет) — сам `<img>`; оба
+     случая покрыты общим селектором `:is()`. */
+  .shots.trio :is(img, .shot):nth-of-type(1) { grid-area: big; }
+  .shots.trio :is(img, .shot):nth-of-type(2) { grid-area: s1; }
+  .shots.trio :is(img, .shot):nth-of-type(3) { grid-area: s2; }
 
   /* `photo-row-3` (раздел 4.1 брифа, «три витрины в Telegram»): три РАВНЫХ
      кадра в ряд — не крупный + два подкадра. Named-area раскрой выше рассчитан
@@ -272,13 +289,7 @@ const isInset = spread.kind === 'weight' || spread.kind === 'checklist';
     grid-template-columns: repeat(3, 1fr);
     grid-template-areas: none;
   }
-  .shots.trio.row3 .shot {
-    margin: 0;
-    min-width: 0;
-  }
   .shots.trio.row3 .shot-caption {
-    margin: 8px 0 0;
-    color: var(--text-muted);
     text-align: center;
   }
 
@@ -302,7 +313,13 @@ const isInset = spread.kind === 'weight' || spread.kind === 'checklist';
       scroll-behavior: smooth;
       scroll-snap-type: x mandatory;
     }
-    .shots.trio img {
+    /* Флекс-элемент ленты — `<figure class="shot">`, когда кадр несёт
+       подпись (сегодня это все трио/ряды — `storefront`, `websites`,
+       `zayavka-hub`), и сам `<img>`, когда нет (`:is()`, тот же приём, что
+       у грид-областей выше): правило нацелено на узел, который
+       ДЕЙСТВИТЕЛЬНО является флекс-элементом, а не на вложенный в него
+       `<img>`. */
+    .shots.trio > :is(img, .shot) {
       flex: 0 0 78%;
       /* Без этого `min-width: auto` (спецификация п. 4.5) берёт за
          «специфицированный» размер `width: 100%` из общего правила
@@ -312,16 +329,6 @@ const isInset = spread.kind === 'weight' || spread.kind === 'checklist';
          этого пола не снимает. Замер `getBoundingClientRect()` до правки:
          `<img>` — 358px при контейнере 358px (100%, а не 78% = 279px).
          Явный `min-width: 0` выключает автоматический минимум. */
-      min-width: 0;
-      scroll-snap-align: start;
-    }
-    /* `photo-row-3`: флекс-элемент ленты — `<figure class="shot">`, а не
-       `<img>` напрямую (кадр несёт свой `<figcaption>`, раздел 4.1 брифа).
-       Правило выше нацелено на `img` и здесь на реальный флекс-элемент не
-       действует (кадр не флекс-контейнер) — тот же базис назначается
-       явно узлу, который им ДЕЙСТВИТЕЛЬНО является. */
-    .shots.trio.row3 .shot {
-      flex: 0 0 78%;
       min-width: 0;
       scroll-snap-align: start;
     }
