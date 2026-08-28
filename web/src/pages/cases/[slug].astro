@@ -79,11 +79,16 @@ const nextCase = allCases[(currentIndex + 1) % allCases.length];
         <>
           {/* Раздел 6 брифа: оговорка происхождения переезжает перед первым
               разворотом — «подпись у входа в зал, а не сноска на выходе» —
-              и здесь не дублируется внутри `narrative`. */}
-          <div class="origin-strip">
-            <p class="origin-label">ПРОИСХОЖДЕНИЕ</p>
-            <p class="origin-text t-small">{narrative.disclosure}</p>
-          </div>
+              и здесь не дублируется внутри `narrative`. Полоса рисуется,
+              только когда оговорка есть: у `storefront` её сняли решением
+              владельца (2026-08-28, D-137), и полоса-заголовок без текста
+              под ним сама по себе стала бы новой ложью о происхождении. */}
+          {narrative.disclosure && (
+            <div class="origin-strip">
+              <p class="origin-label">ПРОИСХОЖДЕНИЕ</p>
+              <p class="origin-text t-small">{narrative.disclosure}</p>
+            </div>
+          )}
 
           <section id="case-story" class="narrative" aria-labelledby="case-task-heading">
             <div>
@@ -140,7 +145,7 @@ const nextCase = allCases[(currentIndex + 1) % allCases.length];
               <h2 class="t-h2">Что подтверждает кейс</h2>
               <p class="t-body">{narrative.result}</p>
             </div>
-            <p class="disclosure t-small">{narrative.disclosure}</p>
+            {narrative.disclosure && <p class="disclosure t-small">{narrative.disclosure}</p>}
           </section>
 
           {slides.length > 0 && (

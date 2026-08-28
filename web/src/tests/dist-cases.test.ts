@@ -36,7 +36,11 @@ describe('dist/cases — индексируемый каталог и detail-с�
       expect(html).toContain(narrative.task);
       expect(html).toContain(narrative.approach);
       expect(html).toContain(narrative.result);
-      expect(html).toContain(narrative.disclosure);
+      // `disclosure` необязательна (D-137) — у `storefront` её больше нет,
+      // и страница не обязана содержать её текст.
+      if (narrative.disclosure) {
+        expect(html).toContain(narrative.disclosure);
+      }
       expect(html).toContain('href="/cases"');
       for (const service of caseServiceLinks(item.slug)) {
         expect(html, service.slug).toContain(`href="${service.href}"`);
@@ -92,6 +96,13 @@ describe('dist/cases — индексируемый каталог и detail-с�
       expect(html, `storefront: подпись ${slide.caption}`).toContain(`>${slide.caption}<`);
     }
     expect(html).toContain('width="780" height="1688"');
+  });
+
+  it('storefront: оговорка происхождения снята (D-137) и не заменена заявлением о клиенте', () => {
+    const html = read('cases/storefront/index.html');
+    expect(html).not.toContain('не выдаются за оплаченных клиентов');
+    expect(html).not.toContain('демонстрационный проект');
+    expect(html).not.toMatch(/клиент(?!ск)|заказчик|для компании/i);
   });
 
   it('websites: девять кадров группами по три, свой width/height', () => {
