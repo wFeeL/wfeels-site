@@ -37,15 +37,28 @@
 interface Props {
   /** Высота поля в px, кратная 32. Базовый коридор 288…448 задан разделом
    *  2.1 брифа; каждое исключение обязано быть объяснено у
-   *  `ILLUSTRATION_HEIGHT` в `Cases.astro`. */
-  height: number;
+   *  `ILLUSTRATION_HEIGHT` в `Cases.astro`.
+   *
+   *  Необязательный: без неё поле не несёт фиксированную высоту вовсе —
+   *  растёт под содержимое, тем же приёмом, что уже несёт панель разворота
+   *  страницы кейса (`CaseSpread.astro`, `.frame.inset`, П-3 брифа
+   *  `12-case-pages-brief.md`). Единственный сегодняшний потребитель этого
+   *  пути — иллюстрация «Замер» (`Cases.astro`, slug `site-v3`): её
+   *  фиксированные 384/416 оставляли под готовым рисунком пустой запас
+   *  (сторож `e2e/case-spread-fill.spec.ts`, «поле «Замера» на главной ниже
+   *  порога» — измеренная и учтённая при живом обзоре находка), тогда как
+   *  на странице кейса та же иллюстрация в панели по содержимому собрана
+   *  вплотную. Задача — подтянуть вариант главной к варианту страницы кейса,
+   *  а не второй раз изобретать авторазмер. */
+  height?: number;
   /** Высота поля ниже 899 px, если отличается от десктопной — нужна
    *  иллюстрации 3 «Пример диалога» (та же находка, что у `height`, только
    *  глубже на узкой ширине) и «Стеллажу». Иллюстрация 1 — обычный HTML,
    *  перетекает сама внутри одной и той же высоты (бриф, раздел 2.2).
    *  Иллюстрация 2 «Заявка-Хаб» проп больше НЕ получает: с брифа
    *  `07-flow-motion-brief.md` (раздел 2) её раскрой Б переразмечен под
-   *  холст 320×272 и держит одну высоту поля 352 на всех ширинах. */
+   *  холст 320×272 и держит одну высоту поля 352 на всех ширинах. Без
+   *  `height` бессмысленна и не читается (авторазмер не различает ширины). */
   mobileHeight?: number;
   /** Снять паспарту, рамку, фиксированную высоту и отступ у готового медиа. */
   bare?: boolean;
@@ -62,9 +75,17 @@ const { height, mobileHeight, bare = false, trace = false } = Astro.props;
 const hasContent = Astro.slots.has('default')
   ? (await Astro.slots.render('default')).trim().length > 0
   : false;
-const style = mobileHeight
-  ? `--field-height: ${height}px; --field-height-mobile: ${mobileHeight}px`
-  : `--field-height: ${height}px`;
+/* Строка стиля собирается из ТОЛЬКО заданных переменных: без `height` атрибут
+ * `style` не несёт `--field-height` вовсе, и CSS ниже сам берёт запасное
+ * значение `auto` (`var(--field-height, auto)`) — второго условия здесь не
+ * заводится. `mobileHeight` без `height` не имеет смысла (см. докблок выше) и
+ * в строку не идёт. */
+const styleVars: string[] = [];
+if (height !== undefined) styleVars.push(`--field-height: ${height}px`);
+if (height !== undefined && mobileHeight !== undefined) {
+  styleVars.push(`--field-height-mobile: ${mobileHeight}px`);
+}
+const style = styleVars.length > 0 ? styleVars.join('; ') : undefined;
 ---
 {hasContent && (
   <div class:list={['field', { bare }]} style={style}>
@@ -80,7 +101,10 @@ const style = mobileHeight
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 32px;
-    height: var(--field-height);
+    /* Запасное значение `auto` — без `height` поле растёт под содержимое
+       (см. докблок `height` в Props выше); заданная высота, как и раньше,
+       побеждает через переменную. */
+    height: var(--field-height, auto);
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -96,6 +120,6 @@ const style = mobileHeight
     overflow: visible;
   }
   @media (max-width: 899px) {
-    .field { height: var(--field-height-mobile, var(--field-height)); }
+    .field { height: var(--field-height-mobile, var(--field-height, auto)); }
   }
 </style>
