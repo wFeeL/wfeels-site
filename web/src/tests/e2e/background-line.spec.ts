@@ -31,6 +31,9 @@ import { test, expect } from '@playwright/test';
 
 const LINE_SELECTOR = '.line';
 const CURTAIN_SELECTOR = '.line-curtain';
+/* Мобильная нитка ниже 900 px (`BackgroundLine.astro`, раздел 8 брифа
+ * `05-line`) — заведена правкой `2026-08-29`. */
+const NARROW_SELECTOR = '.line-narrow';
 // Десять секций главной несут путь (`svg.line`) — не тронуто этой правкой.
 const LINE_ELEMENT_COUNT = 10;
 
@@ -223,36 +226,45 @@ test.describe('линия на фоне — только главная сего
   });
 });
 
-/* Раздел 6 брифа `05-line` отменяет D-026: порог 900 px (линия не рисуется
- * вовсе) заменён на 480 px. */
-test.describe('линия на фоне — порог 480 px (раздел 6, D-026 отменён)', () => {
-  test('на 390 px (мобильный) линии нет в разметке видимой', async ({ page }) => {
+/* ПРАВКА `2026-08-29`: раздел 8 брифа `05-line` (действующая редакция)
+ * снимает порог 480 px («ниже линии нет вовсе») ЦЕЛИКОМ, а не сдвигает его
+ * — порог рисунка кривой (`.line`/`.line-curtain`) поднят до 900 px, и
+ * ниже него теперь везде стоит ДРУГОЙ узел, `.line-narrow` (прямая нитка
+ * в левом поле, статичная, без раскрытия шторкой). Прежние проверки этого
+ * блока проверяли состояние ДО этой правки — 480 px как порог видимости
+ * `.line`/`.line-curtain` и сквозную шторку, раскрытую на 480…899 px;
+ * оба утверждения здесь заменены на актуальные. */
+test.describe('линия на фоне — порог рисунка 900 px, нитка ниже него (раздел 8)', () => {
+  test('на 390 px (мобильный) кривой .line нет, но нитка .line-narrow видна', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.goto('/');
     await expect(page.locator(LINE_SELECTOR).first()).toBeHidden();
+    await expect(page.locator(NARROW_SELECTOR).first()).toBeVisible();
   });
 
-  test('на 479 px линии всё ещё нет, на 480 px уже есть', async ({ page }) => {
-    await page.setViewportSize({ width: 479, height: 900 });
+  test('на 899 px кривой ещё нет и нитка видна, на 900 px наоборот', async ({ page }) => {
+    await page.setViewportSize({ width: 899, height: 900 });
     await page.goto('/');
     await expect(page.locator(LINE_SELECTOR).first()).toBeHidden();
+    await expect(page.locator(NARROW_SELECTOR).first()).toBeVisible();
 
-    await page.setViewportSize({ width: 480, height: 900 });
+    await page.setViewportSize({ width: 900, height: 900 });
     await expect(page.locator(LINE_SELECTOR).first()).toBeVisible();
+    await expect(page.locator(NARROW_SELECTOR).first()).toBeHidden();
   });
 
-  test('на 900 px линия по-прежнему видна (порог D-026 больше не действует)', async ({ page }) => {
+  test('на 900 px линия видна (порог рисунка, раздел 8)', async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 900 });
     await page.goto('/');
     await expect(page.locator(LINE_SELECTOR).first()).toBeVisible();
   });
 
-  test('на 480…899 px сквозная шторка тоже видна (display:block) — раздел 6.4 брифа 15-…: механика ширины не знает', async ({ browser }) => {
+  test('на 480…899 px сквозная шторка НЕ видна (display:none) — раздел 8 брифа `05-line`: ниже 900 px кривой нет вовсе, раскрывать нечего, нитка статична без шторки', async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width: 600, height: 900 } });
     const page = await ctx.newPage();
     await page.goto('/');
     const display = await page.locator(CURTAIN_SELECTOR).evaluate((el) => getComputedStyle(el).display);
-    expect(display).toBe('block');
+    expect(display).toBe('none');
     await ctx.close();
   });
 });
