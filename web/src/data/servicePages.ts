@@ -161,7 +161,7 @@ export const SERVICE_PAGES: readonly ServicePage[] = [
       'форма заявки и запуск на вашем домене.',
     audience: 'Малый бизнес без сайта или с устаревшим сайтом.',
     term: 'от 2–4 дней (шаблон) до 2–3 недель (10 страниц)',
-    termSource: 'SERVICES.md:27 — услуга S1, строка «Срок: …»',
+    termSource: 'PRICING.md:79 — раздел «Ступени услуг → Сайты», строка «от 2–4 дней (шаблон) до 2–3 недель (10 страниц)» (D-147)',
     includes: [
       { text: 'Структура и тексты по брифу', from: 'S' },
       { text: 'Дизайн', from: 'S' },
@@ -236,7 +236,7 @@ export const SERVICE_PAGES: readonly ServicePage[] = [
       'разово или пакетом в месяц.',
     audience: 'У кого сайт уже есть и болит.',
     term: 'по объему работ',
-    termSource: 'SERVICES.md:36 — услуга S2, строка «Срок: по объёму.»',
+    termSource: 'PRICING.md:139 — раздел «Ступени услуг → Поддержка и доработка», строка «по объёму работ» (D-147)',
     includes: [
       { text: 'Разбор чужого кода', from: 'S' },
       { text: 'Правки', from: 'S' },
@@ -316,7 +316,7 @@ export const SERVICE_PAGES: readonly ServicePage[] = [
     // ограничено полем «Кому», а не всей строкой SERVICES.md после него.
     audience: 'Тем, кто еще не решил, чинить или переделывать.',
     term: '1–2 дня',
-    termSource: 'SERVICES.md:44 — услуга S3, строка «Срок: 1–2 дня.»',
+    termSource: 'PRICING.md:126 — раздел «Ступени услуг → Backend и автоматизация», строка «аудит сайта — 1–2 дня» (D-147)',
     includes: [
       { text: 'Разбор структуры', from: 'S' },
       { text: 'Скорость загрузки', from: 'S' },
@@ -396,7 +396,7 @@ export const SERVICE_PAGES: readonly ServicePage[] = [
       'который отвечает по вашим материалам и показывает, откуда взял ответ.',
     audience: 'Услуги со сложным прайсом, клиники, школы, сервисные компании.',
     term: '3–5 дней (готовые материалы) — 1–2 недели (со сбором)',
-    termSource: 'SERVICES.md:64 — услуга S4, строка «Срок: …»',
+    termSource: 'PRICING.md:107 — раздел «Ступени услуг → ИИ», строка «3–5 дней (готовые материалы) — 1–2 недели (со сбором)» (D-147)',
     includes: [
       { text: 'Сбор материалов: Markdown, PDF, DOCX', from: 'S' },
       { text: 'Индексация и поиск по смыслу', from: 'S' },
@@ -467,7 +467,7 @@ export const SERVICE_PAGES: readonly ServicePage[] = [
       'переписке. Собираю их в одну точку и развожу туда, где вы работаете.',
     audience: 'Бизнес с потоком заявок и несколькими местами доставки.',
     term: '1–3 дня на интеграцию',
-    termSource: 'SERVICES.md:80 — услуга S5, строка «Срок: …»',
+    termSource: 'PRICING.md:126 — раздел «Ступени услуг → Backend и автоматизация», строка «одна интеграция — 1–3 дня на интеграцию» (D-147)',
     includes: [
       { text: 'Единая точка приема заявок', from: 'S' },
       { text: 'Доставка в почту, CRM, Telegram и таблицы', from: 'S' },
@@ -536,7 +536,7 @@ export const SERVICE_PAGES: readonly ServicePage[] = [
       'обращению, статусы, роли и выгрузка.',
     audience: 'Там, где обращения обрабатывает больше одного человека.',
     term: '1,5–3 недели',
-    termSource: 'SERVICES.md:90 — услуга S6, строка «Срок: …»',
+    termSource: 'PRICING.md:128 — раздел «Ступени услуг → Backend и автоматизация», строка «панель обращений / админка — 1,5–3 недели» (D-147)',
     includes: [
       { text: 'Список обращений с фильтрами и поиском', from: 'S' },
       { text: 'Карточка с историей', from: 'S' },
@@ -601,7 +601,7 @@ export const SERVICE_PAGES: readonly ServicePage[] = [
       'с документацией.',
     audience: 'Стартапы, продукты, интеграционные задачи.',
     term: '1–3 недели',
-    termSource: 'SERVICES.md:100 — услуга S7, строка «Срок: …»',
+    termSource: 'PRICING.md:127 — раздел «Ступени услуг → Backend и автоматизация», строка «Backend / REST API — 1–3 недели» (D-147)',
     includes: [
       { text: 'Проектирование схемы базы данных', from: 'S' },
       { text: 'Слоеная архитектура', from: 'S' },
@@ -677,7 +677,7 @@ export const SERVICE_PAGES: readonly ServicePage[] = [
     // вынесено в отчёт исполнителя.
     audience: 'Широкий круг.',
     term: '2–5 дней',
-    termSource: 'SERVICES.md:114 — услуга S8, строка «Срок: …»',
+    termSource: 'PRICING.md:95 — раздел «Ступени услуг → Боты и Mini Apps», строка «Боты (обе ступени…, одним сроком на услугу) — 2–5 дней» (D-147)',
     includes: [
       { text: 'Прием заявок и уведомления вам', from: 'N' },
       { text: 'Сценарии диалога с проверкой ввода', from: 'N' },
@@ -758,7 +758,7 @@ export const SERVICE_PAGES: readonly ServicePage[] = [
       'Telegram, ставить ничего не нужно.',
     audience: 'Сервисный бизнес, микро-магазины, там где аудитория уже живет в Telegram.',
     term: '5–8 дней (витрина) — 2–4 недели (инструмент)',
-    termSource: 'SERVICES.md:126 — услуга S9, строка «Срок: …»',
+    termSource: 'PRICING.md:95 — раздел «Ступени услуг → Боты и Mini Apps», строка «Mini App — 5–8 дней (витрина) — 2–4 недели (инструмент)» (D-147)',
     includes: [
       { text: 'Экраны внутри Telegram: каталог, анкета, запись, личный кабинет', from: 'N' },
       { text: 'Вход через Telegram, без отдельного пароля', from: 'N' },
