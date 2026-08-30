@@ -124,6 +124,63 @@ test.describe('галерея кейса сайтов', () => {
     expect(await image.evaluate((node) => node.getAnimations().length)).toBe(0);
   });
 
+  test('тап по стрелке до готовности данных не теряется и проигрывается один раз по готовности', async ({ page }) => {
+    /* Правка 3 очереди: манифест искусственно задержан, чтобы поймать окно,
+       в котором `data-loaded` ещё 'false'. Тап в это окно раньше проваливался
+       в пустоту (кнопка была `disabled`) — здесь проверяется, что он
+       запоминается и проигрывается сам, ровно один раз, без повторного
+       нажатия. */
+    await page.route('**/case-galleries.json*', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await route.continue();
+    });
+    await page.goto('/');
+    const gallery = page.locator(GALLERY);
+    const next = page.getByRole('button', { name: 'Следующий экран сайта' });
+
+    await gallery.scrollIntoViewIfNeeded();
+    await expect(gallery).toHaveAttribute('data-loaded', 'false');
+
+    /* Цель нажатия и доступное имя не пострадали от снятия `disabled`. */
+    const box = await next.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThanOrEqual(44);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    await expect(next).toBeEnabled();
+    await expect(next).toHaveAccessibleName('Следующий экран сайта');
+
+    /* Порядок фокуса не изменился: «назад» стоит в разметке раньше «вперёд». */
+    const buttonLabels = await gallery.getByRole('button').evaluateAll(
+      (nodes) => nodes.map((node) => node.getAttribute('aria-label')),
+    );
+    expect(buttonLabels).toEqual(['Предыдущий экран сайта', 'Следующий экран сайта']);
+
+    /* Двойной тап во время загрузки не даёт двойного шага: второе нажатие
+       перезаписывает то же самое направление в `pendingStep`, а не копит его. */
+    await next.click();
+    await next.click();
+
+    await expect(gallery).toHaveAttribute('data-loaded', 'true', { timeout: 5_000 });
+    await expectLoaded(page, slides[1], 1);
+  });
+
+  test('тап "назад" до готовности данных проигрывает нужное направление', async ({ page }) => {
+    await page.route('**/case-galleries.json*', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await route.continue();
+    });
+    await page.goto('/');
+    const gallery = page.locator(GALLERY);
+    const previous = page.getByRole('button', { name: 'Предыдущий экран сайта' });
+
+    await gallery.scrollIntoViewIfNeeded();
+    await expect(gallery).toHaveAttribute('data-loaded', 'false');
+    await previous.click();
+
+    await expect(gallery).toHaveAttribute('data-loaded', 'true', { timeout: 5_000 });
+    await expectLoaded(page, slides[8], 8);
+  });
+
   test('при отказе decode старый кадр остаётся видимым до загрузки нового', async ({ page }) => {
     await page.addInitScript(() => {
       HTMLImageElement.prototype.decode = () =>

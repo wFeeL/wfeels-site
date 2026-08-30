@@ -52,12 +52,22 @@ const ui = GALLERY_UI[locale];
       />
     </figure>
 
+    {/* Правка 3 очереди (`70-workshop/plans/site-v3/`): кнопки БОЛЬШЕ НЕ
+        рождаются `disabled` — на время загрузки (`IntersectionObserver` →
+        `fetch('/case-galleries.json')` → `decode()`, локально ~1,5 с) тап
+        владельца проваливался в пустоту, потому что `disabled`-кнопка не
+        принимает клик вовсе, а `.nav:disabled{opacity:0}` делала её ещё и
+        невидимой. Теперь кнопка кликабельна с первого кадра: клик до
+        готовности данных ставит направление в очередь (`pendingStep` в
+        скрипте `Cases.astro`) и сам запускает загрузку — тап никогда не
+        теряется, пользователю не нужно нажимать повторно. Видимый признак
+        «идёт загрузка» — приглушённая кнопка (см. `[data-loaded='false']
+        .nav` ниже) и кольцо `.stage-loading`, а не полная невидимость. */}
     <button
       class="nav previous"
       type="button"
       data-step="-1"
       aria-label={ui.previousWebsite}
-      disabled
     >
       <svg viewBox="0 0 256 256" aria-hidden="true">
         <g set:html={CARET_LEFT}></g>
@@ -69,12 +79,18 @@ const ui = GALLERY_UI[locale];
       type="button"
       data-step="1"
       aria-label={ui.nextWebsite}
-      disabled
     >
       <svg viewBox="0 0 256 256" aria-hidden="true">
         <g set:html={CARET_RIGHT}></g>
       </svg>
     </button>
+
+    {/* Кольцо-индикатор загрузки — декоративное (`aria-hidden`, статус для
+        читалки экрана уже несёт `aria-busy` на `.gallery` и `[data-gallery-
+        status]`). Без анимации кольцо остаётся статичным, но видимым —
+        `prefers-reduced-motion: reduce` не отключает саму индикацию, только
+        вращение. */}
+    <div class="stage-loading" aria-hidden="true"><span class="spinner"></span></div>
   </div>
 
   <div class="meta">
@@ -194,9 +210,47 @@ const ui = GALLERY_UI[locale];
 
   .nav:active:not(:disabled) { transform: translateY(-50%) scale(0.94); }
 
+  /* Правка 3: пока манифест/кадр ещё грузятся, кнопка остаётся кликабельной
+     (тап ставит направление в очередь — скрипт в `Cases.astro`), но
+     приглушена, чтобы читатель видел «идёт загрузка», а не мёртвую кнопку. */
+  .gallery[data-loaded='false'] .nav {
+    opacity: 0.55;
+    cursor: progress;
+  }
+
+  /* `:disabled` остаётся только для настоящего неустранимого отказа
+     (манифест недоступен — `setButtonsDisabled(true)` в скрипте): тогда
+     тапать действительно некуда, кнопка гасится сильнее приглушённой. */
   .nav:disabled {
-    opacity: 0;
+    opacity: 0.35;
     cursor: default;
+  }
+
+  .stage-loading {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .gallery[data-loaded='false'] .stage-loading { display: flex; }
+
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--border);
+    border-top-color: var(--text);
+    border-radius: 999px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .spinner { animation: website-gallery-spin 0.8s linear infinite; }
+  }
+
+  @keyframes website-gallery-spin {
+    to { transform: rotate(360deg); }
   }
 
   .meta {

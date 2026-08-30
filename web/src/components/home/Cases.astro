@@ -152,6 +152,12 @@ const ILLUSTRATIONS: Record<string, any> = {
         var switching = false;
         var loaded = root.dataset.defer !== 'true';
         var queuedSteps = [];
+        /* Правка 3 очереди: тап на кнопку до готовности данных раньше просто
+           терялся — кнопка была `disabled`. Теперь кнопка кликабельна с
+           первого кадра, и такой тап запоминается здесь и проигрывается,
+           как только `revealDeferred()` заканчивается (см. её хвост ниже),
+           вместо того чтобы требовать повторного нажатия. */
+        var pendingStep = null;
         var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
         var ensureSlides = async function () {
@@ -260,10 +266,31 @@ const ILLUSTRATIONS: Record<string, any> = {
             switching = false;
             if (loaded) setButtonsDisabled(false);
           }
+          /* Направление, запрошенное тапом до готовности данных, проигрывается
+             только теперь, из `pendingStep`. Отдельно — тап, пришедший ПОСЛЕ
+             того, как `data-loaded` уже стал 'true' (кнопка не гасится
+             правкой 3), но ДО того, как отыграла начальная анимация показа
+             (`switching` тогда ещё `true`): `switchBy` не видит его как
+             «не загружено» и кладёт шаг в `queuedSteps`, рассчитывая, что его
+             сольёт `finally` какого-то `switchBy` — а тут выполняется как раз
+             `revealDeferred`, у неё своего дренажа `queuedSteps` не было, и
+             такой тап терялся молча (обнаружено сквозным прогоном e2e). Один
+             и тот же шаг не может лежать сразу в обоих местах: `pendingStep`
+             заполняется только пока `!loaded`, `queuedSteps` — только когда
+             `switching` уже `true` при `loaded === true`. */
+          if (loaded) {
+            var step = pendingStep !== null ? pendingStep : queuedSteps.shift();
+            pendingStep = null;
+            if (step !== null && step !== undefined) switchBy(step);
+          }
         };
 
         var switchBy = async function (step) {
-          if (!loaded) return;
+          if (!loaded) {
+            pendingStep = step;
+            revealDeferred();
+            return;
+          }
           if (switching) {
             queuedSteps.push(step);
             return;
@@ -354,7 +381,11 @@ const ILLUSTRATIONS: Record<string, any> = {
           root.setAttribute('aria-busy', 'false');
           setButtonsDisabled(false);
         } else {
-          setButtonsDisabled(true);
+          /* Кнопки НЕ гасятся здесь (`setButtonsDisabled(true)` снято правкой
+             3 очереди): `switchBy` сам ставит направление в `pendingStep` и
+             запускает `revealDeferred()`, если тап пришёл раньше срабатывания
+             наблюдателя ниже — эту гонку решает `if (loaded || switching)
+             return;` в самой `revealDeferred`, вызов идемпотентен. */
           if ('IntersectionObserver' in window) {
             var observer = new IntersectionObserver(function (entries) {
               if (!entries.some(function (entry) { return entry.isIntersecting; })) return;

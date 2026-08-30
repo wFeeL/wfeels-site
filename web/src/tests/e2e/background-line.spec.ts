@@ -31,8 +31,12 @@ import { test, expect } from '@playwright/test';
 
 const LINE_SELECTOR = '.line';
 const CURTAIN_SELECTOR = '.line-curtain';
-/* Мобильная нитка ниже 900 px (`BackgroundLine.astro`, раздел 8 брифа
- * `05-line`) — заведена правкой `2026-08-29`. */
+/* Мобильная нитка ниже 900 px (`.line-narrow`) заведена правкой
+ * `2026-08-29` и СНЯТА целиком правкой `2026-08-30` — прямое указание
+ * владельца, вариант А: «ниже 900 px линии нет вовсе». Селектор остаётся
+ * в этом файле не как предмет проверки, а как СТОРОЖ ВОЗВРАТА (см. блок
+ * ниже, раздел «порог рисунка 900 px, линии ниже него нет»): он обязан
+ * ловить, если нитка вернётся, а не подтверждать её отсутствие созерцанием. */
 const NARROW_SELECTOR = '.line-narrow';
 // Десять секций главной несут путь (`svg.line`) — не тронуто этой правкой.
 const LINE_ELEMENT_COUNT = 10;
@@ -226,31 +230,34 @@ test.describe('линия на фоне — только главная сего
   });
 });
 
-/* ПРАВКА `2026-08-29`: раздел 8 брифа `05-line` (действующая редакция)
- * снимает порог 480 px («ниже линии нет вовсе») ЦЕЛИКОМ, а не сдвигает его
- * — порог рисунка кривой (`.line`/`.line-curtain`) поднят до 900 px, и
- * ниже него теперь везде стоит ДРУГОЙ узел, `.line-narrow` (прямая нитка
- * в левом поле, статичная, без раскрытия шторкой). Прежние проверки этого
- * блока проверяли состояние ДО этой правки — 480 px как порог видимости
- * `.line`/`.line-curtain` и сквозную шторку, раскрытую на 480…899 px;
- * оба утверждения здесь заменены на актуальные. */
-test.describe('линия на фоне — порог рисунка 900 px, нитка ниже него (раздел 8)', () => {
-  test('на 390 px (мобильный) кривой .line нет, но нитка .line-narrow видна', async ({ page }) => {
+/* ПРАВКА `2026-08-30`, дословно владелец: «вариант А — ниже 900 px линии
+ * нет вовсе». Отменяет правку `2026-08-29` (мобильная нитка `.line-narrow`
+ * заполняла полосу < 900px прямой линией без событий) — этот блок раньше
+ * утверждал обратное («на 390 px нитка видна») и теперь переписан на
+ * актуальное правило: ниже 900 px нет НИ ОДНОГО узла линии — ни кривой, ни
+ * шторки, ни нитки. Сторог должен ловить ВОЗВРАТ нитки (регрессию к
+ * правке `2026-08-29`), а не саму по себе её отсутствие — то есть
+ * проверяется не только видимость, но и то, что узел `.line-narrow`
+ * отсутствует в DOM целиком (`toHaveCount(0)`): вернувшийся элемент со
+ * случайно сброшенным `display` иначе прошёл бы проверку одной лишь
+ * видимости. */
+test.describe('линия на фоне — порог рисунка 900 px, ниже него линии нет вовсе (раздел 8, правка 2026-08-30)', () => {
+  test('на 390 px (мобильный) нет ни кривой, ни нитки — .line-narrow отсутствует в DOM', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.goto('/');
     await expect(page.locator(LINE_SELECTOR).first()).toBeHidden();
-    await expect(page.locator(NARROW_SELECTOR).first()).toBeVisible();
+    await expect(page.locator(NARROW_SELECTOR)).toHaveCount(0);
   });
 
-  test('на 899 px кривой ещё нет и нитка видна, на 900 px наоборот', async ({ page }) => {
+  test('на 899 px линии всё ещё нет, на 900 px она появляется', async ({ page }) => {
     await page.setViewportSize({ width: 899, height: 900 });
     await page.goto('/');
     await expect(page.locator(LINE_SELECTOR).first()).toBeHidden();
-    await expect(page.locator(NARROW_SELECTOR).first()).toBeVisible();
+    await expect(page.locator(NARROW_SELECTOR)).toHaveCount(0);
 
     await page.setViewportSize({ width: 900, height: 900 });
     await expect(page.locator(LINE_SELECTOR).first()).toBeVisible();
-    await expect(page.locator(NARROW_SELECTOR).first()).toBeHidden();
+    await expect(page.locator(NARROW_SELECTOR)).toHaveCount(0);
   });
 
   test('на 900 px линия видна (порог рисунка, раздел 8)', async ({ page }) => {
@@ -259,12 +266,13 @@ test.describe('линия на фоне — порог рисунка 900 px, н
     await expect(page.locator(LINE_SELECTOR).first()).toBeVisible();
   });
 
-  test('на 480…899 px сквозная шторка НЕ видна (display:none) — раздел 8 брифа `05-line`: ниже 900 px кривой нет вовсе, раскрывать нечего, нитка статична без шторки', async ({ browser }) => {
+  test('на 480…899 px сквозная шторка НЕ видна (display:none) — ниже 900 px кривой нет вовсе, раскрывать нечего, и нитки, которая могла бы обходиться без шторки, тоже нет', async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width: 600, height: 900 } });
     const page = await ctx.newPage();
     await page.goto('/');
     const display = await page.locator(CURTAIN_SELECTOR).evaluate((el) => getComputedStyle(el).display);
     expect(display).toBe('none');
+    await expect(page.locator(NARROW_SELECTOR)).toHaveCount(0);
     await ctx.close();
   });
 });
