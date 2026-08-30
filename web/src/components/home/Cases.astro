@@ -152,6 +152,12 @@ const ILLUSTRATIONS: Record<string, any> = {
         var switching = false;
         var loaded = root.dataset.defer !== 'true';
         var queuedSteps = [];
+        /* Правка 3 очереди: тап на кнопку до готовности данных раньше просто
+           терялся — кнопка была `disabled`. Теперь кнопка кликабельна с
+           первого кадра, и такой тап запоминается здесь и проигрывается,
+           как только `revealDeferred()` заканчивается (см. её хвост ниже),
+           вместо того чтобы требовать повторного нажатия. */
+        var pendingStep = null;
         var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
         var ensureSlides = async function () {
@@ -260,10 +266,23 @@ const ILLUSTRATIONS: Record<string, any> = {
             switching = false;
             if (loaded) setButtonsDisabled(false);
           }
+          /* Направление, запрошенное тапом во время загрузки, проигрывается
+             только теперь — после того, как `switching` уже снят веткой
+             `finally` выше, иначе `switchBy` увидел бы галерею занятой и
+             просто поставил бы шаг в `queuedSteps` второй раз. */
+          if (loaded && pendingStep !== null) {
+            var step = pendingStep;
+            pendingStep = null;
+            switchBy(step);
+          }
         };
 
         var switchBy = async function (step) {
-          if (!loaded) return;
+          if (!loaded) {
+            pendingStep = step;
+            revealDeferred();
+            return;
+          }
           if (switching) {
             queuedSteps.push(step);
             return;
@@ -354,7 +373,11 @@ const ILLUSTRATIONS: Record<string, any> = {
           root.setAttribute('aria-busy', 'false');
           setButtonsDisabled(false);
         } else {
-          setButtonsDisabled(true);
+          /* Кнопки НЕ гасятся здесь (`setButtonsDisabled(true)` снято правкой
+             3 очереди): `switchBy` сам ставит направление в `pendingStep` и
+             запускает `revealDeferred()`, если тап пришёл раньше срабатывания
+             наблюдателя ниже — эту гонку решает `if (loaded || switching)
+             return;` в самой `revealDeferred`, вызов идемпотентен. */
           if ('IntersectionObserver' in window) {
             var observer = new IntersectionObserver(function (entries) {
               if (!entries.some(function (entry) { return entry.isIntersecting; })) return;
