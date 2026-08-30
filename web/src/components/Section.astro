@@ -133,13 +133,11 @@ const linePath = id ? LINE_PATHS[id] : undefined;
             — раздел 12.4: «зазора нет нигде по построению»). */}
         {linePath.head && <path class="line-head" d={linePath.head} />}
       </svg>
-      {/* Мобильная нитка (`BackgroundLine.astro`, раздел 8 брифа `05-line`)
-          — прямой непрозрачный блок, а не путь SVG (см. комментарий у
-          `.line-narrow` в `BackgroundLine.astro` — раскладка на PX-полях
-          несовместима с масштабируемым `viewBox`). Декоративный, из дерева
-          доступности исключён, `position: absolute` не участвует в потоке
-          (тот же довод, что уже несёт `.line` рядом). */}
-      <div class="line-narrow" aria-hidden="true"></div>
+      {/* Мобильная нитка (`.line-narrow`) СНЯТА целиком правкой `2026-08-30`
+          — прямое указание владельца, вариант А: «ниже 900 px линии нет
+          вовсе» (см. `BackgroundLine.astro`). Ниже порога 900px путь этой
+          секции уже скрыт правилом `display:none` у класса `line`, второго
+          узла для этой полосы больше не заводится. */}
     </>
   )}
   {label && <Label>{label}</Label>}

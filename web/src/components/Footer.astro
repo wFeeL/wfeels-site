@@ -107,11 +107,9 @@ const linePath = line ? LINE_PATHS.footer : undefined;
           `z-index` порядок в DOM решает, кто красится поверх — шторка
           обязана лечь НАД ещё не открытой краской. */}
       <div class="line-curtain-local" aria-hidden="true"></div>
-      {/* Мобильная нитка подвала (`BackgroundLine.astro`, раздел 8 брифа
-          `05-line`) — тот же приём, что несёт `Section.astro` для секций
-          главной; `footer .line-narrow { z-index: -1 }` держит её над
-          `footer::before`, тем же доводом, что уже несёт `footer .line`. */}
-      <div class="line-narrow" aria-hidden="true"></div>
+      {/* Мобильная нитка подвала (`.line-narrow`) СНЯТА целиком правкой
+          `2026-08-30` — прямое указание владельца, вариант А: «ниже 900 px
+          линии нет вовсе» (см. `BackgroundLine.astro`). */}
     </>
   )}
   <Container>
