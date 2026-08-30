@@ -34,8 +34,8 @@ const { slides, galleryKey } = Astro.props;
         <img
           src={index === 0 ? slide.src : undefined}
           alt={slide.alt}
-          width={portrait ? 780 : 1586}
-          height={portrait ? 1688 : 992}
+          width={slide.width}
+          height={slide.height}
           loading="lazy"
           decoding="async"
           data-gallery-screen

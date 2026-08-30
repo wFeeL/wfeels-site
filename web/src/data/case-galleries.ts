@@ -1,4 +1,6 @@
+import path from 'node:path';
 import type { Locale } from '../i18n/locales';
+import { avifSize } from '../lib/avifSize';
 
 export interface CaseGallerySlide {
   label: string;
@@ -6,13 +8,40 @@ export interface CaseGallerySlide {
   alt: string;
   project: string;
   subject: 'магазина' | 'сайта' | 'shop' | 'website' | 'консультанта';
+  /** Внутренний размер кадра — резервирует раскладку у потребителя
+   *  (`CaseGallery.astro`), ловушка 42 (`50-code/CLAUDE.md`): раньше
+   *  потребитель резервировал место одной вписанной руками парой чисел на
+   *  всю галерею, и обрезка одного файла до другой пропорции разошлась с
+   *  резервированием — раскладка дёргалась при подгрузке. Здесь числа НЕ
+   *  вписаны руками: `withDimensions` ниже читает их из самого файла
+   *  (`lib/avifSize.ts`) при каждой сборке, так что расходиться уже нечему —
+   *  следующий добавленный или обрезанный кадр получит верные числа сам. */
+  width: number;
+  height: number;
+}
+
+type CaseGallerySlideSource = Omit<CaseGallerySlide, 'width' | 'height'>;
+
+/* `import.meta.url` не годится здесь: во время статической генерации Astro
+ * этот модуль исполняется из собранного чанка (`dist/.prerender/chunks/…`),
+ * и путь от НЕГО до `public/` — уже не `../../public`. `npm run build` и
+ * `npm run test:unit` (см. `web/README.md`) оба запускаются с рабочей
+ * директорией `web/`, поэтому `process.cwd()` — единственная точка отсчёта,
+ * которая не переезжает вместе со сборкой. */
+const PUBLIC_DIR = path.join(process.cwd(), 'public');
+
+function withDimensions<T extends CaseGallerySlideSource>(
+  slide: T,
+): T & Pick<CaseGallerySlide, 'width' | 'height'> {
+  const { width, height } = avifSize(path.join(PUBLIC_DIR, slide.src));
+  return { ...slide, width, height };
 }
 
 /* Манифест кэшируется браузером отдельно от HTML. Версия в URL обязательна:
    иначе новая сборка могла получить старые пути слайдов ещё на пять минут. */
 export const CASE_GALLERIES_URL = '/case-galleries.json?v=5';
 
-export const STOREFRONT_SLIDES: readonly CaseGallerySlide[] = [
+const STOREFRONT_SLIDES_SOURCE: readonly CaseGallerySlideSource[] = [
   {
     label: 'Главная',
     src: '/cases/storefront/yasmina-home.avif',
@@ -78,7 +107,10 @@ export const STOREFRONT_SLIDES: readonly CaseGallerySlide[] = [
   },
 ];
 
-export const WEBSITE_SLIDES: readonly CaseGallerySlide[] = [
+export const STOREFRONT_SLIDES: readonly CaseGallerySlide[] =
+  STOREFRONT_SLIDES_SOURCE.map(withDimensions);
+
+const WEBSITE_SLIDES_SOURCE: readonly CaseGallerySlideSource[] = [
   {
     label: 'Главная',
     src: '/cases/websites/relayos/01-home.avif',
@@ -144,6 +176,9 @@ export const WEBSITE_SLIDES: readonly CaseGallerySlide[] = [
   },
 ];
 
+export const WEBSITE_SLIDES: readonly CaseGallerySlide[] =
+  WEBSITE_SLIDES_SOURCE.map(withDimensions);
+
 /** Раздел 4.4 брифа: три кадра рабочего стенда `50-code/rag-consultant`,
  *  снятые на стенде, поднятом с временным токеном переменной окружения, без секретов в
  *  кадре. Порядок совпадает с порядком разворотов `AI_CONSULTANT_SPREADS`
@@ -153,7 +188,7 @@ export const WEBSITE_SLIDES: readonly CaseGallerySlide[] = [
  *  СИНТЕТИЧЕСКИЕ ДАННЫЕ» наложена на сам кадр при съёмке (стенд — чужой
  *  репозиторий, его разметку менять нельзя), тем же приёмом, что жёлтый знак
  *  `DEMO / DRY-RUN` у `zayavka-hub` (раздел 4.3 брифа). */
-export const AI_CONSULTANT_SLIDES: readonly CaseGallerySlide[] = [
+const AI_CONSULTANT_SLIDES_SOURCE: readonly CaseGallerySlideSource[] = [
   {
     label: 'Ответ',
     src: '/cases/ai-consultant/widget-answer.avif',
@@ -176,6 +211,9 @@ export const AI_CONSULTANT_SLIDES: readonly CaseGallerySlide[] = [
     subject: 'консультанта',
   },
 ];
+
+export const AI_CONSULTANT_SLIDES: readonly CaseGallerySlide[] =
+  AI_CONSULTANT_SLIDES_SOURCE.map(withDimensions);
 
 type GallerySlideText = Pick<CaseGallerySlide, 'label' | 'alt' | 'subject'>;
 
