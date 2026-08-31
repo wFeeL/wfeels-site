@@ -22,6 +22,14 @@ import { THEME_COLOR } from '../lib/theme';
  * руками строка протухнет молча на следующей сборке. */
 import unboundedCyrillicHref from '../fonts/unbounded-cyrillic-wght-normal.woff2?url';
 import onestCyrillicHref from '../fonts/onest-cyrillic-wght-normal.woff2?url';
+/* Тот же приём (импорт ассета, не строка пути), но для целой таблицы стилей,
+ * а не для одного файла шрифта — правка 2026-08-31, разбор у объявления в
+ * `fonts-mono.css`. Подключается не строкой `<link>` в `<head>`, а скриптом
+ * ниже, после `load`+простоя: сама декларация @font-face должна появиться
+ * в применённой таблице стилей ПОЗЖЕ первого кадра, а не только сам файл
+ * шрифта — иначе браузер найдёт декларацию сразу и всё равно скачает три
+ * файла реальной гарнитуры в первой волне. */
+import monoStylesheetHref from '../styles/fonts-mono.css?url';
 
 interface Props {
   title: string;
@@ -329,6 +337,51 @@ const structured = [
       const sync = () => (reduceQuery.matches ? disable() : enable());
       sync();
       reduceQuery.addEventListener('change', sync);
+    </script>
+
+    {/* Реальный `JetBrains Mono Variable` не подключается статическим
+        `@font-face` из общей таблицы стилей (`fonts.css`) — правка
+        2026-08-31, замер живого сайта: три файла гарнитуры (52,7 КБ, 21,7%
+        трафика первой загрузки) качались в первой волне, хотя нужны только
+        ниже первого экрана (подпись «Обо мне», термины цен, счётчики
+        галерей). Причина не в весе, а в том, что браузер сопоставляет
+        `@font-face` по всему документу, а не по видимой области — декларация
+        в подключённой с первого байта таблице стилей запускает закачку
+        сразу, независимо от `<link rel="preload">` (которого для этой
+        гарнитуры никогда и не было). Разбор и подмножества — `fonts-mono.
+        css`, комментарий у объявления.
+
+        Скрипт добавляет `<link rel="stylesheet">` на саму декларацию после
+        `load` и простоя (`requestIdleCallback`, с запасным `setTimeout` там,
+        где его нет) — тем самым откладывается и закачка файлов гарнитуры,
+        которую эта декларация запускает. До этого момента (и весь период
+        `font-display: swap` после него) текст, набранный `--font-mono`
+        (`tokens.css`), держит `JetBrains Mono Fallback` — та же запасная
+        гарнитура с подогнанными метриками, что и у `Unbounded`/`Onest`
+        (`fonts.css`), пустых мест не возникает. */}
+    <script is:inline define:vars={{ monoStylesheetHref }}>
+      const loadMonoFont = () => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = monoStylesheetHref;
+        document.head.appendChild(link);
+      };
+
+      const schedule = () =>
+        'requestIdleCallback' in window
+          ? window.requestIdleCallback(loadMonoFont, { timeout: 2000 })
+          : setTimeout(loadMonoFont, 1);
+
+      // Страница может выполнить этот модуль уже после того, как `load`
+      // случился (медленная сеть, скрипт не в критическом пути) — тогда
+      // ждать событие, которое уже прошло, означало бы не загрузить шрифт
+      // никогда. `readyState === 'complete'` — тот же признак, что
+      // `document.readyState` даёт после `load` (спецификация HTML).
+      if (document.readyState === 'complete') {
+        schedule();
+      } else {
+        window.addEventListener('load', schedule, { once: true });
+      }
     </script>
 
     <style>
