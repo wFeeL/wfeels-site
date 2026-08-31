@@ -127,3 +127,61 @@ for (const theme of THEMES) {
     }
   });
 }
+
+/* Находка владельца 2026-08-31: у контейнеров с `tabindex="-1"` (Tab на них
+ * никогда не попадает — они не входят в цикл `walkFocusRing` выше и потому
+ * невидимы для проверки над этим комментарием) программный или WebKit-
+ * туда-уехавший фокус получал ТО ЖЕ кольцо периметром, что и настоящие
+ * интерактивные цели. На `<main id="main" tabindex="-1">` — самом высоком
+ * узле страницы — это кольцо растягивалось на всю высоту документа и
+ * читалось на экране как вечная синяя полоса вдоль левой кромки, не
+ * исчезающая при прокрутке. Причина оказалась двойной: (1) общий
+ * `:focus-visible` в `base.css` не делал исключения для `tabindex="-1"`, и
+ * (2) более специфичный `main:focus` в `Base.astro` рисовал СВОЮ метку по
+ * ЛЕВОЙ кромке (`box-shadow: inset 3px 0 0 0`) — сдвиг по X на коробке
+ * высотой в документ виден при любой прокрутке ровно так же, как круговой
+ * outline. Проверка ниже ловит оба слоя дефекта на самой длинной странице
+ * набора: полного кольца быть не должно, а если метка есть — она обязана
+ * сидеть на ВЕРХНЕЙ кромке (сдвиг по Y), а не на боковой. */
+test.describe('фокус на служебном tabindex="-1" контейнере не даёт полосы во всю высоту документа', () => {
+  test('программный фокус на #main: без кольца периметром и без метки по боковой кромке', async ({ page }) => {
+    await page.goto('/');
+
+    const before = await page.evaluate(() => {
+      const el = document.getElementById('main');
+      if (!el) return null;
+      const rect = el.getBoundingClientRect();
+      return { height: rect.height };
+    });
+    expect(before, 'на странице нет #main — сторож ослеп').not.toBeNull();
+    // Смысл проверки — именно на ВЫСОКОМ контейнере: без этого условия тест
+    // прошёл бы и на короткой странице, ничего не поймав (ловушка 8,
+    // `50-code/CLAUDE.md`: полоса параметров, а не точка).
+    expect(before!.height, 'главная короче ожидаемого — тест перестал воспроизводить условие бага').toBeGreaterThan(2000);
+
+    await page.evaluate(() => document.getElementById('main')?.focus());
+
+    const after = await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el || el.id !== 'main') return null;
+      const cs = getComputedStyle(el);
+      return { outlineStyle: cs.outlineStyle, boxShadow: cs.boxShadow };
+    });
+    expect(after, 'программный .focus() не перевёл фокус на #main').not.toBeNull();
+    expect(after!.outlineStyle, '#main не должен получать кольцо-outline периметром').toBe('none');
+
+    if (after!.boxShadow && after!.boxShadow !== 'none') {
+      // Разбираем `<color> <offsetX>px <offsetY>px ...` — offsetX обязан быть
+      // нулевым: ненулевой offsetX на боковой кромке коробки высотой в
+      // документ и есть механизм регресса 2026-08-31.
+      const match = after!.boxShadow.match(/(-?[\d.]+)px\s+(-?[\d.]+)px/);
+      expect(match, `box-shadow #main не разобрать: ${after!.boxShadow}`).toBeTruthy();
+      const offsetX = Number(match![1]);
+      expect(
+        offsetX,
+        `box-shadow #main несёт горизонтальный сдвиг ${offsetX}px — на документе высотой ` +
+          `${before!.height}px это боковая полоса, видимая при любой прокрутке (регресс 2026-08-31)`,
+      ).toBe(0);
+    }
+  });
+});
