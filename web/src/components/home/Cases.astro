@@ -121,6 +121,31 @@ const ILLUSTRATIONS: Record<string, any> = {
      безопасно собирается в один сжатый модуль и видит обе готовые строки. */}
 <script>
   (function () {
+    /* Замер живого сайта (задача «две правки скорости», 2026-08-31): от
+       появления галереи «Сайты» в поле зрения до первого показанного кадра
+       уходило 5845 мс — манифест (2,5 КБ) и сам кадр (70,4 КБ) начинали
+       качаться только по срабатыванию `IntersectionObserver` ниже и вставали
+       в очередь за хвостом шрифтов первой загрузки на одной трубе.
+       `runWhenIdle` запускает ту же сеть заранее, в простое ПОСЛЕ `load`, —
+       так к моменту, когда наблюдатель сработает, манифест и первый кадр уже
+       в кэше браузера, и `revealDeferred()` ниже почти не ждёт сеть. Первую
+       загрузку это не утяжеляет: колбэк не может выполниться раньше `load`
+       по определению `requestIdleCallback`/самой проверки `readyState`. */
+    var runWhenIdle = function (callback) {
+      var schedule = function () {
+        if ('requestIdleCallback' in window) {
+          window.requestIdleCallback(callback, { timeout: 2000 });
+        } else {
+          setTimeout(callback, 1);
+        }
+      };
+      if (document.readyState === 'complete') {
+        schedule();
+      } else {
+        window.addEventListener('load', schedule, { once: true });
+      }
+    };
+
     var manifestPromise;
     var loadManifest = function (url) {
       if (!manifestPromise) {
@@ -396,6 +421,22 @@ const ILLUSTRATIONS: Record<string, any> = {
           } else {
             revealDeferred();
           }
+
+          /* Прогрев данных, БЕЗ видимого показа: только манифест и декод
+             первого кадра в кэш браузера — ни `show()`, ни смену `src` у
+             самого `image`, ни анимацию появления, ни `root.dataset.loaded`
+             это не трогает. Визуальный момент появления остаётся целиком за
+             `IntersectionObserver` выше — читатель видит ту же самую анимацию
+             входа, что и раньше, просто сеть к её началу уже не нужна.
+             `loaded || switching` в начале — та же защита от гонки, что и в
+             `revealDeferred`: если наблюдатель успел сработать раньше, чем
+             простой браузера, прогревать уже нечего. */
+          runWhenIdle(function () {
+            if (loaded || switching) return;
+            ensureSlides().then(function () {
+              return preload(slides[0]);
+            }).catch(function () {});
+          });
         }
       });
     };
