@@ -135,7 +135,7 @@ describe('data/reviews.ts — assertReviewsValid, раздел 4.1 брифа', 
   it('обезличенная подпись не пропускает имя автора', () => {
     const review = validReview({
       publication: 'anonymous',
-      name: 'Ясмина',
+      name: 'Yasmina',
       consent: '20-sales/legal/consents/2026-09-02-yasmina-wfeels-site.md',
     });
     expect(() => assertReviewsValid([review], PUBLISHED_CASES)).toThrow(/обезлич/);
