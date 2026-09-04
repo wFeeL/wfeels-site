@@ -124,7 +124,7 @@ test.describe('рельс — роль и разметка', () => {
     const nav = page.locator('nav.rail');
     await expect(nav).toHaveAttribute('aria-label', /.+/);
     const points = nav.locator('button.point');
-    await expect(points).toHaveCount(10);
+    await expect(points).toHaveCount(11);
     for (const btn of await points.all()) {
       await expect(btn).toHaveAttribute('aria-label', /.+/);
     }
@@ -162,17 +162,19 @@ test.describe('рельс — роль и разметка', () => {
  * ВИДИМОСТИ.
  *
  * Правка владельца 2026-08-18 (пункт 23): `pain` и `faq` получили
- * собственные точки — восемь подписей стало десять, «КАК БЫВАЕТ» и «FAQ». */
-test.describe('рельс — десять подписей в DOM, видима только у активной точки', () => {
+ * собственные точки — восемь подписей стало десять, «КАК БЫВАЕТ» и «FAQ».
+ * D-149, 2026-09-02: опубликованный блок отзывов добавил одиннадцатую точку
+ * «ОТЗЫВЫ» между «ОБО МНЕ» и «FAQ». */
+test.describe('рельс — одиннадцать подписей в DOM, видима только у активной точки', () => {
   const EXPECTED_LABELS = [
-    'НАЧАЛО', 'КАК БЫВАЕТ', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ГАРАНТИИ', 'ОБО МНЕ', 'FAQ', 'КОНТАКТ',
+    'НАЧАЛО', 'КАК БЫВАЕТ', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ГАРАНТИИ', 'ОБО МНЕ', 'ОТЗЫВЫ', 'FAQ', 'КОНТАКТ',
   ];
 
-  test('все десять подписей присутствуют в DOM, дословно и в порядке спеки', async ({ page }) => {
+  test('все одиннадцать подписей присутствуют в DOM, дословно и в порядке спеки', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
     const labels = page.locator('nav.rail .point .label');
-    await expect(labels).toHaveCount(10);
+    await expect(labels).toHaveCount(11);
     expect(await labels.allTextContents()).toEqual(EXPECTED_LABELS);
   });
 
@@ -266,12 +268,12 @@ test.describe('рельс — десять подписей в DOM, видима
  * координатами, а не структурой разметки — структура уже однажды не
  * гарантировала того, что казалось очевидным (см. историю файла, дефект 1). */
 test.describe('рельс — точка не смещается по горизонтали между состояниями', () => {
-  test('центр точки — на одной вертикали у всех десяти в состоянии покоя', async ({ page }) => {
+  test('центр точки — на одной вертикали у всех одиннадцати в состоянии покоя', async ({ page }) => {
     await page.setViewportSize(WIDE);
     await page.goto('/');
 
     const dots = page.locator('nav.rail .point .dot');
-    await expect(dots).toHaveCount(10);
+    await expect(dots).toHaveCount(11);
     const centers = await dots.evaluateAll(
       (els) => els.map((el) => {
         const r = el.getBoundingClientRect();

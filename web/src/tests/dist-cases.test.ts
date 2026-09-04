@@ -36,11 +36,13 @@ describe('dist/cases — индексируемый каталог и detail-с�
       expect(html).toContain(narrative.task);
       expect(html).toContain(narrative.approach);
       expect(html).toContain(narrative.result);
-      // `disclosure` необязательна (D-138) — у `storefront` её больше нет,
-      // и страница не обязана содержать её текст.
+      // Данные могут сохранять внутреннюю оговорку, но по прямому решению
+      // владельца от 2026-09-04 блок «ПРОИСХОЖДЕНИЕ» на сайте не выводится.
       if (narrative.disclosure) {
-        expect(html).toContain(narrative.disclosure);
+        expect(html).not.toContain(narrative.disclosure);
       }
+      expect(html).not.toContain('class="origin-strip"');
+      expect(html).not.toContain('ПРОИСХОЖДЕНИЕ');
       expect(html).toContain('href="/cases"');
       for (const service of caseServiceLinks(item.slug)) {
         expect(html, service.slug).toContain(`href="${service.href}"`);
@@ -120,17 +122,10 @@ describe('dist/cases — индексируемый каталог и detail-с�
     expect(html).toContain('width="1586" height="992"');
   });
 
-  it('websites: «демонстрационн» встречается ровно один раз — в оговорке о кадрах, не в теле', () => {
-    /* Ревью 2026-08-28 (D-138): у `websites` оговорка «это демонстрационные
-     * дизайн-концепции» остаётся — она описывает КАДРЫ (RelayOS, Still House,
-     * Forma Editions действительно сняты как дизайн-концепции), а не
-     * происхождение заказа, и D-138 её не отменяет. Сторож не запрещает
-     * слово целиком (как у `storefront` выше), а считает вхождения: одно —
-     * оговорка, задача/подход/результат ни разу больше его не несут. Больше
-     * одного — то же утверждение просочилось туда, где D-138 его отменяет. */
+  it('websites: внутренняя оговорка о кадрах не выводится отдельной полосой', () => {
     const html = read('cases/websites/index.html');
     const matches = html.match(/демонстрационн/gi) ?? [];
-    expect(matches, 'websites: число вхождений «демонстрационн» в собранной странице').toHaveLength(1);
+    expect(matches, 'websites: оговорка убрана из публичной страницы').toHaveLength(0);
   });
 
   /* Пункт 6 очереди: подпись под кадром распространена со `storefront`

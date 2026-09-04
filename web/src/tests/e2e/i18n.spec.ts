@@ -89,7 +89,7 @@ test('пункты английской шапки не уводят на рус
   await page.goto('/en');
   const hrefs = await page.locator('header nav.nav-wide a')
     .evaluateAll((links) => links.map((l) => l.getAttribute('href') ?? ''));
-  expect(hrefs.length).toBe(5);
+  expect(hrefs.length).toBe(6);
   for (const href of hrefs) {
     expect(href, `${href} уводит с английской версии`).toMatch(/^\/en#[a-z-]+$/);
   }

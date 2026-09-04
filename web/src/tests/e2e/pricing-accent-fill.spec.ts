@@ -1,36 +1,10 @@
 import { test, expect } from '@playwright/test';
 
-/** Сторож карточки-акцента секции «Цены» — **переписан целиком**
- *  (`70-workshop/specs/site-v3/15-line-through-scale-brief.md`, раздел 5,
- *  задача 3), потому что прежняя версия проверяла ровно тот дефект, который
- *  этот бриф закрывает: она требовала, чтобы линия-рассказчик была ВИДНА
- *  сквозь лицо карточки-акцента (`lineThroughCardContrast ≥ 1.06`) и чтобы
- *  заливка оставалась заметно полупрозрачной (`alpha < 0.3`). Ровно это —
- *  «краска идёт по лицу карточки в полной полевой плотности 1,195:1» —
- *  замер владельца назвал бликом/полиграфическим браком (раздел 5.1 брифа).
- *
- *  НОВЫЙ ИНВАРИАНТ (раздел 5.2 брифа): карточка-акцент — «цель» линии, а не
- *  «лист». Лицо непрозрачно (в композитном смысле — итоговый нарисованный
- *  пиксель не меняется от того, что физически лежит НИЖЕ в DOM), тон при
- *  этом НЕ становится плоским `--surface`: тот же `--accent-soft`, что
- *  раньше был заливкой самой карточки, теперь рисуется вторым слоем
- *  `background` НАД непрозрачным `--surface` (`Card.astro`, `.card--accent`)
- *  — итоговый композитный пиксель ЧИТАЕТСЯ так же (акцентный тон поверх
- *  поверхности), но линия сквозь него больше не проходит ни в каком
- *  сценарии. Событие «линия коснулась главного блока» несёт не просвет, а
- *  обвод по кромке (`.line-trace`, `styles/base.css`) — отдельный сторож
- *  ниже НЕ проверяет анимацию обвода (это `background-line-narrator.spec.ts`
- *  / новый сторож П-Ц1), только то, что лицо действительно непрозрачно и
- *  действительно отличается от соседних карточек.
- *
- *  Проверка НАРОЧНО читает пиксель со скриншота (`page.screenshot` +
- *  `canvas`), а не `getComputedStyle(...).backgroundColor`: composited-
- *  формула `linear-gradient(var(--accent-soft), var(--accent-soft)),
- *  var(--surface)` кладёт тон акцента в `background-image`, и
- *  `backgroundColor` вернул бы только нижний слой (`--surface`) — сравнение
- *  по нему не отличило бы «дефект вернулся» (заливка снова плоский
- *  `--surface` без тона) от «всё в порядке» (тон есть, просто в другом
- *  слое). Пиксель — та же ЖИВАЯ величина, которую видит браузер. */
+/** Сторож финального состояния рекомендуемого тарифа. До прохода линии карточка
+ *  нейтральна (это проверяет `feedback-2026-09-04.spec.ts`); после выхода пера
+ *  отдельная `.recommendation-surface` показывает непрозрачную акцентную
+ *  поверхность. Здесь цвет проверяется по реальному пикселю снимка, поскольку
+ *  вычисленный `backgroundColor` не учитывает верхний слой `background-image`. */
 
 const VIEWPORT = { width: 1440, height: 900 };
 const MIN_AA = 4.5;
@@ -110,11 +84,24 @@ test.describe('карточка-акцент секции «Цены» — ли�
       // Карточки ниже первого экрана — `page.screenshot({ clip })` снимает
       // из ТЕКУЩЕГО кадра страницы, а не всего документа: без прокрутки
       // координаты `getBoundingClientRect()` уводят клип за пределы вьюпорта.
-      await page.locator('#pricing .top-grid > .card--accent').scrollIntoViewIfNeeded();
+      const recommended = page.locator('#pricing .top-grid > .recommended-card');
+      const bottom = await recommended.evaluate((el) => el.getBoundingClientRect().bottom + window.scrollY);
+      const lineHead = await page.evaluate(() => {
+        const probe = document.createElement('i');
+        probe.style.cssText = 'position:fixed;top:var(--line-head);visibility:hidden';
+        document.body.appendChild(probe);
+        const top = probe.getBoundingClientRect().top;
+        probe.remove();
+        return top;
+      });
+      // D-152: акцент уже завершён у нижней кромки карточки; ещё +208 px
+      // ставят пиксельный замер заведомо после диапазона, а не внутри смеси.
+      await page.evaluate((y) => window.scrollTo(0, y), Math.round(bottom - lineHead + 208));
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 
       const setup = await page.evaluate(() => {
-        const accentCard = document.querySelector('#pricing .top-grid > .card--accent') as HTMLElement | null;
-        const plainCard = document.querySelector('#pricing .top-grid > .card:not(.card--accent)') as HTMLElement | null;
+        const accentCard = document.querySelector('#pricing .top-grid > .recommended-card') as HTMLElement | null;
+        const plainCard = document.querySelector('#pricing .top-grid > .card:not(.recommended-card)') as HTMLElement | null;
         if (!accentCard || !plainCard) return null;
         const ar = accentCard.getBoundingClientRect();
         const pr = plainCard.getBoundingClientRect();

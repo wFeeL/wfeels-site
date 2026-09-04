@@ -4,9 +4,10 @@
 // (`components/home/Reviews.astro`) не правится никогда: она только читает
 // `homeReviews()`.
 //
-// `REVIEWS` СДАЁТСЯ ПУСТЫМ. Это не заглушка, а состояние (раздел 4.1 брифа):
-// ни одной выдуманной строки, ни имени, ни рыбы. `00-overview.md`, раздел 6,
-// называет выдуманные отзывы обманом покупателя и запрещает их к возврату.
+// Первая реальная запись добавлена 2026-09-02 по прямому разрешению автора
+// опубликовать отзыв на wfeels.site. Публичная подпись обезличена: имя, аватар
+// и снимки переписки на сайт не попадают. В блоке используются только уже
+// опубликованные снимки выполненной работы (D-149).
 //
 // Подавление секции на главной устроено ОДНИМ выражением в `lib/sections.ts`
 // (`...(homeReviews().length > 0 ? [REVIEWS_SECTION] : [])`) — из него
@@ -14,6 +15,15 @@
 // этот массив пуст.
 import { publishedCases } from './cases';
 import { caseNarrative } from './casePages';
+import { STOREFRONT_SLIDES, STOREFRONT_SLIDES_EN } from './case-galleries';
+
+export interface ReviewScreenshot {
+  label: { ru: string; en: string };
+  src: string;
+  alt: { ru: string; en: string };
+  width: number;
+  height: number;
+}
 
 export interface Review {
   /** Устойчивый идентификатор записи. На экран не попадает. */
@@ -35,15 +45,46 @@ export interface Review {
   lang: 'ru' | 'en';
   /** Показывать ли на главной. */
   onHome: boolean;
-  /** Письменное согласие: путь к подписанной форме в базе. Пустая строка
-   *  роняет сборку. */
+  /** Форма публичной подписи. `anonymous` запрещает имя, аватар и профиль
+   *  автора; на экран попадает только нейтральное описание деятельности. */
+  publication: 'anonymous' | 'identified';
+  /** Внутренний путь к документированному разрешению. Для публикации с
+   *  идентифицируемым автором требуется отдельная подписанная форма; для
+   *  обезличенной записи допустима запись прямого письменного разрешения. */
   consent: string;
   /** Дата получения отзыва, `YYYY-MM-DD`. */
   date: string;
+  /** Снимки выполненной работы. Переписка, аватар и профиль сюда не входят. */
+  screenshots?: readonly ReviewScreenshot[];
 }
 
-/** Пусто — и это не заглушка, а состояние. Ни одной выдуманной записи. */
-export const REVIEWS: readonly Review[] = [];
+const yasminaSlidesRu = STOREFRONT_SLIDES.filter((slide) => slide.project === 'Yasmina');
+const yasminaSlidesEn = STOREFRONT_SLIDES_EN.filter((slide) => slide.project === 'Yasmina');
+const YASMINA_SCREENSHOTS: readonly ReviewScreenshot[] = yasminaSlidesRu.map((slide, index) => ({
+  label: { ru: slide.label, en: yasminaSlidesEn[index]?.label ?? slide.label },
+  src: slide.src,
+  alt: { ru: slide.alt, en: yasminaSlidesEn[index]?.alt ?? slide.alt },
+  width: slide.width,
+  height: slide.height,
+}));
+
+/** Только реальные записи с документированным разрешением автора. */
+export const REVIEWS: readonly Review[] = [
+  {
+    id: 'yasmina-storefront-2026-09-02',
+    name: 'Владелица бренда',
+    role: 'сумки ручной работы',
+    project: 'Telegram Mini App',
+    caseSlug: null,
+    text: 'Сайт получился очень красивым 🥹 Всё выглядит аккуратно и понятно, особенно понравилось, что сразу чувствуется стиль самих сумочек. Заходишь и реально хочется всё посмотреть и выбрать себе что-нибудь. Очень классно получилось, мне нравится ❤️',
+    lang: 'ru',
+    onHome: true,
+    publication: 'anonymous',
+    consent: '20-sales/legal/consents/2026-09-02-yasmina-wfeels-site.md',
+    date: '2026-09-02',
+    screenshots: YASMINA_SCREENSHOTS,
+  },
+];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const FORBIDDEN_ROLE_WORDS = /клиент|заказчик|для компании/i;
@@ -58,13 +99,12 @@ const FORBIDDEN_ROLE_WORDS = /клиент|заказчик|для компан�
  * несёт, ветка была недостижима — это чистка мёртвого кода, а не
  * ослабление проверки, работающая ветка (`демонстрационн`) осталась. */
 const DISCLOSURE_DENIES_REAL_PEOPLE = /демонстрационн/i;
-/* Раздел 1.2/4.1 брифа, правка 2026-08-28 (D-138). До этой правки условие
- * «нет письменного согласия» проверялось КОСВЕННО — через оговорку кейса
- * `storefront`, отрицавшую реальных людей. Оговорку сняли (D-138) — и
- * ничто больше не проверяло согласие само по себе. Эта проверка закрывает
- * дыру напрямую: `consent` обязано указывать на подписанный документ
- * внутри `20-sales/legal/`, а не на устную договорённость. */
+/* Раздел 1.2/4.1 брифа, D-138 и D-149. `consent` всегда указывает на
+ * внутреннюю запись в `20-sales/legal/`. Идентифицируемая публикация
+ * допускает только отдельную подписанную форму; обезличенная запись D-149
+ * использует документированное прямое разрешение на точный сайт. */
 const CONSENT_LEGAL_PATH_RE = /^20-sales\/legal\//;
+const SIGNED_CONSENT_PATH_RE = /^20-sales\/legal\/contracts\//;
 const FORBIDDEN_CONSENT_WORDS = /устн|на словах|в переписке|в чате|скрин/i;
 
 /** Проверяет инварианты `REVIEWS` (раздел 4.1 брифа) — вынесена в отдельную
@@ -96,16 +136,33 @@ export function assertReviewsValid(
         'В самой цитате (text) запрет не действует — чужие слова не редактируются.',
       );
     }
-    if (!CONSENT_LEGAL_PATH_RE.test(r.consent) || FORBIDDEN_CONSENT_WORDS.test(r.consent)) {
+    if (!CONSENT_LEGAL_PATH_RE.test(r.consent)) {
       throw new Error(
-        `${where}: consent «${r.consent}» не подтверждает письменное согласие. ` +
-        'Оплата работы подтверждена (D-138) — но оплата и согласие на публикацию ' +
-        'персональных данных это разные вещи, и подтверждённая оплата согласие не заменяет. ' +
-        'Поле обязано ссылаться на подписанный документ путём внутри `20-sales/legal/` и не ' +
-        'может нести «устно», «на словах», «в переписке», «в чате» или «скрин» — письменного ' +
-        'согласия по 152-ФЗ до сих пор нет (раздел 4.1 брифа `14-reviews-brief.md`).',
+        `${where}: consent «${r.consent}» не подтверждает согласие на публикацию. ` +
+        'Оплата работы подтверждена (D-138), но поле должно ссылаться на внутреннюю ' +
+        'запись внутри 20-sales/legal/.',
       );
     }
+    if (r.publication === 'identified' &&
+        (!SIGNED_CONSENT_PATH_RE.test(r.consent) || FORBIDDEN_CONSENT_WORDS.test(r.consent))) {
+      throw new Error(
+        `${where}: идентифицируемая публикация требует отдельной подписанной формы. ` +
+        'Оплата работы подтверждена (D-138), но оплату нельзя подменять согласием на ' +
+        'публикацию имени, изображения или профиля автора.',
+      );
+    }
+    if (r.publication === 'anonymous' && /(?:^|\s)(?:ясмина|yasmina)(?:\s|$)/i.test(`${r.name} ${r.role} ${r.project}`)) {
+      throw new Error(`${where}: обезличенная подпись не должна содержать имя автора.`);
+    }
+    r.screenshots?.forEach((shot, shotIndex) => {
+      if (!shot.label.ru.trim() || !shot.label.en.trim() || !shot.src.trim() ||
+          !shot.alt.ru.trim() || !shot.alt.en.trim() || shot.width <= 0 || shot.height <= 0) {
+        throw new Error(`${where}: screenshots[${shotIndex}] заполнен не полностью.`);
+      }
+      if (!shot.src.startsWith('/cases/')) {
+        throw new Error(`${where}: screenshots[${shotIndex}].src должен ссылаться на опубликованный кадр /cases/.`);
+      }
+    });
     if (r.caseSlug !== null) {
       const publishedCase = bySlug.get(r.caseSlug);
       if (!publishedCase) {

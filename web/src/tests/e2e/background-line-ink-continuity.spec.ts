@@ -441,7 +441,7 @@ test.describe('линия на фоне — сквозная шкала: П-Э3 
 });
 
 test.describe('линия на фоне — сквозная шкала: П-Э4 (стыков секций как событий не существует)', () => {
-  test('1440×900: на каждом из девяти стыков краска непрерывна 120px выше головы и отсутствует ниже', async ({ browser }) => {
+  test('1440×900: на каждом из десяти стыков краска непрерывна 120px выше головы и отсутствует ниже', async ({ browser }) => {
     test.setTimeout(120_000);
     const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width: 1440, height: 900 } });
     const page = await ctx.newPage();
@@ -451,7 +451,7 @@ test.describe('линия на фоне — сквозная шкала: П-Э4 
     const { boundaries, lineHead, nib } = await page.evaluate(() => {
       const sections = Array.from(document.querySelectorAll('main [data-line-side]')) as HTMLElement[];
       const tops = sections.map((s) => s.getBoundingClientRect().top + window.scrollY);
-      // Стыки — верхние кромки секций 2..N (девять стыков на десять секций).
+      // Стыки — верхние кромки секций 2..N (десять стыков на одиннадцать секций).
       const stitches = tops.slice(1);
       const curtain = document.querySelector('.line-curtain') as HTMLElement;
       const probe = document.createElement('div');
@@ -465,7 +465,7 @@ test.describe('линия на фоне — сквозная шкала: П-Э4 
       return { boundaries: stitches, lineHead: head, nib: parseFloat(nibRaw) || 28 };
     });
 
-    expect(boundaries.length, 'девять стыков на десять секций').toBe(9);
+    expect(boundaries.length, 'десять стыков на одиннадцать секций').toBe(10);
 
     const failures: string[] = [];
     for (const [i, boundaryDocY] of boundaries.entries()) {

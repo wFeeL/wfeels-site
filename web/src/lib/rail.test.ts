@@ -3,13 +3,13 @@ import { railPoints, sectionToRailLabel } from './rail';
 import { HOME_SECTIONS } from './sections';
 
 describe('railPoints — группировка HOME_SECTIONS в точки рельса', () => {
-  it('ровно десять точек (правка владельца 2026-08-18: pain и faq получили свою точку)', () => {
-    expect(railPoints().length).toBe(10);
+  it('ровно одиннадцать точек после первого отзыва (D-149)', () => {
+    expect(railPoints().length).toBe(11);
   });
 
   it('метки точек и их порядок — дословно по sections.ts (правка владельца 2026-08-18: «pain» и «faq» расцеплены с соседями)', () => {
     expect(railPoints().map((p) => p.label)).toEqual([
-      'НАЧАЛО', 'КАК БЫВАЕТ', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ГАРАНТИИ', 'ОБО МНЕ', 'FAQ', 'КОНТАКТ',
+      'НАЧАЛО', 'КАК БЫВАЕТ', 'УСЛУГИ', 'ЦЕНЫ', 'КЕЙСЫ', 'ПРОЦЕСС', 'ГАРАНТИИ', 'ОБО МНЕ', 'ОТЗЫВЫ', 'FAQ', 'КОНТАКТ',
     ]);
   });
 
@@ -23,6 +23,7 @@ describe('railPoints — группировка HOME_SECTIONS в точки ре
     expect(byLabel.get('ПРОЦЕСС')).toEqual(['process']);
     expect(byLabel.get('ГАРАНТИИ')).toEqual(['guarantees']);
     expect(byLabel.get('ОБО МНЕ')).toEqual(['about']);
+    expect(byLabel.get('ОТЗЫВЫ')).toEqual(['reviews']);
     expect(byLabel.get('FAQ')).toEqual(['faq']);
     expect(byLabel.get('КОНТАКТ')).toEqual(['contact']);
   });
@@ -38,22 +39,22 @@ describe('railPoints — группировка HOME_SECTIONS в точки ре
     }
   });
 
-  it('каждая из десяти секций входит ровно в одну точку', () => {
+  it('каждая из одиннадцати секций входит ровно в одну точку', () => {
     const all = railPoints().flatMap((p) => p.sectionIds);
-    expect(all.length).toBe(10);
-    expect(new Set(all).size).toBe(10);
+    expect(all.length).toBe(11);
+    expect(new Set(all).size).toBe(11);
   });
 });
 
 describe('sectionToRailLabel', () => {
-  it('каждый из десяти якорей отображается на ожидаемую метку', () => {
+  it('каждый из одиннадцати якорей отображается на ожидаемую метку', () => {
     const expected: Record<string, string> = {
       hero: 'НАЧАЛО', pain: 'КАК БЫВАЕТ',
       services: 'УСЛУГИ',
       pricing: 'ЦЕНЫ',
       cases: 'КЕЙСЫ',
       process: 'ПРОЦЕСС', guarantees: 'ГАРАНТИИ',
-      about: 'ОБО МНЕ', faq: 'FAQ',
+      about: 'ОБО МНЕ', reviews: 'ОТЗЫВЫ', faq: 'FAQ',
       contact: 'КОНТАКТ',
     };
     for (const [id, label] of Object.entries(expected)) {

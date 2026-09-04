@@ -31,13 +31,9 @@ test.describe('секция «Цены» — три верхние карточ�
     await expect(section.getByText('Самый популярный')).toHaveCount(1);
   });
 
-  /* Правка владельца 2026-08-13, второй заход, часть 6: рекомендуемая
-   * карточка стоит чуть выше соседей (`transform: translateY(-12px)` на
-   * `.card--accent`, `Pricing.astro`) — три карточки больше НЕ в одну строку
-   * по Y буквально. Тест проверяет то же намерение другим допуском: две
-   * обычные карточки по-прежнему стоят вровень друг с другом, а рекомендуемая
-   * — заметно (но не запредельно) выше обеих. */
-  test('desktop: обычные карточки стоят в ряд, рекомендуемая — выше них', async ({ page }) => {
+  /* С 2026-09-04 карточка до прохода линии полностью нейтральна, поэтому
+   * прежний постоянный подъём на 12px снят вместе со статической заливкой. */
+  test('desktop: до события линии все три карточки стоят в одном ряду', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/#pricing');
     const cards = page.locator('#pricing .top-grid > a, #pricing .top-grid > div');
@@ -49,13 +45,8 @@ test.describe('секция «Цены» — три верхние карточ�
     const recommendedIndex = TOP_CARDS.findIndex((c) => c.recommended);
     expect(recommendedIndex).toBeGreaterThanOrEqual(0);
 
-    const others = boxes.filter((_, i) => i !== recommendedIndex).map((b) => b!.y);
-    expect(Math.max(...others) - Math.min(...others), 'обычные карточки стоят не вровень друг с другом').toBeLessThan(4);
-
-    const recommendedTop = boxes[recommendedIndex]!.y;
-    const lift = Math.min(...others) - recommendedTop;
-    expect(lift, 'рекомендуемая карточка должна стоять заметно выше соседей').toBeGreaterThan(4);
-    expect(lift, 'рекомендуемая карточка не должна уезжать слишком высоко').toBeLessThan(40);
+    const tops = boxes.map((box) => box!.y);
+    expect(Math.max(...tops) - Math.min(...tops), 'одна из карточек статически приподнята до линии').toBeLessThan(4);
   });
 
   test('mobile: карточки видны, полка видна, страница не скроллится вбок', async ({ page }) => {

@@ -83,7 +83,10 @@ test.describe('галерея кейса Telegram Mini App', () => {
     await page.reload();
     await page.locator(GALLERY).scrollIntoViewIfNeeded();
     await expectLoaded(page, 'yasmina-home.avif', /Главная Yasmina/);
-    expect(requested.map((url) => new URL(url).pathname)).toEqual([
+    // Тот же главный кадр повторно используется ниже в опубликованном
+    // отзыве D-149; браузер вправе сообщить о втором обращении к одному URL.
+    // Предмет проверки — какие ЭКРАНЫ запросили, а не число потребителей.
+    expect([...new Set(requested.map((url) => new URL(url).pathname))]).toEqual([
       '/cases/storefront/yasmina-home.avif',
     ]);
   });

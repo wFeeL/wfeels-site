@@ -270,23 +270,23 @@ test.describe('линия — маршрут нижней половины гл�
 });
 
 test.describe('линия — маршрут нижней половины главной, П-6: соседство секций и полосы перекрытия (раздел 8 брифа `18-…`)', () => {
-  test('HOME_SECTIONS: guarantees → about → faq → contact идут подряд, без reviews между about и faq', () => {
+  test('HOME_SECTIONS: guarantees → about → reviews → faq → contact идут подряд после первого отзыва', () => {
     const ids = homeSectionIds();
     const gi = ids.indexOf('guarantees');
     const ai = ids.indexOf('about');
+    const ri = ids.indexOf('reviews');
     const fi = ids.indexOf('faq');
     const ci = ids.indexOf('contact');
     expect(gi, 'guarantees отсутствует в HOME_SECTIONS').toBeGreaterThanOrEqual(0);
     expect(ai, 'about отсутствует в HOME_SECTIONS').toBeGreaterThanOrEqual(0);
+    expect(ri, 'reviews отсутствует в HOME_SECTIONS после публикации первого отзыва').toBeGreaterThanOrEqual(0);
     expect(fi, 'faq отсутствует в HOME_SECTIONS').toBeGreaterThanOrEqual(0);
     expect(ci, 'contact отсутствует в HOME_SECTIONS').toBeGreaterThanOrEqual(0);
     expect(
-      [gi, ai, fi, ci],
+      [gi, ai, ri, fi, ci],
       `порядок секций маршрута разъехался: ${ids.join(', ')} — маршрут исходит из того, что ` +
-        'guarantees/about/faq/contact идут ПОДРЯД (раздел 3.2 брифа `18-…`); если между about и faq ' +
-        'появилась `reviews` (первый настоящий отзыв, `data/reviews.ts`), переход разъедется — это ' +
-        'ожидаемый и обязательный красный прогон, не дефект теста.',
-    ).toEqual([gi, gi + 1, gi + 2, gi + 3]);
+        'guarantees/about/reviews/faq/contact идут подряд после решения D-149.',
+    ).toEqual([gi, gi + 1, gi + 2, gi + 3, gi + 4]);
   });
 
   /** ПРАВКА `2026-08-28` (раздвоение на стыке `guarantees → about`, ловушка
@@ -320,7 +320,7 @@ test.describe('линия — маршрут нижней половины гл�
    *  видел владелец. С правкой (хвост кончается на `about`-локальном
    *  `−150`, где `about` сама ещё вертикальна) оба падения уходят в 0px. */
   for (const width of WIDTHS) {
-    test(`${width}×900: вся полоса перекрытия ≥60px и выровнена (≤2px) на стыках guarantees/about, about/faq, faq/contact`, async ({
+    test(`${width}×900: вся полоса перекрытия ≥60px и выровнена (≤2px) на стыках guarantees/about, about/reviews, reviews/faq, faq/contact`, async ({
       browser,
     }) => {
       const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: { width, height: 900 } });
@@ -329,7 +329,8 @@ test.describe('линия — маршрут нижней половины гл�
 
       const pairs: Array<[string, string]> = [
         ['#guarantees', '#about'],
-        ['#about', '#faq'],
+        ['#about', '#reviews'],
+        ['#reviews', '#faq'],
         ['#faq', '#contact'],
       ];
       for (const [aSel, bSel] of pairs) {

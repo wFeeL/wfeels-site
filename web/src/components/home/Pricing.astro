@@ -38,7 +38,8 @@ const SHELF_CARDS = shelfCards(locale);
 
 <div class="top-grid">
   {TOP_CARDS.map((card) => (
-    <Card stack={true} accent={!!card.recommended} trace={!!card.recommended}>
+    <Card class={card.recommended ? 'recommended-card' : undefined} stack={true}>
+      {card.recommended && <span class="recommendation-surface" aria-hidden="true"></span>}
       <div class:list={['top-body', { 'top-body--recommended': !!card.recommended }]}>
         {card.recommended && (
           <span class="badge"><span class="badge-star" aria-hidden="true">★</span>{card.recommended.label}</span>
@@ -61,7 +62,16 @@ const SHELF_CARDS = shelfCards(locale);
         </ul>
       </div>
       <p class="cta">
-        <Button href={card.href} variant={card.recommended ? 'primary' : 'secondary'}>{card.cta}</Button>
+        {card.recommended ? (
+          <span class="recommendation-button-wrap">
+            <Button href={card.href} variant="secondary">{card.cta}</Button>
+            <span class="recommendation-button-fill" aria-hidden="true">
+              <span class="recommendation-button-label">{card.cta}</span>
+            </span>
+          </span>
+        ) : (
+          <Button href={card.href} variant="secondary">{card.cta}</Button>
+        )}
       </p>
     </Card>
   ))}
@@ -136,55 +146,29 @@ const SHELF_CARDS = shelfCards(locale);
        уникален для этой секции, второй охват не нужен. */
     :global(.top-grid > :nth-child(odd)) { --reveal-i: 1; }
 
-    /* Рекомендуемая карточка стоит чуть выше соседей (правка владельца
-       2026-08-13, второй заход, часть 6; референс — `60-research/
-       competitors/denis-bond/screenshots/root/05_Цены_на_разработку/01.png`).
-       `transform`, не `margin`: сдвигает только отрисовку, не высоту грид-
-       трека — соседние карточки (align-items: stretch) не сжимаются и не
-       растягиваются от этого сдвига, только у самой карточки ниже неё
-       остаётся зазор в 12px. Только от 700px, тем же приёмом, что и вся
-       раскладка тройки в ряд выше: на телефоне карточки идут в столбец, и
-       сдвиг там читался бы как разъехавшаяся вёрстка, а не как приподнятая
-       карточка. 12px — шаг шкалы «Чертежа» (4·8·12·…): ярлык уже нависает
-       на 11px над собственной верхней границей карточки (см. комментарий
-       у `.badge` ниже: `top: -35px` минус 24px паддинга `.top-body`), плюс
-       этот сдвиг — итоговый зазор до текста вводного абзаца выше остаётся
-       положительным (замерено `boundingClientRect` в браузере, см. отчёт).
-       Селектор — `card--accent` (модификатор `Card.astro`, приходит через
-       проп `accent`), который сейчас несёт ровно одна карточка — та же
-       самая, что рекомендуемая: отдельный маркер не заводится. `:global` —
-       класс определён в `Card.astro`, а не в скоупе этого файла. */
-    :global(.top-grid > .card--accent) { transform: translateY(-12px); }
   }
-
-  /* Обвод рекомендуемой карточки двумя полосами 2px (П3, раздел 3 старой
-     редакции брифа) СНЯТ решением раздела 10.5 `11-line-narrator-brief.md`
-     (правка 2026-08-27): полоса `--accent` вставала поверх постоянной рамки
-     карточки (`border: 1px rgb(47,91,255)`) и читалась как «лёгкое утолщение
-     края», а не как отдельное событие. Событие «главный блок» переехало к
-     самой средней линии — раздел 10.4, траверс `pricing` физически проходит
-     сквозь коробку этой карточки (вход через правую кромку `vbY 518` под
-     65°, выход через левую `vbY 675` под 44°).
-
-     ПРАВКА `70-workshop/specs/site-v3/15-line-through-scale-brief.md`,
-     раздел 5 (задача 3): прежняя запись ниже утверждала «карточка правки не
-     требует: её заливка `rgba(47,91,255,0.09)` уже пропускает линию на
-     91%» — это и оказалось дефектом, а не решением: краска шла по лицу
-     карточки-акцента в ПОЛНОЙ полевой плотности (1,195:1, выше, чем у
-     калькированных соседей — 1,067:1), и в светлой теме читалась как блик.
-     Карточка стала целью линии — `trace={true}` в разметке ниже: лицо
-     теперь непрозрачно (`Card.astro`, `.card--accent`, тот же тон
-     `--accent-soft` вторым слоем `background` над `--surface`, не заливкой
-     самой карточки), а линия ОЖИВЛЯЕТ карточку обводом по кромке
-     (`.line-trace`, `styles/base.css`), который загорается, когда траверс
-     ЗАВЕРШАЕТ пересечение, а не когда входит в неё. */
 
   .top-body {
     display: flex;
     flex-direction: column;
     gap: 4px;
   }
-  .top-body--recommended { position: relative; }
+  .top-body--recommended { position: relative; z-index: 1; }
+
+  /* В покое рекомендуемая карточка не отличается от соседей. Этот слой
+     начинает проявляться в зафиксированном владельцем кадре входа карточек
+     в активную область секции; отдельный слой не конфликтует с reveal-
+     анимацией самой Card. */
+  .recommendation-surface {
+    position: absolute;
+    inset: -1px;
+    z-index: 0;
+    pointer-events: none;
+    border: 1px solid var(--accent);
+    border-radius: inherit;
+    background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--surface);
+    opacity: 0;
+  }
 
   /* Ярлык наезжает на верхнюю границу карточки, а не стоит внутри неё
      (правка владельца 2026-08-13, часть 2). Контейнер отсчёта — сам
@@ -208,40 +192,100 @@ const SHELF_CARDS = shelfCards(locale);
     text-transform: uppercase;
     color: var(--text-on-accent);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    opacity: 0;
   }
   /* Без своего font-size: наследует шорт `.badge` целиком (11 px — ступень
      `label` объявленной шкалы), только чуть уже строки для визуального
      баланса со звёздочкой рядом с текстом. */
   .badge-star { line-height: 1; }
 
-  /* Ярлык появляется на одну фазу позже своей карточки — единственная
-     двухфазность на странице (02-card-motion.md, раздел 7): своя `view()`,
-     не утилита `.reveal` — только `opacity`, без сдвига (ярлык наезжает на
-     границу карточки, любой сдвиг читался бы как съехавшая вёрстка), и без
-     `--reveal-i` (фаза фиксированная, не зависит от столбца). Тот же порядок
-     вложения и те же длинные свойства, что у `.reveal`. Второй `@keyframes`
-     не заводится: переиспользуется `reveal-card` из `styles/base.css`
-     (`to{opacity:1;translate:0 0}`) — `.badge` не объявляет `translate`
-     вовсе, браузер интерполирует его между умолчанием `none` и `0 0`, а это
-     один и тот же нулевой сдвиг на любом кадре: движения нет, платить за
-     вторую анимацию весом незачем. `animation-range` — сокращение только
-     `-start`/`-end` в одно свойство, это НЕ шорткод `animation:` + `timeline`
-     из ловушки 1 (раздел 3) — тот же приём, что и в `FactoryCore.astro`
-     (`.core-draw,.core-fade`). `:global` — вес, класс `.badge` уникален. */
+  /* Карточка объявляет именованный view timeline. Все три признака
+     рекомендации — подложка, ярлык и залитая кнопка — начинают проявляться,
+     когда голова линии проходит примерно 320 px от верхней кромки карточки,
+     и синхронно набирают плотность на следующих 128 px прокрутки. Это
+     соответствует кадру владельца 2048×1151: h2 около 385 px, карточки около
+     670 px. До порога они совпадают с обычной карточкой. На узкой раскладке
+     линии нет, поэтому нет и акцента. */
+  :global(.recommended-card) {
+    view-timeline-name: --pricing-recommended;
+    view-timeline-axis: block;
+  }
+  .cta { position: relative; z-index: 1; }
+  .recommendation-button-wrap {
+    position: relative;
+    display: inline-flex;
+    overflow: clip;
+    border-radius: var(--radius-pill);
+  }
+  .recommendation-button-fill {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-pill);
+    background: var(--accent);
+    pointer-events: none;
+    opacity: 0;
+    translate: -100% 0;
+  }
+  .recommendation-button-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    color: var(--text-on-accent);
+    font: 600 1.125rem/1 var(--font-text);
+    white-space: nowrap;
+    translate: 100% 0;
+  }
+
+  @media (min-width: 900px) {
+    .recommendation-surface,
+    .badge { opacity: 1; }
+    .recommendation-button-fill { opacity: 1; translate: 0 0; }
+    .recommendation-button-label { translate: 0 0; }
+  }
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      :global(.badge) {
-        opacity: 0;
-        animation-name: reveal-card;
-        animation-duration: 1ms;
-        animation-timing-function: var(--ease);
-        animation-fill-mode: both;
-        animation-timeline: view();
-        animation-range: entry 12% entry 48%;
+      @media (min-width: 900px) {
+        .recommendation-surface,
+        .badge,
+        .recommendation-button-fill,
+        .recommendation-button-label {
+          animation-duration: 1ms;
+          animation-timing-function: cubic-bezier(.65, 0, .35, 1);
+          animation-fill-mode: both;
+          animation-timeline: --pricing-recommended;
+          /* `cover calc(100vh - --line-head)` совпадает с проходом головы
+             через верх карточки. Ещё 320 px дают кадр владельца; следующие
+             128 px отвечают только за плавность проявления. */
+          animation-range: cover calc(100vh - var(--line-head) + 320px)
+                           cover calc(100vh - var(--line-head) + 448px);
+        }
+        .recommendation-surface,
+        .badge { animation-name: recommendation-ignite; }
+        .recommendation-button-fill {
+          opacity: 1;
+          animation-name: recommendation-button-ignite;
+        }
+        .recommendation-button-label { animation-name: recommendation-button-label-lock; }
       }
     }
   }
-
+  @keyframes recommendation-ignite {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes recommendation-button-ignite {
+    from { translate: -100% 0; }
+    to { translate: 0 0; }
+  }
+  @keyframes recommendation-button-label-lock {
+    from { translate: 100% 0; }
+    to { translate: 0 0; }
+  }
   /* Заголовок карточки — фиксированная высота в две строки (правка владельца
      2026-08-13, часть 4): «Лендинг» умещается в одну строку, «Корпоративный
      сайт» — в две, и без брони высоты цена трёх карточек стояла бы на разной

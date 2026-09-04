@@ -17,18 +17,19 @@ const RAIL_MAP: Record<string, number[]> = {
   'ПРОЦЕСС': [6],
   'ГАРАНТИИ': [7],
   'ОБО МНЕ': [8],
-  'FAQ': [9],
-  'КОНТАКТ': [10],
+  'ОТЗЫВЫ': [9],
+  'FAQ': [10],
+  'КОНТАКТ': [11],
 };
 
 describe('HOME_SECTIONS — целостность списка', () => {
-  it('ровно десять секций', () => {
-    expect(HOME_SECTIONS.length).toBe(10);
+  it('ровно одиннадцать секций после первого отзыва (D-149)', () => {
+    expect(HOME_SECTIONS.length).toBe(11);
   });
 
-  it('порядок 1..10 без пропусков и повторов', () => {
+  it('порядок 1..11 без пропусков и повторов', () => {
     expect(HOME_SECTIONS.map((s) => s.order)).toEqual(
-      Array.from({ length: 10 }, (_, i) => i + 1),
+      Array.from({ length: 11 }, (_, i) => i + 1),
     );
   });
 
@@ -44,7 +45,7 @@ describe('HOME_SECTIONS — целостность списка', () => {
         .sort((a, b) => a - b);
       expect(inGroup, `точка «${label}»`).toEqual(orders);
     }
-    // Никакая секция не осталась вне десяти точек таблицы.
+    // Никакая секция не осталась вне одиннадцати точек таблицы.
     const known = new Set(Object.keys(RAIL_MAP));
     for (const s of HOME_SECTIONS) {
       expect(known.has(s.railLabel), `секция ${s.order} в незнакомой точке «${s.railLabel}»`)

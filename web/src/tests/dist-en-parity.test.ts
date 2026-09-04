@@ -86,11 +86,11 @@ describe('английская главная — та же страница д�
     expect(at, `структура версий разошлась${context}`).toBe(-1);
   });
 
-  it('десять секций с теми же якорями и в том же порядке', () => {
+  it('одиннадцать секций с теми же якорями и в том же порядке после D-149', () => {
     const ids = (html: string) =>
       [...html.matchAll(/<section\b[^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
     expect(ids(en)).toEqual(ids(ru));
-    expect(ids(ru).length).toBe(10);
+    expect(ids(ru).length).toBe(11);
   });
 });
 

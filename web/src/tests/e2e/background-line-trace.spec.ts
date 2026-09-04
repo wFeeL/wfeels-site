@@ -117,7 +117,7 @@ test.describe('П-Ц1 — обвод .line-trace загорается на вы�
   // и требует раздел 7, потому что от неё зависит геометрия траверса
   // (какие карточки services вообще задеты).
   for (const width of [1180, 1440] as const) {
-    test(`${width}×900: #pricing .card--accent, #cases .field:not(.bare), измеренные #services .grid > .card`, async ({ browser }) => {
+    test(`${width}×900: #cases .field:not(.bare) и измеренные #services .grid > .card`, async ({ browser }) => {
       test.setTimeout(120_000);
       const ctx = await browser.newContext({ reducedMotion: 'no-preference', viewport: { width, height: 900 } });
       const page = await ctx.newPage();
@@ -145,7 +145,6 @@ test.describe('П-Ц1 — обвод .line-trace загорается на вы�
         await assertTraceFiresOnExit(page, `#services .grid > .card:nth-child(${i + 1})`, `services карточка #${i + 1} @${width}px`);
       }
 
-      await assertTraceFiresOnExit(page, '#pricing .top-grid > .card--accent', `pricing карточка-акцент @${width}px`);
       await assertTraceFiresOnExit(page, '#cases .field:not(.bare)', `cases «Замер» @${width}px`);
 
       await ctx.close();
@@ -231,7 +230,7 @@ test.describe('П-Э5 — список законных слепых прого�
       // карточку-акцент (реестр 12.5 называет только формальное событие
       // карточки-акцента; геометрия задевает соседей тоже — найдено этой
       // правкой). Плоские значения фиксируются как факт сегодняшнего дня.
-      const pricingNonAccent = await measureBlindRun(page, '#pricing', '#pricing .top-grid > .card:not(.card--accent)');
+      const pricingNonAccent = await measureBlindRun(page, '#pricing', '#pricing .top-grid > .card:not(.recommended-card)');
       // eslint-disable-next-line no-console
       console.log(`[П-Э5 @${width}px] pricing не-акцент карточки:`, JSON.stringify(pricingNonAccent));
       for (const entry of pricingNonAccent) {

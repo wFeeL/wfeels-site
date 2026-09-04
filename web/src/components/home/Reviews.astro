@@ -43,17 +43,30 @@ if (REVIEWS.length === 0) {
           когда язык записи расходится с языком страницы; экранный диктор и
           перенос слов обязаны знать настоящий язык текста. */}
       <blockquote lang={r.lang !== locale ? r.lang : undefined}>
-        <p class="t-body-lg">{r.text}</p>
+        <p class="t-body-lg">
+          <span class="quote">«{r.text}»</span>{' '}
+          <span class="attribution">— {r.name}</span>
+          <span class="attribution-details"><span>{r.role}</span>{' '}<span>{r.project}</span></span>
+        </p>
       </blockquote>
-      {/* Форма подписи — раздел 4.6 брифа: «— {name} · {role} · {project}»,
-          средняя точка с пробелами (тот же разделитель, что у строки стека
-          на странице кейса). `.meta` уходит на отдельную строку только на
-          390px (раздел 4.8: «Подпись переносится на две строки: „— Имя“ /
-          „род занятий · проект“»), явным блоком — не переносом по ширине,
-          чтобы точка разрыва не зависела от длины текста. */}
-      <figcaption class="t-small">
-        <span class="who">— {r.name}</span> <span class="meta">{r.role} · {r.project}</span>
-      </figcaption>
+      {r.screenshots && r.screenshots.length > 0 && (
+        <div class="work" aria-label={locale === 'ru' ? `Экраны проекта ${r.project}` : `${r.project} screens`}>
+          {r.screenshots.map((shot) => (
+            <figure class="work-shot">
+              <img
+                src={shot.src}
+                alt={shot.alt[locale]}
+                width={shot.width}
+                height={shot.height}
+                loading="lazy"
+                decoding="async"
+                data-defer-weight="true"
+              />
+              <figcaption class="t-label">{shot.label[locale]}</figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
     </figure>
   ))}
 </div>
@@ -95,22 +108,58 @@ if (REVIEWS.length === 0) {
     }
   }
 
-  figcaption {
-    margin-top: 12px;
+  .attribution,
+  .attribution-details {
     font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1.6;
+    letter-spacing: 0.04em;
     color: var(--text-muted);
   }
-  /* Эмодзи не встречаются в подписи никогда (раздел 4.7 брифа) — она несёт
-     только имя, род занятий и проект, поэтому подписи не нужен собственный
-     `line-height` выше умолчания `.t-small`. */
-  .meta {
-    margin-left: 0.35em;
+
+  /* Имя остаётся сразу после цитаты, как просил владелец. Вторичная
+     информация не тянется за ним длинным моноширинным хвостом: роль и тип
+     проекта начинают отдельную строку и разделяются только воздухом. */
+  .attribution-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin-top: 8px;
+  }
+
+  .work {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .work-shot {
+    min-width: 0;
+    margin: 0;
+  }
+
+  .work-shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .work-shot figcaption {
+    margin-top: 8px;
+    color: var(--text-muted);
   }
   @media (max-width: 479px) {
-    .meta {
-      display: block;
-      margin-left: 0;
-      margin-top: 2px;
+    .work {
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .work-shot figcaption {
+      margin-top: 6px;
+      letter-spacing: 0.08em;
     }
   }
 

@@ -202,9 +202,9 @@ test.describe('линия на фоне — обычный путь (подде�
   test('линия присутствует в HTML без выполнения JavaScript (статика)', async ({ request }) => {
     const res = await request.get('/');
     const html = await res.text();
-    // Десять секций главной + подвал (`footerLineData()`) несут метаданные
+    // Одиннадцать секций главной + подвал (`footerLineData()`) несут метаданные
     // data-line-side — не тронуто этой правкой (геометрия путей та же).
-    expect((html.match(/data-line-side="(left|right)"/g) ?? []).length).toBe(11);
+    expect((html.match(/data-line-side="(left|right)"/g) ?? []).length).toBe(12);
     expect(html).toContain('class="line"');
     expect(html).toContain('class="line-curtain"');
   });

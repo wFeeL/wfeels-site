@@ -304,8 +304,8 @@
   /* ── Кнопка первого экрана (раздел 3, П2 брифа `11-line-narrator-brief.md`,
      диагноз стоимости отрисовки; пороги перенесены разделом 4.2 брифа
      `15-…`) — своя вложенная @media. Кнопка сама статическая, серая, БЕЗ
-     анимации; лестница из пяти декоративных слоёв-дубликатов несёт
-     ступеньку `opacity` (композитное свойство, перекраски нет).
+     анимации; акцентный слой и его подпись плавно движутся навстречу друг
+     другу композитным `translate`, не перекрашивая настоящую кнопку.
 
      ПРАВКА (найдено этим прогоном, П-Р1): при сведении одиннадцати шторок
      в одну этот блок остался вложен только в СВОЙ `@media (min-width:
@@ -319,7 +319,7 @@
      нарушение П-Р1 («кнопка первого экрана акцентная») и самого инварианта
      «вне @supports ничего не анимируется и не несёт назначенного имени»,
      который держит `background-line.spec.ts`. Возвращена та же вложенность,
-     что несёт `.num::after` в `Process.astro` (раздел 4.3 того же брифа) —
+     что несёт `.num` в `Process.astro` (раздел 4.3 того же брифа) —
      единый контур на обе точечные истории. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
@@ -328,33 +328,34 @@
           background-color: var(--border);
           color: var(--text);
         }
-        #hero .cta .cta-ignite-step {
+        #hero .cta .cta-ignite-fill {
+          opacity: 1;
           animation-name: hero-cta-ignite;
           animation-duration: 1ms;
-          animation-timing-function: steps(1,jump-end);
-          animation-fill-mode: forwards;
+          animation-timing-function: cubic-bezier(.65, 0, .35, 1);
+          animation-fill-mode: both;
           animation-timeline: view();
+          animation-range: cover calc(100vh - var(--line-head))
+                           cover calc(100% - var(--line-head) + 96px);
         }
-        /* Пять порогов (раздел 10.6 брифа `11-…`, Р-3) — каждый слой открывает
-           СВОЮ 1/5 площади кнопки на своём пороге. Токены перенесены
-           механической заменой (раздел 4.1/4.2 брифа `15-…`): `var(--line-lead)`
-           → `calc(100vh - var(--line-head))`, `var(--line-trail)` →
-           `var(--line-head)` — пять чисел лестницы (35,2·26,4·17,6·8,8·0) не
-           менялись, тождество `lead+trail=100vh` сохраняется само собой
-           ((100vh−head)+head=100vh). Опорная точка события «кнопка загорается»
-           (D-124/D-133) переживает правку — числа порогов сместились
-           (1440×900: 243·252·261·269·278 → 126·135·144·152·161), сам факт
-           события — нет. */
-        #hero .cta .cta-ignite-step[data-step="1"] { animation-range: cover calc(100vh - var(--line-head)) cover calc(100% - var(--line-head) - 35.2px); }
-        #hero .cta .cta-ignite-step[data-step="2"] { animation-range: cover calc(100vh - var(--line-head)) cover calc(100% - var(--line-head) - 26.4px); }
-        #hero .cta .cta-ignite-step[data-step="3"] { animation-range: cover calc(100vh - var(--line-head)) cover calc(100% - var(--line-head) - 17.6px); }
-        #hero .cta .cta-ignite-step[data-step="4"] { animation-range: cover calc(100vh - var(--line-head)) cover calc(100% - var(--line-head) - 8.8px); }
-        #hero .cta .cta-ignite-step[data-step="5"] { animation-range: cover calc(100vh - var(--line-head)) cover calc(100% - var(--line-head)); }
+        #hero .cta .cta-ignite-label {
+          animation-name: hero-cta-label-lock;
+          animation-duration: 1ms;
+          animation-timing-function: cubic-bezier(.65, 0, .35, 1);
+          animation-fill-mode: both;
+          animation-timeline: view();
+          animation-range: cover calc(100vh - var(--line-head))
+                           cover calc(100% - var(--line-head) + 96px);
+        }
       }
     }
   }
   @keyframes hero-cta-ignite {
-    from { opacity: 0; }
-    to   { opacity: 1; }
+    from { translate: -100% 0; }
+    to   { translate: 0 0; }
+  }
+  @keyframes hero-cta-label-lock {
+    from { translate: 100% 0; }
+    to   { translate: 0 0; }
   }
 </style>

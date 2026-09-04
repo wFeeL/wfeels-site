@@ -47,6 +47,11 @@ export function stripComments(html: string): string {
       .replace(/^[ \t]*\/\/.*$/gm, '');
     return whole.replace(body, cleaned);
   });
+  // D-149: реальный отзыв публикуется дословно, поэтому сохраняет авторские
+  // «Всё»/«всё». Общее правило сайта «ё → е» не вправе редактировать чужую
+  // цитату; вычитается только семантический `<blockquote>`, не подпись и не
+  // остальной блок отзывов.
+  s = s.replace(/<blockquote\b[^>]*>[\s\S]*?<\/blockquote>/gi, '');
   return s;
 }
 

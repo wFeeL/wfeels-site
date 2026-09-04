@@ -17,19 +17,20 @@ test('skip-link — первый в фокусе, уводит к содержи
     expect(shadow).not.toBe('none');
   });
 
-// Пунктов пять, не четыре: правка владельца 2026-08-13 добавила «Гарантии»
+// Пунктов шесть: к прежним пяти владелец добавил «Отзывы» сразу после
+// «Обо мне» 2026-09-04.
 // и переставила порядок под порядок страницы — «Услуги · Цены · Кейсы ·
 // Гарантии · Обо мне» (было «Услуги · Кейсы · Цены · Обо мне», шапка спорила
 // со страницей: там цены четвёртой секцией, кейсы пятой). «Контакты» по-
 // прежнему сняты (кнопка «Обсудить задачу» ведёт туда же — второй элемент с
 // той же целью читался бы как случайность, не как решение). Все пункты —
 // якоря секций главной, а не адреса страниц (`lib/nav.ts`, `lib/sections.ts`).
-test('на десктопе в шапке пять пунктов навигации — якоря секций главной',
+test('на десктопе в шапке шесть пунктов навигации — якоря секций главной',
   async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/');
     const links = page.locator('header nav.nav-wide a');
-    await expect(links).toHaveCount(5);
+    await expect(links).toHaveCount(6);
     await expect(links.nth(0)).toHaveText('Услуги');
     await expect(links.nth(0)).toHaveAttribute('href', '/#services');
     await expect(links.nth(1)).toHaveText('Цены');
@@ -38,6 +39,8 @@ test('на десктопе в шапке пять пунктов навигац
     // Последний пункт — «Обо мне», не «Контакты»: пункта с этой целью в
     // навигации больше нет вовсе.
     await expect(links.nth(4)).toHaveText('Обо мне');
+    await expect(links.nth(5)).toHaveText('Отзывы');
+    await expect(links.nth(5)).toHaveAttribute('href', '/#reviews');
     for (const link of await links.all()) {
       const href = await link.getAttribute('href');
       expect(href, `${href} — не якорь секции главной`).toMatch(/^\/#[a-z-]+$/);
@@ -45,7 +48,7 @@ test('на десктопе в шапке пять пунктов навигац
     await expect(page.locator('header details.nav-narrow')).toBeHidden();
   });
 
-test('на узком экране те же пять пунктов достижимы через раскрывашку',
+test('на узком экране те же шесть пунктов достижимы через раскрывашку',
   async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     await page.goto('/');
@@ -55,7 +58,7 @@ test('на узком экране те же пять пунктов дости�
     const menu = page.locator('header details.nav-narrow');
     await expect(menu).toBeVisible();
     const links = menu.locator('a');
-    await expect(links).toHaveCount(5);
+    await expect(links).toHaveCount(6);
     // toBeHidden() на локаторе с несколькими элементами падает по strict
     // mode (не оценивает видимость, а сразу требует ровно один элемент),
     // поэтому проверяем каждую ссылку отдельно.
@@ -64,10 +67,11 @@ test('на узком экране те же пять пунктов дости�
     }
 
     await menu.locator('summary').click();
-    await expect(links).toHaveCount(5);
+    await expect(links).toHaveCount(6);
     await expect(links.nth(0)).toBeVisible();
     await expect(links.nth(0)).toHaveText('Услуги');
     await expect(links.nth(4)).toHaveText('Обо мне');
+    await expect(links.nth(5)).toHaveText('Отзывы');
   });
 
 test('раскрывашка открывается с клавиатуры', async ({ page }) => {
@@ -339,7 +343,7 @@ test('пункт мобильного меню — цель для пальца,
     const menu = page.locator('header details.nav-narrow');
     await menu.locator('summary').click();
     const links = menu.locator('a');
-    await expect(links).toHaveCount(5);
+    await expect(links).toHaveCount(6);
 
     for (const link of await links.all()) {
       const box = await link.boundingBox();
